@@ -1,0 +1,696 @@
+"""The adapted lesson over HTTP (round brief §8, Phase 5).
+
+Three routes:
+
+* ``POST /api/v1/lesson-plan`` — one lesson for the signed-in learner, built
+  by the adaptation layer from their stored levers (or the levers in the
+  body), their subject map, and a content pack — the body's, the topic's
+  authored material, or an honest skeleton when neither exists. The plan is
+  recorded through the Orchestrator, so what was planned, from which model
+  version and which content, stays answerable afterwards.
+* ``POST /api/v1/lesson-plan/contrast`` — the contrast demo: one concept,
+  two profiles, two lessons and the computed differences between them.
+* ``GET  /api/v1/lesson-plan/visual-kinds`` — the seven picture templates
+  and their schemas, so a client draws only what code can validate.
+
+Nothing here names a model, a provider or a key (brief §3): a lesson is
+``deterministic`` (the template adapter) or ``model_validated`` (a suggestion
+that passed every code check), and that is all the client is told.
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..deps import db_session, rate, student_from_request
+from ...ai.adapter import AdaptationError, adapter
+from ...ai.adaptation_policy import Policy, adaptation_policy, plan_words, verify_adapted
+from ...ai.monitor import service as monitor
+from ...content.skeleton import objectives as OBJ
+from ...content.sources import normalise_reviewed_sources
+from ...curriculum import service as gate
+from ...db.models import Student
+from ...lesson import templates as TPL
+from ...services import current
+from ...subjects.models import LearnerSubject
+
+log = logging.getLogger("adapt.lesson_plan")
+
+router = APIRouter(prefix="/api/v1/lesson-plan", tags=["lesson-plan"])
+
+
+class PlanBody(BaseModel):
+    concept: str = Field(default="", max_length=200)
+    title: str = Field(default="", max_length=200)
+    topic_id: str | None = Field(default=None, max_length=120)
+    content_pack: dict[str, Any] | None = None
+    #: A model's proposed plan. Validated whole; rejected whole. The lesson
+    #: that comes back says which happened, and why.
+    model_proposal: Any = None
+    levers: dict[str, Any] | None = None
+    subject_map: Any = None
+    ladder: dict[str, Any] | None = None
+    recent_evidence: Any = None
+    preferences: dict[str, Any] | None = None
+    constraints: dict[str, Any] | None = None
+    session_id: str | None = Field(default=None, max_length=120)
+    #: Round 9: when the lesson belongs to a learner-chosen subject, the
+    #: approved guideline binds (gate + objective fidelity + check-in
+    #: shaping). Authored bank topics without a subject keep prior behaviour.
+    subject_id: str | None = Field(default=None, max_length=120)
+    objective_ids: list[str] | None = Field(default=None, max_length=30)
+    #: The learner tapped "undo" on a shaped lesson: build it unshaped.
+    undo_adaptation: bool = False
+
+
+class ContrastBody(BaseModel):
+    concept: str = Field(default="", max_length=200)
+    title: str = Field(default="", max_length=200)
+    topic_id: str | None = Field(default=None, max_length=120)
+    content_pack: dict[str, Any] | None = None
+    profiles: list[dict[str, Any]] = Field(default_factory=list)
+
+
+def _with_approved_sources(
+    pack: dict[str, Any] | None,
+    materials: list[dict[str, Any]],
+    *,
+    concept: str,
+    title: str,
+) -> dict[str, Any] | None:
+    """Attach only server-stored, learner-approved material to a lesson pack.
+
+    The source cards are not merely a gate. Their checked snippets and exact
+    provenance travel into the adapter input and into the returned plan's
+    provenance, so a generated lesson can say what it learned from.
+    """
+    if not materials:
+        return pack
+    out = dict(pack or {})
+    reviewed = normalise_reviewed_sources(materials)
+    out["approved_sources"] = reviewed
+    snippets = [str(row.get("snippet") or "").strip() for row in reviewed]
+    snippets = [snippet[:1200] for snippet in snippets if snippet]
+    if snippets:
+        existing = out.get("explanation") or out.get("source_text") or ""
+        joined = " ".join(snippets)
+        out["explanation"] = f"{existing} {joined}".strip() if existing else joined
+        facts = list(out.get("facts") or [])
+        out["facts"] = [*facts, *[snippet for snippet in snippets if snippet not in facts]][:24]
+    out.setdefault("concept", concept)
+    out.setdefault("title", title or concept)
+    out["source"] = "learner_approved_materials"
+    return out
+
+
+def _pack_for(
+    s: Session,
+    *,
+    body_pack: dict[str, Any] | None,
+    topic_id: str | None,
+    learner_id: str,
+    concept: str = "",
+    title: str = "",
+    approved_materials: list[dict[str, Any]] | None = None,
+    allow_external: bool = True,
+) -> dict[str, Any] | None:
+    """Resolve a pack without reading external education outside the review gate."""
+    materials = approved_materials or []
+    if body_pack:
+        return _with_approved_sources(body_pack, materials, concept=concept, title=title)
+    if topic_id:
+        from ...services import lessons as lessons_service
+
+        versions = lessons_service.concept_versions_for(s, topic_id, learner_id=learner_id)
+        if versions is not None:
+            return _with_approved_sources(versions, materials, concept=concept, title=title)
+    # A subject may use its approved snippets or local/authored fallback, but
+    # not a configured educational URL that was never shown for review.
+    if not allow_external:
+        return _with_approved_sources(None, materials, concept=concept, title=title)
+    query = (title or concept or topic_id or "").strip()
+    svcs = current()
+    from ...connectors import ai2_education as EDU
+
+    if query and EDU.slot_enabled(svcs.settings):
+        mat = EDU.fetch_educational_material(
+            query,
+            settings=svcs.settings,
+            cache_session=s,
+            transport=getattr(svcs.ai2, "education_transport", None),
+        )
+        if mat.has_content:
+            return _with_approved_sources({
+                "concept": concept or mat.topic,
+                "title": mat.title,
+                "explanation": mat.summary or " ".join(f.statement for f in mat.facts[:4]),
+                "facts": [f.statement for f in mat.facts],
+                "worked_steps": list(mat.worked_steps),
+                "questions": [
+                    {"question": str(q.get("stem") or ""), "format": "short_text"}
+                    for q in mat.questions
+                    if q.get("stem")
+                ],
+                "source": "authored",
+            }, materials, concept=concept, title=title)
+    return _with_approved_sources(None, materials, concept=concept, title=title)
+
+
+def _legacy_frozen_pack(content_pack: dict[str, Any] | None, *, concept_id: str, title: str) -> dict[str, Any]:
+    """Convert the old display-pack envelope at the contrast boundary only.
+
+    The AI 3 writer still consumes the frozen Pack contract. Legacy questions are
+    deliberately not promoted to verified assessment items here; only their checked
+    explanatory material becomes facts.
+    """
+    import re
+
+    raw = content_pack or {}
+    versions = raw.get("versions") or raw.get("variants") or {}
+    explanation: Any = raw.get("explanation") or raw.get("source_text") or raw.get("text")
+    if not explanation and isinstance(versions, dict):
+        candidate = versions.get("written") or versions.get("text") or {}
+        explanation = candidate.get("text") if isinstance(candidate, dict) else candidate
+    if isinstance(explanation, list):
+        explanation = " ".join(str(value) for value in explanation)
+    if isinstance(explanation, dict):
+        explanation = explanation.get("text") or " ".join(
+            str(step.get("text") or "") for step in explanation.get("steps") or [] if isinstance(step, dict)
+        )
+    explanation_text = " ".join(str(explanation or "").split())
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", explanation_text) if part.strip()]
+    facts: list[dict[str, str]] = []
+    for row in raw.get("facts") or raw.get("key_facts") or []:
+        if isinstance(row, dict):
+            statement = str(row.get("statement") or "").strip()
+            fact_id = str(row.get("id") or "")
+        else:
+            statement = str(row).strip()
+            fact_id = ""
+        if statement and not any(f["statement"] == statement for f in facts):
+            facts.append({"id": fact_id or f"{concept_id}:fact:{len(facts) + 1}", "statement": statement})
+    for statement in sentences:
+        if not any(f["statement"] == statement for f in facts):
+            facts.append({"id": f"{concept_id}:fact:{len(facts) + 1}", "statement": statement})
+    idea = str(raw.get("key_idea") or (facts[0]["statement"] if facts else ""))
+    reason = str(raw.get("why_it_works") or (facts[1]["statement"] if len(facts) > 1 else ""))
+    if not facts:
+        for label, statement in (("key-idea", idea), ("why", reason)):
+            if statement.strip():
+                facts.append({"id": f"{concept_id}:{label}", "statement": statement.strip()})
+    return {
+        "topic_key": str(raw.get("topic_id") or raw.get("concept") or concept_id),
+        "topic_title": str(raw.get("title") or title or concept_id),
+        "subject_family": "",
+        "source": "authored",
+        "concepts": [{
+            "id": concept_id,
+            "name": str(raw.get("title") or title or raw.get("concept") or concept_id),
+            "key_idea": idea,
+            "why_it_works": reason,
+            "prerequisites": [],
+            "rung": 2,
+            "key_facts": facts,
+            "misconceptions": [
+                dict(row) for row in raw.get("misconceptions") or [] if isinstance(row, dict)
+            ],
+        }],
+        "prereq_edges": [],
+        "items": [],
+    }
+
+
+def _contrast_ai3(
+    *,
+    pack: dict[str, Any],
+    concept_id: str,
+    profiles: list[dict[str, Any]],
+    student_id: str,
+) -> dict[str, Any]:
+    """Real checked AI 3 proposals when configured; deterministic templates otherwise.
+
+    Both profile calls share one bounded deadline. The contrast request therefore cannot
+    take two sequential model timeouts; any late or failed profile is filled by the same
+    deterministic writer used when no key is configured.
+    """
+    from .lesson import _configured_model, _model_callable
+    from ...ai.lesson_writer.core import MODEL_TIMEOUT_SECONDS
+
+    model = _model_callable(student_id) if _configured_model() else None
+    snapshots = [
+        {
+            "levers": profile.get("levers") or {},
+            "preferences": profile.get("preferences") or {},
+            "learner_rung": (profile.get("ladder") or {}).get("rung", 2),
+            "recent_evidence": profile.get("recent_evidence") or {"rows": [], "evidence_ids": [], "n": 0},
+            "lesson_explanations": profile.get("teaching_memory") or [],
+        }
+        for profile in profiles
+    ]
+    values: list[Any | None] = [None] * len(profiles)
+
+    def write_one(index: int) -> None:
+        try:
+            values[index] = adapter.write_frozen_lesson(pack, concept_id, snapshots[index], model=model)
+        except Exception as exc:
+            log.warning("contrast AI3 profile fell back (%s)", type(exc).__name__)
+            values[index] = adapter.write_frozen_lesson(pack, concept_id, snapshots[index], model=None)
+
+    if model is None:
+        for index in range(len(profiles)):
+            write_one(index)
+    else:
+        workers = [
+            threading.Thread(target=write_one, args=(index,), name=f"adapt-contrast-ai3-{index}", daemon=True)
+            for index in range(len(profiles))
+        ]
+        for worker in workers:
+            worker.start()
+        deadline = time.monotonic() + MODEL_TIMEOUT_SECONDS + 0.25
+        for worker in workers:
+            worker.join(max(0.0, deadline - time.monotonic()))
+        for index, value in enumerate(values):
+            if value is None:
+                log.warning("contrast AI3 profile exceeded the shared deadline; using template")
+                values[index] = adapter.write_frozen_lesson(pack, concept_id, snapshots[index], model=None)
+
+    lessons = []
+    for profile, value in zip(profiles, values):
+        assert value is not None
+        lessons.append({
+            "profile": str(profile.get("name") or "Profile"),
+            "label": "written for this profile, checked" if value.source == "written_for_you" else "template lesson",
+            "plan": value.as_dict(),
+        })
+    return {
+        "lessons": lessons,
+        "source": "written_for_you" if any(row["plan"]["source"] == "written_for_you" for row in lessons) else "simple",
+    }
+
+
+def _inputs(
+    s: Session,
+    student_id: str,
+    body: PlanBody,
+    *,
+    approved_materials: list[dict[str, Any]] | None = None,
+    allow_external: bool = True,
+) -> dict[str, Any]:
+    svcs = current()
+    levers = body.levers
+    if levers is None:
+        try:
+            levers = svcs.baseline.snapshot(student_id).get("levers") or None
+        except Exception:  # a learner with no baseline yet still gets a lesson
+            log.debug("lesson-plan: no baseline levers for %s", student_id, exc_info=True)
+            levers = None
+    subject_map = body.subject_map
+    if subject_map is None:
+        try:
+            snapshot = svcs.state.get_snapshot(student_id)
+            subject_map = [m.as_dict() for m in snapshot.mastery]
+        except Exception:
+            log.debug("lesson-plan: no subject map for %s", student_id, exc_info=True)
+            subject_map = None
+    return {
+        "levers": levers,
+        "subject_map": subject_map,
+        "ladder": body.ladder,
+        "content_pack": _pack_for(
+            s,
+            body_pack=body.content_pack,
+            topic_id=body.topic_id,
+            learner_id=student_id,
+            concept=body.concept,
+            title=body.title,
+            approved_materials=approved_materials,
+            allow_external=allow_external,
+        ),
+        "recent_evidence": body.recent_evidence,
+        "preferences": body.preferences,
+        "constraints": body.constraints,
+        "concept": body.concept,
+        "title": body.title,
+    }
+
+
+def _record(student_id: str, plan: dict[str, Any], *, session_id: str | None) -> str | None:
+    """Step 4–5 of the turn cycle: store the plan, remember what it teaches.
+
+    Recording must never cost the learner their lesson, so a store failure is
+    logged and the plan is still returned — with no plan id, which the caller
+    can see, rather than a plan id that resolves to nothing.
+    """
+    svcs = current()
+    try:
+        model_version = int((plan.get("provenance") or {}).get("model_version") or svcs.state.latest_version(student_id))
+        content_id = (plan.get("provenance") or {}).get("content_id")
+        plan_id, _replanned = svcs.orchestrator.plan(
+            student_id,
+            session_id=session_id,
+            blocks=plan["blocks"],
+            model_version=model_version,
+            content_ids=[content_id] if content_id else [],
+        )
+        concept = str(plan.get("concept") or "")
+        if concept:
+            svcs.state.remember(student_id, kind="explained", ref=concept, session_id=session_id, module="ai3")
+        for block in plan["blocks"]:
+            if block["kind"] == "text":
+                svcs.state.remember(student_id, kind="explained", ref=block["chunk_id"], session_id=session_id, module="ai3")
+            elif block["kind"] == "worked_example":
+                svcs.state.remember(student_id, kind="examples_shown", ref=block["chunk_id"], session_id=session_id, module="ai3")
+            elif block["kind"] in ("check", "predict", "explain"):
+                question = str(block["content"].get("question") or "")
+                if question:
+                    svcs.state.remember(student_id, kind="asked", ref=question, session_id=session_id, module="ai3")
+        return plan_id
+    except Exception:
+        log.exception("lesson-plan: plan for %s was built but not recorded", student_id)
+        return None
+
+
+def _current_rung(body: PlanBody, inputs: dict[str, Any]) -> int:
+    """The rung the adapter will pitch at, mirrored so the policy can move it."""
+    for source in (body.ladder or {},):
+        for key in ("rung", "ladder_rung", "steady_rung"):
+            value = source.get(key)
+            if isinstance(value, int):
+                return max(1, min(5, value))
+    return 2  # the adapter's cold-start rung
+
+
+@router.post("")
+def build_lesson(
+    body: PlanBody,
+    s: Session = Depends(db_session),
+    student: Student = Depends(rate("mutation")),
+) -> dict[str, Any]:
+    """One adapted lesson for this learner, with its reasons attached.
+
+    Round 9, when ``subject_id`` names a learner-chosen subject: the
+    syllabus approval gate binds (no approved guideline, no lesson), the
+    lesson may only cite objectives its skeleton/guideline lists, and the
+    latest check-in shapes the lesson through the deterministic policy —
+    verified afterwards, with the unshaped lesson as the fallback and an
+    undo (``undo_adaptation``) always one request away.
+    """
+    guideline = None
+    guideline_ids: list[str] = []
+    approved_materials: list[dict[str, Any]] = []
+    if body.subject_id:
+        row = s.execute(
+            select(LearnerSubject).where(LearnerSubject.id == body.subject_id, LearnerSubject.student_id == student.id)
+        ).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
+        guideline = gate.approved(s, student_id=student.id, subject_id=row.id)
+        if guideline is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
+            )
+        subject_plan = dict(row.plan or {})
+        if not subject_plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "source_review_required",
+                    "message": "review and approve the candidate notes/materials before a subject lesson is prepared",
+                },
+            )
+        approved_materials = normalise_reviewed_sources(
+            subject_plan.get("approved_materials") or []
+        )
+        guideline_ids = [str(o.get("id")) for o in (guideline.objectives or []) if isinstance(o, dict) and o.get("id")]
+
+    # Validate the subject and review gate before resolving a pack. In
+    # particular, a configured education URL is never contacted for a subject
+    # that has not completed the learner-facing review.
+    inputs = _inputs(
+        s,
+        student.id,
+        body,
+        approved_materials=approved_materials,
+        allow_external=not bool(body.subject_id),
+    )
+    # Version 0 is a real answer — the cold start — so it is recorded as 0,
+    # not disguised as "unknown".
+    inputs["model_version"] = current().state.latest_version(student.id)
+
+    pack_like = inputs.get("content_pack")
+    skeleton_ids = OBJ.skeleton_objective_ids(pack_like if isinstance(pack_like, dict) else None)
+    # The skeleton's own objective list binds when it declares one; the
+    # approved guideline binds otherwise. Objectives outside the binding
+    # list are dropped and reported — never carried into the lesson.
+    allowed_ids = skeleton_ids if skeleton_ids else guideline_ids
+    requested = list(body.objective_ids) if body.objective_ids is not None else list(guideline_ids)
+    lesson_objective_ids = [o for o in requested if o in set(allowed_ids)] if allowed_ids else []
+    dropped_objectives = [o for o in requested if o not in set(lesson_objective_ids)]
+
+    policy = Policy()
+    if not body.undo_adaptation:
+        latest = monitor.latest(s, student.id)
+        if latest is not None:
+            accuracy = (latest.metrics or {}).get("accuracy")
+            policy = adaptation_policy(
+                dict(latest.estimate or {}),
+                current_difficulty=_current_rung(body, inputs),
+                expected_success=float(accuracy) if isinstance(accuracy, (int, float)) else None,
+            )
+
+    adapted_inputs = dict(inputs)
+    if policy.changed:
+        levers = dict(inputs.get("levers") or {})
+        if policy.step_size == "small":
+            levers["step_size"] = {"value": "small", "why": policy.reason, "source": "check-in"}
+        adapted_inputs["levers"] = levers or None
+        adapted_inputs["ladder"] = {**(body.ladder or {}), "rung": policy.difficulty}
+        constraints = dict(inputs.get("constraints") or {})
+        if policy.max_explanation_chunks is not None:
+            constraints["max_explanation_chunks"] = policy.max_explanation_chunks
+        adapted_inputs["constraints"] = constraints or None
+
+    svcs = current()
+    ai3_slot_active = bool(
+        not svcs.settings.demo_mode
+        and getattr(student, "consent_share_with_llm", False)
+        and svcs.ai3_adapter is not None
+        and (
+            bool(str(getattr(svcs.settings, "ai3_api_url", "") or "").strip())
+            or bool(str(getattr(svcs.settings, "ai3_api_key", "") or "").strip())
+        )
+    )
+    try:
+        if body.model_proposal is not None:
+            plan = adapter.plan_from_model(body.model_proposal, **adapted_inputs)
+        elif ai3_slot_active and svcs.ai3_adapter is not None:
+            adapter_client = svcs.ai3_adapter
+            plan = adapter.adapt_with_model(
+                lambda **kw: adapter_client.propose_plan(student_id=student.id, **kw),
+                **adapted_inputs,
+            )
+        else:
+            plan = adapter.plan(**adapted_inputs)
+    except AdaptationError as exc:
+        raise HTTPException(status_code=422, detail={"error": "adaptation_refused", "message": str(exc)}) from exc
+
+    if allowed_ids or body.subject_id:
+        plan["objective_ids"] = lesson_objective_ids
+    violations = verify_adapted(
+        plan,
+        policy,
+        skeleton_objective_ids=allowed_ids if (skeleton_ids or guideline is not None) else None,
+    )
+    applied = policy.changed and not violations
+    if violations:
+        # Code decides: a shaped lesson that broke its own constraints is
+        # replaced by the regular deterministic lesson, reasons attached.
+        plan = adapter.plan(**inputs)
+        if allowed_ids or body.subject_id:
+            plan["objective_ids"] = lesson_objective_ids
+        plan["fallbacks"] = list(plan.get("fallbacks") or []) + [
+            f"a lesson shaped for how you felt did not pass its checks ({'; '.join(violations)}), so the regular lesson was used"
+        ]
+        if isinstance(plan.get("why_panel"), dict):
+            plan["why_panel"]["fallbacks"] = plan["fallbacks"]
+
+    if isinstance(pack_like, dict) and pack_like.get("concepts"):
+        plan["common_misconceptions"] = OBJ.common_misconceptions(pack_like)
+        plan["suggested_practice"] = OBJ.suggested_practice(pack_like)
+
+    plan_id = _record(student.id, plan, session_id=body.session_id)
+    return {
+        "plan": plan,
+        "plan_id": plan_id,
+        "recorded": plan_id is not None,
+        "adaptation": {
+            "applied": applied,
+            "reason": policy.reason if applied else "",
+            "break_suggested": bool(policy.break_suggested and applied),
+            "difficulty": policy.difficulty if applied else plan.get("ladder_rung"),
+            "words": plan_words(plan),
+            "dropped_objective_ids": dropped_objectives,
+            "undone": bool(body.undo_adaptation),
+        },
+        "guideline": (
+            {
+                "version": int(guideline.version),
+                "source_label": guideline.source_label,
+                "attribution": guideline.attribution,
+                "source_review_approved": bool(body.subject_id),
+                "approved_materials": approved_materials,
+            }
+            if guideline is not None
+            else None
+        ),
+    }
+
+
+class PracticeScoreBody(BaseModel):
+    topic: str = Field(min_length=1, max_length=240)
+    item_id: str = Field(min_length=1, max_length=96)
+    answer: str = Field(min_length=1, max_length=240)
+    level: int = Field(default=0, ge=0, le=20)
+    language: str = Field(default="en", min_length=2, max_length=32)
+    subject_id: str | None = Field(default=None, max_length=120)
+
+
+@router.post("/practice/score")
+def practice_score(
+    body: PracticeScoreBody,
+    s: Session = Depends(db_session),
+    student: Student = Depends(rate("mutation")),
+) -> dict[str, Any]:
+    """Score one suggested-practice answer against the server-side pack.
+
+    The pack is resolved here (cache, then authored) — never trusted from
+    the client — so the key the answer is judged against is the key code
+    validated when the pack was built.
+    """
+    from ...content.skeleton.authored import authored_pack
+    from ...content.skeleton.cache import cache_identity, get_cached
+    from ...content.skeleton.service import PACK_SPEC_VERSION, canonical_topic_key, get_pack
+
+    pack = None
+    spec_version = PACK_SPEC_VERSION
+    approved_materials: list[dict[str, Any]] = []
+    approved_objectives: list[dict[str, Any]] = []
+    if body.subject_id:
+        row = s.execute(
+            select(LearnerSubject).where(
+                LearnerSubject.id == body.subject_id,
+                LearnerSubject.student_id == student.id,
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
+        guideline = gate.approved(s, student_id=student.id, subject_id=row.id)
+        if guideline is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
+            )
+        subject_plan = dict(row.plan or {})
+        if not subject_plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "source_review_required", "message": "review and approve candidate materials first"},
+            )
+        approved_materials = normalise_reviewed_sources(
+            subject_plan.get("approved_materials") or []
+        )
+        approved_objectives = [
+            dict(objective)
+            for objective in (guideline.objectives or [])
+            if isinstance(objective, dict)
+        ][:30]
+        from ...content.skeleton.service import subject_spec_version
+
+        spec_version = subject_spec_version(body.subject_id, approved_materials, approved_objectives)
+    identity = cache_identity(
+        canonical_topic_key(body.topic),
+        level=body.level,
+        language=body.language,
+        spec_version=spec_version,
+    )
+    cached = get_cached(s, identity)
+    if cached is not None:
+        pack = cached[0]
+    if pack is None:
+        if body.subject_id:
+            pack = get_pack(
+                body.topic,
+                level=body.level,
+                language=body.language,
+                curriculum=guideline.curriculum if guideline is not None else None,
+                grade=guideline.grade if guideline is not None else None,
+                objectives=approved_objectives,
+                allow_external=False,
+                source_materials=approved_materials,
+            )
+        else:
+            pack = authored_pack(body.topic, level=body.level, language=body.language)
+    if pack is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "practice_unavailable", "message": "practice for that topic is not ready yet"},
+        )
+    verdict = OBJ.score_practice(pack, body.item_id, body.answer)
+    if verdict is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "unknown_practice_item", "message": "no such practice question"},
+        )
+    return verdict
+
+
+@router.post("/contrast")
+def contrast(
+    body: ContrastBody,
+    s: Session = Depends(db_session),
+    student: Student = Depends(rate("mutation")),
+) -> dict[str, Any]:
+    """The contrast demo: the same concept under two profiles, side by side."""
+    if len(body.profiles) != 2:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "contrast_needs_two_profiles", "message": "the contrast demo takes exactly two profiles"},
+        )
+    pack = _pack_for(
+        s,
+        body_pack=body.content_pack,
+        topic_id=body.topic_id,
+        learner_id=student.id,
+        concept=body.concept,
+        title=body.title,
+    )
+    try:
+        contrast_result = adapter.contrast(content_pack=pack, concept=body.concept, title=body.title, profiles=body.profiles)
+        frozen_pack = _legacy_frozen_pack(pack, concept_id=body.concept or str((pack or {}).get("concept") or "concept"), title=body.title)
+        contrast_result["ai3_checked_output"] = _contrast_ai3(
+            pack=frozen_pack,
+            concept_id=str(frozen_pack["concepts"][0]["id"]),
+            profiles=body.profiles,
+            student_id=student.id,
+        )
+        return contrast_result
+    except AdaptationError as exc:
+        raise HTTPException(status_code=422, detail={"error": "adaptation_refused", "message": str(exc)}) from exc
+
+
+@router.get("/visual-kinds")
+def visual_kinds(
+    s: Session = Depends(db_session),
+    student: Student = Depends(student_from_request),
+) -> dict[str, Any]:
+    """The seven picture templates and the schema each one validates against."""
+    return TPL.schema_summary()

@@ -1,0 +1,30 @@
+.venv/
+__pycache__/
+*.py[cod]
+node_modules/
+*.egg-info/
+build/
+.next/
+out/
+dist/
+*.tsbuildinfo
+var/
+.env
+.env.local
+*.key
+keys.json
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+
+# Local development data directory (a SQLCipher database that the app recreates on
+# start-up). It was tracked, which meant every run of the app produced a 5 MB binary diff.
+.data_dev/
+
+# Browser-suite artifacts (round 2, e2e/)
+test-results/
+playwright-report/
+results.json
