@@ -110,8 +110,13 @@ export function builtInDemoSet(): DemoSet {
   };
 }
 
-/** Keep only short, phone-friendly items. An unusable plan falls back as a whole. */
-export function validatedDemoItems(raw: unknown): PlanItem[] | null {
+/** Keep only short, phone-friendly items. An unusable plan falls back as a whole.
+ *
+ * The API carries the run id both at plan level and on public items. Accepting the
+ * plan-level value here is deliberate: it keeps evidence saving intact if a compatible
+ * backend omits the duplicated item field while still requiring each item's grading seal.
+ */
+export function validatedDemoItems(raw: unknown, runId?: string): PlanItem[] | null {
   const items: PlanItem[] = [];
   for (const entry of Array.isArray(raw) ? raw : []) {
     if (!entry || typeof entry !== "object") continue;
@@ -122,7 +127,7 @@ export function validatedDemoItems(raw: unknown): PlanItem[] | null {
     const difficulty = Number.isFinite(numericDifficulty) ? Math.round(numericDifficulty) : 3;
     items.push({
       id: typeof candidate.id === "string" && candidate.id ? candidate.id : `demo-item-${items.length}`,
-      run_id: typeof candidate.run_id === "string" ? candidate.run_id : undefined,
+      run_id: typeof candidate.run_id === "string" && candidate.run_id ? candidate.run_id : runId,
       grading_seal: typeof candidate.grading_seal === "string" ? candidate.grading_seal : undefined,
       item_type: itemType as PlanItem["item_type"],
       skill: String(candidate.skill ?? itemType),
@@ -188,12 +193,19 @@ export function demoTransition(previous: DemoPlay, next: PlanItem): string {
   return "Adapt changed the kind of challenge.";
 }
 
+export type DemoStatistic = {
+  label: string;
+  value: string;
+  insufficient?: boolean;
+};
+
 export type DemoAnalysis = {
   correct: number;
   total: number;
   headline: string;
   nextStep: string;
   supportNote: string | null;
+  statistics: DemoStatistic[];
 };
 
 /** Describe only what these three observations show. No learner types or fixed traits. */
@@ -204,6 +216,9 @@ export function analyseDemo(played: DemoPlay[]): DemoAnalysis {
   const missed = played.find((row) => !row.result.correct);
   const focus = missed?.item ?? played[played.length - 1]?.item;
   const focusName = focus ? demoGameName(focus).toLowerCase() : "quick";
+  const averageMs = total
+    ? Math.round(played.reduce((sum, row) => sum + Math.max(0, Number(row.result.ms) || 0), 0) / total)
+    : null;
   return {
     correct,
     total,
@@ -212,6 +227,15 @@ export function analyseDemo(played: DemoPlay[]): DemoAnalysis {
       ? `A good next step is one gentler ${focusName} game, with a hint nearby.`
       : "A good next step is a slightly harder challenge.",
     supportNote: hints ? `You used ${hints === 1 ? "a hint" : `${hints} hints`}; Adapt would keep that support available.` : null,
+    statistics: [
+      { label: "Games answered", value: `${total} of ${DEMO_GAME_COUNT}` },
+      { label: "Accuracy in this demo", value: total ? `${correct} of ${total}` : "No data" },
+      { label: "Hints used", value: String(hints) },
+      { label: "Average response time", value: averageMs === null ? "No data" : `${Math.max(1, Math.round(averageMs / 1_000))} sec` },
+      { label: "Long-term retention", value: "Not enough data — you have not played enough games yet for a delayed check.", insufficient: true },
+      { label: "Learner profile", value: "Not enough data — you have not played enough games yet; three games are only an early snapshot.", insufficient: true },
+      { label: "Adaptation effect", value: "Not enough data — you have not played enough games yet for a before-and-after comparison.", insufficient: true },
+    ],
   };
 }
 

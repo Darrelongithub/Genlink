@@ -114,14 +114,18 @@ class PsychologyBundle:
         return [{"ref": f.ref, "claim": f.claim} for f in self.facts]
 
     def for_prompt(self, *, limit: int = 3) -> list[dict[str, str]]:
-        return [
-            {
-                "finding": f.claim,
-                "citation": f.ref,
-                "source": f.source,
+        out: list[dict[str, str]] = []
+        for fact in self.facts[: max(1, limit)]:
+            row = {
+                "finding": fact.claim,
+                "citation": fact.ref,
+                "source": fact.source,
+                "attribution": fact.attribution,
             }
-            for f in self.facts[: max(1, limit)]
-        ]
+            if fact.url:
+                row["url"] = fact.url
+            out.append(row)
+        return out
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -198,6 +202,15 @@ def _parse_custom_payload(payload: Any, *, host: str, limit: int) -> list[Psycho
         ):
             rows = [payload]
 
+    root_attribution = _clean_text(
+        payload.get("attribution") or payload.get("licence") or payload.get("license")
+        if isinstance(payload, Mapping) else "",
+        maximum=140,
+    )
+    root_url = _safe_https_url(
+        payload.get("url") or payload.get("source_url")
+        if isinstance(payload, Mapping) else None
+    )
     out: list[PsychologyFact] = []
     for row in rows:
         if isinstance(row, str):
@@ -210,7 +223,8 @@ def _parse_custom_payload(payload: Any, *, host: str, limit: int) -> list[Psycho
                         claim=claim,
                         ref=ref,
                         source="custom_ai1",
-                        attribution=ref,
+                        attribution=root_attribution or ref,
+                        url=root_url,
                     )
                 )
         elif isinstance(row, Mapping):
@@ -237,10 +251,14 @@ def _parse_custom_payload(payload: Any, *, host: str, limit: int) -> list[Psycho
                 maximum=120,
             )
             attribution = _clean_text(
-                row.get("attribution") or row.get("licence") or row.get("license") or ref,
+                row.get("attribution")
+                or row.get("licence")
+                or row.get("license")
+                or root_attribution
+                or ref,
                 maximum=140,
             )
-            url = _safe_https_url(row.get("url") or row.get("link"))
+            url = _safe_https_url(row.get("url") or row.get("link")) or root_url
             out.append(
                 PsychologyFact(
                     id=_fact_id("custom_ai1", claim, ref),

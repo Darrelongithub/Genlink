@@ -23,6 +23,7 @@ from ...assessment import bank
 from ...assessment import worked as W
 from ...config import get_settings
 from ...db.models import Item, Student, Topic
+from ...subjects.models import LearnerSubject
 from ...services import attempts as A
 from ...services import current
 
@@ -84,6 +85,10 @@ class ResourceBody(BaseModel):
     query: str = Field(min_length=2, max_length=240)
     providers: list[str] | None = None
     limit: int = Field(default=6, ge=1, le=12)
+    # When supplied by the subject wizard, the returned cards become review
+    # candidates. They are not learning material until curriculum approval
+    # explicitly selects their candidate IDs.
+    subject_id: str | None = Field(default=None, max_length=120)
     # Optional mastery band ("developing", "secure", ...) so prompt 4's curation can
     # lean intro-level or primary-source; the screen is not required to send it.
     level: str | None = Field(default=None, max_length=24)
@@ -341,6 +346,15 @@ async def search_resources(
     svcs = current()
     if svcs.resources is None:
         raise HTTPException(status_code=503, detail="resource search is not configured")
+    if body.subject_id:
+        owned = s.execute(
+            select(LearnerSubject).where(
+                LearnerSubject.id == body.subject_id,
+                LearnerSubject.student_id == student.id,
+            )
+        ).scalar_one_or_none()
+        if owned is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
     # ``limit_per_provider``, not ``limit``: the service's parameter is the per-provider cap
     # (it ranks and de-duplicates across providers afterwards). Passing ``limit`` raised
     # TypeError straight through the route, so every resource search was a 500 -- and since
@@ -352,12 +366,46 @@ async def search_resources(
         for key, value in raw.items()
         if key not in {"providers", "results"}
     }
+    # A subject review persists the cards as *candidates* only. The returned
+    # database IDs are the only values accepted later by curriculum/approve,
+    # which prevents a browser from inventing provenance or quietly approving
+    # a URL that was never shown.
+    candidate_ids: list[str] = []
+    if body.subject_id and raw.get("results"):
+        candidate_ids = await svcs.resources.persist(
+            student_id=student.id,
+            topic_id=None,
+            response=resp,
+            why="shown for learner review; not approved for learning",
+        )
     # Results carry the upstream service's name inside each row; the kind label is what the
     # learner sees, and the URL is kept because a citation without a way to open it is not one.
-    data["results"] = [
-        {**{k: v for k, v in row.items() if k != "provider"}, "kind": _SOURCE_KINDS.get(str(row.get("provider") or ""), "other sources")}
-        for row in (raw.get("results") or [])
-    ]
+    public_results = []
+    for index, row in enumerate(raw.get("results") or []):
+        public = {k: v for k, v in row.items() if k != "provider"}
+        provider_name = str(row.get("provider") or "")
+        public["kind"] = _SOURCE_KINDS.get(provider_name, "other sources")
+        authors = row.get("authors") or []
+        public["attribution"] = (
+            ", ".join(str(author) for author in authors[:4] if str(author).strip())
+            or provider_name
+            or "provider attribution not supplied"
+        )
+        public["licence_status"] = str(row.get("license") or "not supplied by provider; review the source page")
+        if index < len(candidate_ids):
+            public["candidate_id"] = candidate_ids[index]
+        public_results.append(public)
+    data["results"] = public_results
+    data["review"] = {
+        "required": bool(body.subject_id),
+        "status": "candidate" if body.subject_id and public_results else "no_candidates",
+        "note": (
+            "These notes and videos are candidates only. Select the ones you approve in the scope checklist; "
+            "nothing here is used for learning automatically."
+            if body.subject_id
+            else "Search results are for review; they are not automatically used for learning."
+        ),
+    }
     data["sources"] = _public_sources(list(raw.get("providers") or []))
     data["retrieval_note"] = (
         "These were found by a search; that is not a claim that they are correct for you. "

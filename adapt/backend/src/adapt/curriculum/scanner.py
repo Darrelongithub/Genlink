@@ -200,6 +200,47 @@ def simple_objectives(subject: str) -> list[dict[str, Any]]:
     )
 
 
+def scope_objectives(scope: str, *, subject: str) -> list[dict[str, Any]]:
+    """Turn learner-provided notes into reviewable objectives without widening scope.
+
+    This is intentionally a small parser, not a model call. A note can contain
+    bullets, lines or short sentences; each becomes a candidate the learner can
+    untick, reorder or replace. The server labels every row as learner-provided,
+    so a note can never masquerade as an official syllabus objective.
+    """
+    raw = re.split(r"[\n;•]+|(?<=[.!?])\s+", str(scope or ""))
+    titles: list[str] = []
+    seen: set[str] = set()
+    for value in raw:
+        title = re.sub(r"^(?:[-*•]|\d+[.)])\s*", "", " ".join(str(value).split())).strip(" .")
+        if len(title) < 3:
+            continue
+        key = title.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        titles.append(title[:160])
+        if len(titles) >= MAX_OBJECTIVES:
+            break
+    if not titles:
+        titles = [f"The learner-approved scope for {str(subject or 'this subject').strip()[:120]}"]
+    return validate_objectives(
+        [
+            {
+                "title": title,
+                "strand": str(subject or "").strip()[:80],
+                "source": "learner_scope",
+                "source_ref": "learner-provided notes or approved subject scope",
+                "origin": "yours",
+                "attribution": "Learner-provided scope",
+                "licence": "Learner-provided",
+            }
+            for title in titles
+        ],
+        default_origin="yours",
+    )
+
+
 def _merge_with_model(scanned: list[dict[str, Any]], proposed: Any) -> list[dict[str, Any]]:
     """Apply a model's trim/reorder without letting it invent provenance.
 
@@ -237,6 +278,7 @@ def scan(
     llm: Any = None,
     student_id: str | None = None,
     goal: str | None = None,
+    scope: str | None = None,
     skip_sources: bool = False,
     use_local_map: bool = True,
     transports: Mapping[str, Any] | None = None,
@@ -245,7 +287,24 @@ def scan(
     subject_text = " ".join(str(subject or "").split())[:240]
     curr = normalise_curriculum(curriculum)
     grade_text = " ".join(str(grade or "").split())[:24] or None
+    scope_text = " ".join(str(scope or "").split())[:2000] or None
     notes: list[str] = []
+
+    # A learner-provided boundary wins over discovery. It is still shown as a
+    # candidate and must pass the same explicit checklist approval gate.
+    if scope_text:
+        return ScanResult(
+            subject=subject_text,
+            curriculum=curr,
+            grade=grade_text,
+            objectives=scope_objectives(scope_text, subject=subject_text),
+            source="learner_scope",
+            source_label="From your approved notes or subject scope",
+            attribution="Learner-provided scope",
+            licence="Learner-provided",
+            checked=False,
+            notes=["Only the learner-provided scope was used; no outside syllabus was added."],
+        )
 
     if not skip_sources:
         if use_local_map:

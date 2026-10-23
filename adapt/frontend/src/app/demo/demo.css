@@ -112,6 +112,33 @@
   margin-bottom: var(--s2);
 }
 
+.demo-warning {
+  max-width: 680px;
+  margin: 10dvh auto 0;
+  padding: var(--s5);
+  border: 2px solid color-mix(in srgb, var(--bad) 45%, var(--line));
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--bad) 8%, var(--panel));
+  box-shadow: var(--shadow-soft);
+}
+
+.demo-warning h1 {
+  margin-bottom: var(--s3);
+}
+
+.demo-warning p {
+  max-width: 58ch;
+  margin-bottom: var(--s3);
+  line-height: var(--t-body-lh);
+}
+
+.demo-warning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+
 .demo-start {
   width: 100%;
   margin-top: var(--s2);
@@ -211,6 +238,62 @@
 
 .demo-game .test-item-body {
   min-height: 160px;
+}
+
+.demo-limit-note {
+  max-width: 72ch;
+  margin: 0 0 var(--s3);
+  padding: var(--s3);
+  border-left: 4px solid var(--bad);
+  border-radius: var(--r-tile);
+  background: color-mix(in srgb, var(--bad) 8%, var(--panel));
+  color: var(--body);
+  font-size: var(--t-small);
+  line-height: var(--t-small-lh);
+}
+
+.demo-statistics {
+  margin-bottom: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.demo-statistics h2 {
+  margin-bottom: var(--s3);
+}
+
+.demo-statistics-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  margin: 0;
+}
+
+.demo-statistics-list > div {
+  display: grid;
+  gap: 2px;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+.demo-statistics-list dt {
+  color: var(--muted);
+  font-size: var(--t-small);
+  line-height: var(--t-small-lh);
+}
+
+.demo-statistics-list dd {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--t-small-lh);
+}
+
+.demo-statistics-list .insufficient dd {
+  color: var(--bad);
+  font-weight: 650;
 }
 
 .demo-analysis-grid {
@@ -386,6 +469,10 @@
   }
 
   .demo-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-statistics-list {
     grid-template-columns: 1fr;
   }
 }

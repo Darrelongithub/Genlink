@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..content.sources import normalise_reviewed_sources
 from ..db.models import AdaptationProposal
 from ..services.sessions import due_reviews
 from .models import LearnerSubject
@@ -90,6 +91,8 @@ def subject_payload(row: LearnerSubject) -> dict[str, Any]:
         "active": bool(row.active),
         "plan": {"tests": tests, "source": row.source},
         "curriculum_spec": (plan.get("curriculum_spec") if isinstance(plan.get("curriculum_spec"), dict) else None),
+        "approved_materials": normalise_reviewed_sources(plan.get("approved_materials") or []),
+        "source_review_approved": bool(plan.get("source_review_approved")),
         "progress": {
             "done": int(progress.get("done", 0)),
             "total": int(progress.get("total", len(tests))),
@@ -107,6 +110,7 @@ def choose(
     text: str,
     curriculum: str | None = None,
     grade: str | None = None,
+    scope: str | None = None,
 ) -> dict[str, Any]:
     clean = " ".join(str(text or "").split())[:240]
     key = normalise(clean)
@@ -119,13 +123,23 @@ def choose(
         "curriculum": str(curriculum)[:24] if curriculum else None,
         "grade": " ".join(str(grade or "").split())[:24] or None,
     }
+    clean_scope = " ".join(str(scope or "").split())[:2000] or None
+    if clean_scope:
+        spec["scope"] = clean_scope
     existing = s.execute(
         select(LearnerSubject).where(LearnerSubject.student_id == student_id, LearnerSubject.normalised_text == key)
     ).scalar_one_or_none()
     if existing is not None:
-        if curriculum is not None or grade is not None:
+        if curriculum is not None or grade is not None or scope is not None:
             plan = dict(existing.plan or {})
+            previous_spec = plan.get("curriculum_spec") if isinstance(plan.get("curriculum_spec"), dict) else {}
             plan["curriculum_spec"] = spec
+            # A new curriculum, grade, or learner boundary invalidates the
+            # earlier source decision. Otherwise notes approved for the old
+            # scope could silently be reused for the new one.
+            if previous_spec != spec:
+                plan["approved_materials"] = []
+                plan["source_review_approved"] = False
             existing.plan = plan
             s.commit()
         return subject_payload(existing) | {"cached": True}
@@ -146,7 +160,7 @@ def choose(
         source=built["source"],
         active=not has_active,
         stage="tests",
-        plan={"tests": built["tests"], "source": built["source"], "detail": built.get("detail"), "curriculum_spec": spec},
+        plan={"tests": built["tests"], "source": built["source"], "detail": built.get("detail"), "curriculum_spec": spec, "approved_materials": [], "source_review_approved": False},
         progress={"done": 0, "total": len(built["tests"]), "next": {"label": "Start the subject checks", "href": "/journey?step=subject"}},
     )
     s.add(row)

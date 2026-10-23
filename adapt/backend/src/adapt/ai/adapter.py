@@ -38,6 +38,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
+from ..content.sources import normalise_reviewed_sources
 from ..learning import methods as METHODS_MOD
 from ..learning import segments as SEG
 from ..lesson import templates as TPL
@@ -243,9 +244,22 @@ class Pack:
     answer_values: list[str] = field(default_factory=list)
     example_ids: list[str] = field(default_factory=list)
     misconceptions: list[str] = field(default_factory=list)
+    # Server-verified source records selected by the learner. This is kept
+    # separate from prose so every generated lesson can carry the exact URL,
+    # attribution and licence status that was reviewed.
+    source_provenance: list[dict[str, Any]] = field(default_factory=list)
 
     def as_ref(self) -> dict[str, Any]:
-        return {"concept": self.concept, "title": self.title, "topic_id": self.topic_id, "content_id": self.content_id, "source": self.source}
+        reference = {
+            "concept": self.concept,
+            "title": self.title,
+            "topic_id": self.topic_id,
+            "content_id": self.content_id,
+            "source": self.source,
+        }
+        if self.source_provenance:
+            reference["source_provenance"] = [dict(row) for row in self.source_provenance]
+        return reference
 
 
 def _sentences_of(value: Any) -> list[str]:
@@ -373,6 +387,9 @@ def normalise_pack(pack: Mapping[str, Any] | None, *, concept: str = "", title: 
     example_ids = [str(e) for e in (raw.get("example_ids") or [])]
     if worked and raw.get("example_id"):
         example_ids.append(str(raw["example_id"]))
+    source_provenance = normalise_reviewed_sources(
+        raw.get("approved_sources") or raw.get("source_provenance") or []
+    )
 
     return Pack(
         concept=str(raw.get("concept") or concept or raw.get("topic_id") or ""),
@@ -390,6 +407,7 @@ def normalise_pack(pack: Mapping[str, Any] | None, *, concept: str = "", title: 
         answer_values=answers,
         example_ids=example_ids,
         misconceptions=[str(m) for m in (raw.get("misconceptions") or [])],
+        source_provenance=source_provenance,
     )
 
 
@@ -1085,6 +1103,7 @@ class LessonAdapter:
                 "model_version": model_version,
                 "content_id": pack.content_id,
                 "content_source": pack.source,
+                "source_materials": [dict(row) for row in pack.source_provenance],
                 "evidence_ids": list(evidence_ids)[:MAX_EVIDENCE_REFS],
                 "evidence_n": n,
             },

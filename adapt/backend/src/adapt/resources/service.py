@@ -230,6 +230,7 @@ class ResourceService:
                     if r.get("provider") and r.get("external_id"):
                         existing = s.execute(
                             select(ResourceReference).where(
+                                ResourceReference.student_id == student_id,
                                 ResourceReference.provider == r["provider"],
                                 ResourceReference.external_id == r["external_id"],
                             )

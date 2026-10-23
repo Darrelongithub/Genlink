@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from ..sources import normalise_reviewed_sources
+
 Verification = Literal["computed", "cross_checked", "unverified"]
 PackSource = Literal["authored", "model", "simple"]
 ItemKind = Literal["numeric", "mcq", "factual"]
@@ -161,6 +163,9 @@ class Pack:
     curriculum: str | None = None
     grade: str | None = None
     objectives: tuple[ObjectiveRef, ...] = ()
+    # Learner-selected source records. Empty for normal authored/shared packs,
+    # so the pre-review frozen contract remains byte-compatible.
+    approved_sources: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         """A JSON-ready copy with exactly the fields in the frozen Pack contract."""
@@ -179,6 +184,9 @@ class Pack:
             out["grade"] = self.grade
         if self.objectives:
             out["objectives"] = [objective.as_dict() for objective in self.objectives]
+        reviewed = normalise_reviewed_sources(self.approved_sources)
+        if reviewed:
+            out["approved_sources"] = reviewed
         return out
 
     def scorable_items(self) -> tuple[Item, ...]:
@@ -266,4 +274,5 @@ def pack_from_dict(payload: dict[str, Any]) -> Pack:
             for row in (payload.get("objectives") or [])
             if isinstance(row, dict) and row.get("id") and row.get("title")
         ),
+        approved_sources=tuple(normalise_reviewed_sources(payload.get("approved_sources") or [])),
     )

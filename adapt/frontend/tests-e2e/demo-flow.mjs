@@ -88,11 +88,16 @@ async function walk({ name, viewport, mobile = false, forceFallback = false }) {
   try {
     const response = await page.goto(`${BASE}/demo`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.ok(), true, `demo entry returned ${response?.status()}`);
-    await page.getByRole("button", { name: "I agree — start the demo" }).waitFor({ state: "visible" });
-    assert.match(await page.locator(".demo-badge").innerText(), /DEMO[\s\S]*Demo version/);
+    const consent = page.getByRole("button", { name: "Continue to try demo mode", exact: true });
+    await consent.waitFor({ state: "visible" });
+    assert.match(await page.locator(".demo-badge").innerText(), /DEMO[\s\S]*three games are not enough/i);
     assert.equal(await page.locator("[data-account-gate], .sidebar, .voice-switch, .opening-overlay").count(), 0);
 
-    await page.getByRole("button", { name: "I agree — start the demo" }).click();
+    await consent.click();
+    await page.getByRole("heading", { name: "This is only a demo." }).waitFor({ state: "visible" });
+    assert.match(await page.locator(".demo-warning").innerText(), /time and scope limits/i);
+    assert.match(await page.locator(".demo-warning").innerText(), /cannot reliably assess/i);
+    await page.getByRole("button", { name: "Start the three-game demo", exact: true }).click();
     await page.locator("[data-demo-game]").waitFor({ state: "visible", timeout: 20_000 });
     const origin = await page.locator("[data-demo-game]").getAttribute("data-demo-origin");
     if (forceFallback) assert.equal(origin, "built-in", "a refused content request must open built-in games");
@@ -102,7 +107,7 @@ async function walk({ name, viewport, mobile = false, forceFallback = false }) {
     assert.equal(await page.locator(".demo-result-list > li").count(), 3, "analysis lists all three games");
     assert.equal(await page.locator(".demo-adaptations li").count(), 2, "analysis explains both adaptations");
     assert.match(await page.locator(".demo-next-card").innerText(), /next step/i);
-    assert.match(await page.locator(".demo-badge").innerText(), /Demo version/);
+    assert.match(await page.locator(".demo-badge").innerText(), /Demo only[\s\S]*three games are not enough/i);
     assert.equal(await page.locator("[data-account-gate], .sidebar, .voice-switch").count(), 0);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

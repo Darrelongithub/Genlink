@@ -65,6 +65,10 @@ class ChooseBody(BaseModel):
     # Round 9: which syllabus the learner means (optional chips + grade/year).
     curriculum: str | None = Field(default=None, max_length=24)
     grade: str | None = Field(default=None, max_length=24)
+    # Learner-provided notes or an approved subject boundary. This is stored
+    # with the subject and becomes an explicit scope for the scan gate; it is
+    # never treated as an instruction to a model.
+    scope: str | None = Field(default=None, max_length=2000)
 
 
 class CompleteTestsBody(BaseModel):
@@ -431,7 +435,13 @@ def choose(
         )
     try:
         result = choose_subject(
-            s, _subjects(), student_id=student.id, text=body.text, curriculum=curriculum, grade=body.grade
+            s,
+            _subjects(),
+            student_id=student.id,
+            text=body.text,
+            curriculum=curriculum,
+            grade=body.grade,
+            scope=body.scope,
         )
     except (ValueError, SubjectsError) as exc:
         raise HTTPException(status_code=422, detail={"error": "subject_refused", "message": str(exc)}) from None

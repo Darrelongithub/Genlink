@@ -14,8 +14,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ...content.sources import normalise_reviewed_sources
 from ...content.skeleton.cache import (
     ContentPrepareJob,
     cache_identity,
@@ -23,8 +25,9 @@ from ...content.skeleton.cache import (
     running_job_for,
     store_pack,
 )
-from ...content.skeleton.service import canonical_topic_key, get_pack
+from ...content.skeleton.service import PACK_SPEC_VERSION, canonical_topic_key, get_pack, subject_spec_version
 from ...db.models import Student, utcnow
+from ...subjects.models import LearnerSubject
 from ...services import current as current_services
 from ..deps import db_session, rate, student_from_request
 
@@ -43,6 +46,9 @@ class PrepareBody(BaseModel):
     #: Round 9 wizard scope; recorded on the built pack (see below).
     curriculum: str | None = Field(default=None, max_length=32)
     grade: str | None = Field(default=None, max_length=64)
+    # A subject-scoped preparation is only allowed after the learner has
+    # approved the curriculum/scope and reviewed candidate material.
+    subject_id: str | None = Field(default=None, max_length=120)
 
 
 class _GeminiBridge:
@@ -106,10 +112,18 @@ def _update_job(*, job_id: str, state: str, source: str | None) -> None:
 async def _prepare_and_store(
     job_id: str, topic: str, level: int, language: str, student_id: str | None = None,
     curriculum: str | None = None, grade: str | None = None,
+    allow_external: bool = True, spec_version: str | None = None,
+    source_materials: list[dict[str, Any]] | None = None,
+    objectives: list[dict[str, Any]] | None = None,
 ) -> None:
     services = current_services()
     topic_key = canonical_topic_key(topic)
-    identity = cache_identity(topic_key, level=level, language=language)
+    identity = cache_identity(
+        topic_key,
+        level=level,
+        language=language,
+        spec_version=spec_version or PACK_SPEC_VERSION,
+    )
     with services.scope() as session:
         cached = get_cached(session, identity)
     if cached is not None:
@@ -129,6 +143,9 @@ async def _prepare_and_store(
         model=model,
         curriculum=curriculum,
         grade=grade,
+        allow_external=allow_external,
+        source_materials=source_materials,
+        objectives=objectives,
     )
     with services.scope() as session:
         # Another worker may have filled the cache while this pack was being validated. Upsert the
@@ -150,9 +167,24 @@ async def _prepare_and_store(
 def _run_prepare(
     job_id: str, topic: str, level: int, language: str, student_id: str | None = None,
     curriculum: str | None = None, grade: str | None = None,
+    allow_external: bool = True, spec_version: str | None = None,
+    source_materials: list[dict[str, Any]] | None = None,
+    objectives: list[dict[str, Any]] | None = None,
 ) -> None:
     try:
-        asyncio.run(_prepare_and_store(job_id, topic, level, language, student_id, curriculum, grade))
+        asyncio.run(_prepare_and_store(
+            job_id,
+            topic,
+            level,
+            language,
+            student_id,
+            curriculum,
+            grade,
+            allow_external,
+            spec_version,
+            source_materials,
+            objectives,
+        ))
     except Exception:
         # Do not stringify exception messages: they can include provider or topic text.
         log.error("content_prepare_failed job_id=%s", job_id)
@@ -177,8 +209,54 @@ def prepare_content(
             status_code=422,
             detail={"error": "unknown_curriculum", "message": "choose Kenya CBC, KCSE, IGCSE, University or Self-study"},
         )
+    allow_external = True
+    spec_version = PACK_SPEC_VERSION
+    source_materials: list[dict[str, Any]] = []
+    approved_objectives: list[dict[str, Any]] = []
+    if body.subject_id:
+        subject = session.execute(
+            select(LearnerSubject).where(
+                LearnerSubject.id == body.subject_id,
+                LearnerSubject.student_id == _student.id,
+            )
+        ).scalar_one_or_none()
+        if subject is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
+        from ...curriculum import service as curriculum_gate
+
+        guideline = curriculum_gate.approved(
+            session, student_id=_student.id, subject_id=subject.id
+        )
+        if guideline is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "syllabus_not_approved",
+                    "message": curriculum_gate.gate_message(subject.title),
+                },
+            )
+        approved_objectives = [
+            dict(objective)
+            for objective in (guideline.objectives or [])
+            if isinstance(objective, dict)
+        ][:30]
+        plan = dict(subject.plan or {})
+        if not plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "source_review_required",
+                    "message": "review and approve the candidate notes/materials before a subject lesson is prepared",
+                },
+            )
+        source_materials = normalise_reviewed_sources(plan.get("approved_materials") or [])
+        allow_external = bool(source_materials)
+        # Subject-specific cache identity prevents one learner's approved
+        # source choice from becoming another learner's unseen source and
+        # invalidates the pack when the selected cards change.
+        spec_version = subject_spec_version(body.subject_id, source_materials, approved_objectives)
     key = canonical_topic_key(body.topic)
-    identity = cache_identity(key, level=body.level, language=body.language)
+    identity = cache_identity(key, level=body.level, language=body.language, spec_version=spec_version)
     cached = get_cached(session, identity)
     if cached is not None:
         pack, _digest = cached
@@ -206,27 +284,27 @@ def prepare_content(
     job_id = job.id
     # Commit before submitting so the worker can safely see the job row on another DB connection.
     session.commit()
-    if curriculum or body.grade:
-        _WORKERS.submit(
-            _run_prepare,
-            job_id,
-            body.topic,
-            body.level,
-            body.language,
-            getattr(_student, "id", None),
+    worker_args: tuple[Any, ...] = (
+        job_id,
+        body.topic,
+        body.level,
+        body.language,
+        getattr(_student, "id", None),
+    )
+    # Keep the original five-argument worker contract for an ordinary unscoped
+    # prepare (some deployments replace the executor with a tiny test/durable
+    # queue adapter), while carrying the review namespace whenever the request
+    # actually has one.
+    if body.subject_id or curriculum or body.grade or source_materials or not allow_external:
+        worker_args += (
             curriculum,
             body.grade,
+            allow_external,
+            spec_version,
+            source_materials,
+            approved_objectives,
         )
-    else:
-        # The unscoped call keeps its pre-Round-9 shape exactly.
-        _WORKERS.submit(
-            _run_prepare,
-            job_id,
-            body.topic,
-            body.level,
-            body.language,
-            getattr(_student, "id", None),
-        )
+    _WORKERS.submit(_run_prepare, *worker_args)
     return {"job_id": job_id}
 
 

@@ -942,7 +942,10 @@ class ResourceReference(Base):
     opened_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     __table_args__ = (
-        UniqueConstraint("provider", "external_id", name="uq_resource_provider_ext"),
+        # Candidate provenance is learner-scoped. The same upstream item may be
+        # shown to many learners, but each learner needs an independently owned
+        # review row so an approval cannot cross account boundaries.
+        UniqueConstraint("student_id", "provider", "external_id", name="uq_resource_owner_provider_ext"),
     )
 
 

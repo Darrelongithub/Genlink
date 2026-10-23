@@ -5,6 +5,7 @@ import time
 import pytest
 
 from adapt.assessment import generated as G
+from adapt.content.sources import normalise_reviewed_sources
 from adapt.content.skeleton import get_pack, item_is_scorable, reset_runtime_state
 from adapt.content.skeleton.service import MAX_MODEL_CALLS_PER_PACK, ModelCallError, _bounded_model
 from adapt.content.skeleton.types import PackError
@@ -18,6 +19,65 @@ def reset_content_runtime():
     reset_runtime_state()
     yield
     reset_runtime_state()
+
+
+def test_reviewed_sources_are_generation_context_and_preserve_provenance():
+    model = ScriptedModel()
+    material = {
+        "id": "res_reviewed_1",
+        "kind": "video",
+        "title": "A checked lesson note",
+        "url": "https://example.test/watch/lesson",
+        "snippet": "A shared denominator names parts of the same size.",
+        "attribution": "Open teaching notes",
+        "licence": "CC BY",
+        "provenance": "candidate source shown to and approved by the learner",
+    }
+    pack = get_pack(
+        "Ancient pottery",
+        level=2,
+        language="en",
+        model=model,
+        curriculum="kenya_cbc",
+        grade="Grade 8",
+        objectives=[{"id": "obj-pottery", "title": "Pottery techniques", "origin": "syllabus"}],
+        source_materials=[material],
+    )
+
+    skeleton_call = next(call for call in model.calls if call["purpose"] == "content_skeleton")
+    item_call = next(call for call in model.calls if call["purpose"] == "content_items")
+    verifier_call = next(call for call in model.calls if call["purpose"] == "content_item_verifier")
+    assert "A shared denominator names parts of the same size." in skeleton_call["user"]
+    assert "Pottery techniques" in skeleton_call["user"]
+    assert "required_source_checks" in skeleton_call["user"]
+    assert "A shared denominator names parts of the same size." in item_call["user"]
+    assert "A shared denominator names parts of the same size." in verifier_call["user"]
+    assert "Open teaching notes" in verifier_call["user"]
+    assert pack.approved_sources == (material,)
+    assert pack.as_dict()["approved_sources"][0]["attribution"] == "Open teaching notes"
+
+
+def test_reviewed_source_normalisation_is_allowlisted_and_bounded():
+    rows = normalise_reviewed_sources(
+        [
+            {
+                "id": "source-1",
+                "title": "Checked note",
+                "url": "https://example.test/course/lesson-1",
+                "snippet": "x" * 5000,
+                "attribution": "Open notes",
+                "licence": "CC BY",
+                "provenance": "approved",
+                "secret_field": "must not survive",
+                "authors": ["A", "B", "C", "D", "E", "F", "G"],
+            }
+        ]
+    )
+    assert len(rows) == 1
+    assert rows[0]["url"] == "https://example.test/course/lesson-1"
+    assert len(rows[0]["snippet"]) <= 1200
+    assert rows[0]["authors"] == ["A", "B", "C", "D", "E", "F"]
+    assert "secret_field" not in rows[0]
 
 
 def test_model_attempt_budget_caps_calls_per_pack():

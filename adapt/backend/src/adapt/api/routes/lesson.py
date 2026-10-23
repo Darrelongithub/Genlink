@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib
 import logging
 import threading
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from ...ai.adapter import adapter
 from ...ai.lesson_writer import Explanation, LessonPlan
+from ...content.sources import normalise_reviewed_sources
 from ...db.models import Attempt, Student
 from ...security.redact import redact_payload
 from ...services import current
@@ -46,6 +48,7 @@ class WrongBody(_StrictBody):
     topic: str = Field(min_length=2, max_length=96)
     item_id: str = Field(min_length=1, max_length=96)
     answer: str | int | float = Field()
+    subject_id: str | None = Field(default=None, max_length=120)
 
 
 class GradeBody(_StrictBody):
@@ -61,11 +64,13 @@ class GradeBody(_StrictBody):
     item_id: str = Field(min_length=1, max_length=96)
     selected: str | int = Field()
     concept_id: str | None = Field(default=None, max_length=96)
+    subject_id: str | None = Field(default=None, max_length=120)
 
 
 class ReteachBody(_StrictBody):
     topic: str = Field(min_length=2, max_length=96)
     concept_id: str = Field(min_length=1, max_length=96)
+    subject_id: str | None = Field(default=None, max_length=120)
 
 
 @dataclass
@@ -133,7 +138,13 @@ def _as_mapping(value: Any) -> dict[str, Any]:
     return dict(plain) if isinstance(plain, Mapping) else {}
 
 
-def _topic_from_frozen(topic: str, level: int, language: str) -> Any:
+def _topic_from_frozen(
+    topic: str,
+    level: int,
+    language: str,
+    *,
+    spec_version: str | None = None,
+) -> Any:
     """Use B's frozen API when present; this branch's authored engine is the fallback.
 
     Phase G seam fix: a Pack that ``/content/prepare`` validated and cached is the Pack the
@@ -161,7 +172,12 @@ def _topic_from_frozen(topic: str, level: int, language: str) -> Any:
         services = current_services()
         topic_key = module.canonical_topic_key(topic)
         for probe in sorted(range(6), key=lambda rung: (abs(rung - level), rung)):
-            identity = module.cache_identity(topic_key, level=probe, language=language)
+            identity = module.cache_identity(
+                topic_key,
+                level=probe,
+                language=language,
+                spec_version=spec_version or module.PACK_SPEC_VERSION,
+            )
             with services.scope() as session:
                 cached = module.get_cached(session, identity)
             if cached is not None:
@@ -313,8 +329,55 @@ def _current_authored_pack(topic: str, concept_id: str) -> dict[str, Any]:
     }
 
 
-def _get_pack(topic: str, concept_id: str, *, level: int, language: str) -> Any:
-    frozen = _topic_from_frozen(topic, level, language)
+def _attach_review_materials(pack: Any, materials: list[dict[str, Any]]) -> dict[str, Any]:
+    """Expose learner-approved snippets and provenance to the frozen writer."""
+    raw = _as_mapping(pack)
+    rows = normalise_reviewed_sources(materials)
+    raw["approved_sources"] = rows
+    concepts = [dict(row) for row in raw.get("concepts") or [] if isinstance(row, Mapping)]
+    if concepts:
+        first = concepts[0]
+        facts = [dict(row) for row in first.get("key_facts") or [] if isinstance(row, Mapping)]
+        known = {str(row.get("statement") or "") for row in facts}
+        for index, source in enumerate(rows):
+            snippet = " ".join(str(source.get("snippet") or "").split())[:1200]
+            if not snippet or snippet in known:
+                continue
+            source_id = str(source.get("id") or index)
+            digest = hashlib.sha256(f"{source_id}:{snippet}".encode("utf-8")).hexdigest()[:12]
+            facts.append({"id": f"review_{digest}", "statement": snippet})
+            known.add(snippet)
+        first["key_facts"] = facts
+        raw["concepts"] = concepts
+    if rows:
+        raw["source"] = "learner_approved_materials"
+    return raw
+
+
+def _get_pack(
+    topic: str,
+    concept_id: str,
+    *,
+    level: int,
+    language: str,
+    subject_id: str | None = None,
+    approved_materials: list[dict[str, Any]] | None = None,
+    approved_objectives: list[dict[str, Any]] | None = None,
+) -> Any:
+    materials = approved_materials or []
+    spec_version = None
+    if subject_id:
+        try:
+            from ...content.skeleton import subject_spec_version
+
+            spec_version = subject_spec_version(subject_id, materials, approved_objectives)
+        except Exception:
+            spec_version = None
+    frozen = (
+        _topic_from_frozen(topic, level, language, spec_version=spec_version)
+        if subject_id
+        else _topic_from_frozen(topic, level, language)
+    )
     if frozen is not None:
         raw = _as_mapping(frozen)
         concepts = raw.get("concepts") or []
@@ -322,27 +385,54 @@ def _get_pack(topic: str, concept_id: str, *, level: int, language: str) -> Any:
             isinstance(row, Mapping) and str(row.get("id") or "") == concept_id for row in concepts
         )
         if wanted:
-            return frozen
-    return _current_authored_pack(topic, concept_id)
+            return _attach_review_materials(frozen, materials) if materials else frozen
+    authored = _current_authored_pack(topic, concept_id)
+    return _attach_review_materials(authored, materials) if materials else authored
 
 
-def _pack_for_item(topic: str, item_id: str, *, level: int, language: str) -> Any | None:
-    """Find a Pack by item id, including B topics absent from authored A data."""
-    frozen = _topic_from_frozen(topic, level, language)
+def _pack_for_item(
+    topic: str,
+    item_id: str,
+    *,
+    level: int,
+    language: str,
+    subject_id: str | None = None,
+    approved_materials: list[dict[str, Any]] | None = None,
+    approved_objectives: list[dict[str, Any]] | None = None,
+) -> Any | None:
+    """Find a Pack by item id, including a subject's reviewed source namespace."""
+    materials = approved_materials or []
+    spec_version = None
+    if subject_id:
+        from ...content.skeleton import subject_spec_version
+
+        spec_version = subject_spec_version(subject_id, materials, approved_objectives)
+    frozen = (
+        _topic_from_frozen(topic, level, language, spec_version=spec_version)
+        if subject_id
+        else _topic_from_frozen(topic, level, language)
+    )
     if frozen is not None:
         raw = _as_mapping(frozen)
         if any(
             isinstance(item, Mapping) and str(item.get("id") or "") == item_id
             for item in raw.get("items") or []
         ):
-            return frozen
+            return _attach_review_materials(frozen, materials) if materials else frozen
     from ...content.breakdown import breakdown_for
 
     breakdown = breakdown_for(topic)
     if not breakdown.available:
         return None
     for concept in breakdown.concepts:
-        candidate = _get_pack(topic, concept.id, level=level, language=language)
+        pack_kwargs: dict[str, Any] = {"level": level, "language": language}
+        if subject_id:
+            pack_kwargs.update(
+                subject_id=subject_id,
+                approved_materials=materials,
+                approved_objectives=approved_objectives,
+            )
+        candidate = _get_pack(topic, concept.id, **pack_kwargs)
         raw = _as_mapping(candidate)
         if any(
             isinstance(item, Mapping) and str(item.get("id") or "") == item_id
@@ -350,6 +440,58 @@ def _pack_for_item(topic: str, item_id: str, *, level: int, language: str) -> An
         ):
             return candidate
     return None
+
+
+def _approved_subject_context(
+    session: Session, *, student_id: str, subject_id: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return the owned source cards and the currently approved scope."""
+    from ...curriculum import service as gate
+    from ...subjects.models import LearnerSubject
+
+    row = session.execute(
+        select(LearnerSubject).where(
+            LearnerSubject.id == subject_id,
+            LearnerSubject.student_id == student_id,
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "unknown_subject", "message": "no such subject"},
+        )
+    guideline = gate.approved(session, student_id=student_id, subject_id=row.id)
+    if guideline is None:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
+        )
+    plan = dict(row.plan or {})
+    if not plan.get("source_review_approved"):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "source_review_required",
+                "message": "review and approve candidate materials first",
+            },
+        )
+    materials = normalise_reviewed_sources(plan.get("approved_materials") or [])
+    objectives = [
+        dict(objective)
+        for objective in (guideline.objectives or [])
+        if isinstance(objective, dict)
+    ][:30]
+    return materials, objectives
+
+
+def _approved_materials_for_subject(
+    session: Session, *, student_id: str, subject_id: str
+) -> list[dict[str, Any]]:
+    """Compatibility wrapper for callers that only need reviewed source rows."""
+    materials, _objectives = _approved_subject_context(
+        session, student_id=student_id, subject_id=subject_id
+    )
+    return materials
 
 
 def _answer_value(value: Any) -> Any:
@@ -940,6 +1082,8 @@ def build_frozen_lesson(
 ) -> dict[str, Any]:
     """Return a deterministic lesson immediately; only a fully checked model plan upgrades it."""
     guideline = None
+    approved_materials: list[dict[str, Any]] = []
+    approved_objectives: list[dict[str, Any]] = []
     if body.subject_id:
         from ...curriculum import service as gate
         from ...subjects.models import LearnerSubject
@@ -958,16 +1102,38 @@ def build_frozen_lesson(
                 status_code=422,
                 detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
             )
+        plan = dict(row.plan or {})
+        if not plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "source_review_required",
+                    "message": "review and approve the candidate notes/materials before a subject lesson is prepared",
+                },
+            )
+        approved_materials = normalise_reviewed_sources(
+            plan.get("approved_materials") or []
+        )
+        approved_objectives = [
+            dict(objective)
+            for objective in (guideline.objectives or [])
+            if isinstance(objective, dict)
+        ][:30]
     seed_snapshot = _snapshot(
         session, student.id, {}, None, topic_key=body.topic, concept_id=body.concept_id
     )
     try:
-        pack = _get_pack(
-            body.topic,
-            body.concept_id,
-            level=_learner_level(seed_snapshot),
-            language=str((seed_snapshot.get("preferences") or {}).get("language") or "en"),
-        )
+        pack_kwargs: dict[str, Any] = {
+            "level": _learner_level(seed_snapshot),
+            "language": str((seed_snapshot.get("preferences") or {}).get("language") or "en"),
+        }
+        if body.subject_id:
+            pack_kwargs.update(
+                subject_id=body.subject_id,
+                approved_materials=approved_materials,
+                approved_objectives=approved_objectives,
+            )
+        pack = _get_pack(body.topic, body.concept_id, **pack_kwargs)
     except HTTPException:
         raise
     except Exception as exc:
@@ -1034,7 +1200,13 @@ def build_frozen_lesson(
         "common_misconceptions": OBJ.common_misconceptions(pack_map) if pack_map.get("concepts") else [],
         "suggested_practice": OBJ.suggested_practice(pack_map) if pack_map.get("concepts") else [],
         "guideline": (
-            {"version": int(guideline.version), "source_label": guideline.source_label, "attribution": guideline.attribution}
+            {
+                "version": int(guideline.version),
+                "source_label": guideline.source_label,
+                "attribution": guideline.attribution,
+                "source_review_approved": bool(body.subject_id),
+                "approved_materials": approved_materials,
+            }
             if guideline is not None
             else None
         ),
@@ -1049,11 +1221,53 @@ def explain_wrong(
     student: Student = Depends(rate("mutation")),
 ) -> dict[str, Any]:
     """Explain the actual answer against its matched, authored misconception."""
+    approved_materials: list[dict[str, Any]] = []
+    approved_objectives: list[dict[str, Any]] = []
+    if body.subject_id:
+        from ...curriculum import service as gate
+        from ...subjects.models import LearnerSubject
+
+        row = session.execute(
+            select(LearnerSubject).where(
+                LearnerSubject.id == body.subject_id,
+                LearnerSubject.student_id == student.id,
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
+        guideline = gate.approved(session, student_id=student.id, subject_id=row.id)
+        if guideline is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
+            )
+        plan = dict(row.plan or {})
+        if not plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "source_review_required", "message": "review and approve candidate materials first"},
+            )
+        approved_materials = normalise_reviewed_sources(
+            plan.get("approved_materials") or []
+        )
+        approved_objectives = [
+            dict(objective)
+            for objective in (guideline.objectives or [])
+            if isinstance(objective, dict)
+        ][:30]
     seed_snapshot = _snapshot(session, student.id, {}, None, topic_key=body.topic)
     level = _learner_level(seed_snapshot)
     language = str((seed_snapshot.get("preferences") or {}).get("language") or "en")
     try:
-        pack = _pack_for_item(body.topic, body.item_id, level=level, language=language)
+        pack = _pack_for_item(
+            body.topic,
+            body.item_id,
+            level=level,
+            language=language,
+            subject_id=body.subject_id,
+            approved_materials=approved_materials,
+            approved_objectives=approved_objectives,
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -1128,15 +1342,27 @@ def reteach_lesson(
     student: Student = Depends(rate("mutation")),
 ) -> dict[str, Any]:
     """Code selects the next re-teaching method from profile and stored teaching memory."""
+    approved_materials, approved_objectives = (
+        _approved_subject_context(
+            session, student_id=student.id, subject_id=body.subject_id
+        )
+        if body.subject_id
+        else ([], [])
+    )
     snapshot = _snapshot(
         session, student.id, {}, None, topic_key=body.topic, concept_id=body.concept_id
     )
-    pack = _get_pack(
-        body.topic,
-        body.concept_id,
-        level=_learner_level(snapshot),
-        language=str((snapshot.get("preferences") or {}).get("language") or "en"),
-    )
+    pack_kwargs: dict[str, Any] = {
+        "level": _learner_level(snapshot),
+        "language": str((snapshot.get("preferences") or {}).get("language") or "en"),
+    }
+    if body.subject_id:
+        pack_kwargs.update(
+            subject_id=body.subject_id,
+            approved_materials=approved_materials,
+            approved_objectives=approved_objectives,
+        )
+    pack = _get_pack(body.topic, body.concept_id, **pack_kwargs)
     snapshot = _snapshot(
         session, student.id, pack, None, topic_key=body.topic, concept_id=body.concept_id
     )
@@ -1250,7 +1476,22 @@ def grade(
         or "en"
     )
     try:
-        pack = _pack_for_item(body.topic, body.item_id, level=level, language=language)
+        approved_materials, approved_objectives = (
+            _approved_subject_context(
+                session, student_id=student.id, subject_id=body.subject_id
+            )
+            if body.subject_id
+            else ([], [])
+        )
+        pack = _pack_for_item(
+            body.topic,
+            body.item_id,
+            level=level,
+            language=language,
+            subject_id=body.subject_id,
+            approved_materials=approved_materials,
+            approved_objectives=approved_objectives,
+        )
     except HTTPException:
         raise
     except Exception as exc:

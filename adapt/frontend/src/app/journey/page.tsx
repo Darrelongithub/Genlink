@@ -10,7 +10,7 @@
  * fraction bar, cloze, quick recall — and each one writes an evidence row
  * (item, answer, correct, ms, hints) the dashboard and AI 1 can read.
  *
- * Steps: subject (big input + chips, optional curriculum + grade) → what
+ * Steps: subject (big input + curriculum or learner-approved scope) → what
  * to cover (the scanned syllabus checklist -- untick, reorder, add your
  * own, then "Use this plan"; nothing runs before that tap) → setup
  * (level / style / goal tiles) → the run (4–8 interactive items) →
@@ -40,13 +40,37 @@ import {
 import type { LearningOverview } from "@/components/home-dashboard";
 import "@/components/tests/tests.css";
 
+type ResourceCandidate = {
+  candidate_id?: string;
+  id?: string;
+  title: string;
+  kind: string;
+  url: string;
+  snippet?: string | null;
+  license?: string | null;
+  licence_status?: string | null;
+  attribution?: string | null;
+  authors?: string[];
+  year?: number | null;
+};
+
+type SourceReview = {
+  results: ResourceCandidate[];
+  sources?: { kind: string; ok: boolean; note?: string; count?: number | null }[];
+  retrieval_note?: string;
+  note?: string | null;
+  review?: { required: boolean; status: string; note: string };
+};
+
 type Chosen = {
   id: string;
   title: string;
   family: string;
   source: "model" | "simple";
   plan: { tests: unknown[]; source: "model" | "simple" };
-  curriculum_spec?: { curriculum: string | null; grade: string | null } | null;
+  curriculum_spec?: { curriculum: string | null; grade: string | null; scope?: string | null } | null;
+  approved_materials?: ResourceCandidate[];
+  source_review_approved?: boolean;
   progress: { done: number; total: number };
 };
 type SubjectReply = { subject_id: string; plan: Chosen["plan"]; subject: Chosen };
@@ -106,8 +130,12 @@ export default function Journey() {
   const [text, setText] = useState("");
   const [curriculum, setCurriculum] = useState<CurriculumId | null>(null);
   const [grade, setGrade] = useState("");
+  const [scopeNotes, setScopeNotes] = useState("");
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const [scan, setScan] = useState<ScanReply | null>(null);
+  const [sourceReview, setSourceReview] = useState<SourceReview | null>(null);
+  const [sourceReviewBusy, setSourceReviewBusy] = useState(false);
+  const [approvedResourceIds, setApprovedResourceIds] = useState<string[]>([]);
   const [objectives, setObjectives] = useState<ObjectiveDraft[]>([]);
   const [ownObjective, setOwnObjective] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
@@ -174,6 +202,10 @@ export default function Journey() {
 
   async function choose() {
     if (!text.trim() || busy) return;
+    if (!curriculum && !scopeNotes.trim()) {
+      setNotice("Choose a curriculum, or add your notes/approved subject scope before Adapt looks for material.");
+      return;
+    }
     setBusy(true);
     setNotice(null);
     try {
@@ -181,15 +213,42 @@ export default function Journey() {
         text: text.trim(),
         curriculum,
         grade: grade.trim() || null,
+        scope: scopeNotes.trim() || null,
       });
       setChosen(out.subject);
       setStep("syllabus");
+      setApprovedResourceIds([]);
       await path.reload();
-      await loadScan(out.subject.id, false);
+      await Promise.all([
+        loadScan(out.subject.id, false),
+        loadSourceReview(out.subject.id, text.trim()),
+      ]);
     } catch (error) {
       setNotice((error as { shown?: string }).shown ?? "That subject could not be checked just now.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadSourceReview(subjectId: string, subjectText: string) {
+    setSourceReviewBusy(true);
+    setSourceReview(null);
+    try {
+      const out = await post<SourceReview>("resources/search", {
+        // Search by the subject title; the learner's private notes stay the
+        // server-side scope boundary rather than being sent to providers.
+        query: subjectText.slice(0, 240),
+        subject_id: subjectId,
+        limit: 8,
+      });
+      setSourceReview(out);
+    } catch (error) {
+      setSourceReview({
+        results: [],
+        note: (error as { shown?: string }).shown ?? "Candidate sources could not be checked; your approved scope can still be used.",
+      });
+    } finally {
+      setSourceReviewBusy(false);
     }
   }
 
@@ -204,6 +263,7 @@ export default function Journey() {
         curriculum,
         grade: grade.trim() || null,
         goal,
+        scope: scopeNotes.trim() || null,
         skip_sources: skipSources,
       });
       setScan(out);
@@ -227,6 +287,7 @@ export default function Journey() {
         objectives: kept.map((row) => ({ id: row.id, title: row.title, strand: row.strand })),
         curriculum,
         grade: grade.trim() || null,
+        approved_resource_ids: approvedResourceIds,
       });
       setStep("setup");
     } catch (error) {
@@ -389,6 +450,8 @@ export default function Journey() {
               setCurriculum={setCurriculum}
               grade={grade}
               setGrade={setGrade}
+              scopeNotes={scopeNotes}
+              setScopeNotes={setScopeNotes}
               choose={choose}
               busy={busy}
               subjects={existingSubjects}
@@ -404,6 +467,10 @@ export default function Journey() {
               setOwnObjective={setOwnObjective}
               scanBusy={scanBusy}
               busy={busy}
+              sourceReview={sourceReview}
+              sourceReviewBusy={sourceReviewBusy}
+              approvedResourceIds={approvedResourceIds}
+              setApprovedResourceIds={setApprovedResourceIds}
               onApprove={() => void approveSyllabus()}
               onKeepCurrent={() => void keepCurrentPlan()}
               onSkipSources={() => void loadScan(chosen.id, true)}
@@ -444,12 +511,15 @@ export default function Journey() {
               onAddAnother={() => {
                 setChosen(null);
                 setScan(null);
+                setSourceReview(null);
+                setApprovedResourceIds([]);
                 setObjectives([]);
                 setItems([]);
                 setEvidence([]);
                 setIndex(0);
                 setStep("subject");
                 setText("");
+                setScopeNotes("");
               }}
             />
           ) : null}
@@ -526,6 +596,8 @@ function SubjectChooser({
   setCurriculum,
   grade,
   setGrade,
+  scopeNotes,
+  setScopeNotes,
   choose,
   busy,
   subjects,
@@ -536,6 +608,8 @@ function SubjectChooser({
   setCurriculum: (v: CurriculumId | null) => void;
   grade: string;
   setGrade: (v: string) => void;
+  scopeNotes: string;
+  setScopeNotes: (v: string) => void;
   choose: () => void;
   busy: boolean;
   subjects: LearningOverview["subjects"];
@@ -591,9 +665,26 @@ function SubjectChooser({
               aria-label="Grade or year"
               maxLength={24}
             />
+            <label className="stack-2" style={{ marginTop: "var(--s2)" }}>
+              <span className="t-small" style={{ color: "var(--muted)" }}>
+                Or paste your curriculum, notes, or approved subject scope
+              </span>
+              <textarea
+                className="input"
+                value={scopeNotes}
+                onChange={(event) => setScopeNotes(event.target.value)}
+                placeholder="For example: fractions, decimals, percentages; do not include geometry"
+                aria-label="Curriculum notes or approved subject scope"
+                maxLength={2000}
+                rows={4}
+              />
+            </label>
+            <p className="t-small" style={{ margin: 0, color: "var(--muted)" }}>
+              Choose a curriculum or add notes before Adapt searches for candidate material. This keeps the engine on-topic.
+            </p>
           </div>
           <div className="wrap-2" style={{ paddingTop: "var(--s1)" }}>
-            <Btn icon="search" kind="primary" type="submit" disabled={!text.trim() || busy}>
+            <Btn icon="search" kind="primary" type="submit" disabled={!text.trim() || (!curriculum && !scopeNotes.trim()) || busy}>
               {busy ? "Checking…" : "Choose what to cover"}
             </Btn>
             <Btn kind="secondary" href="/baseline">
@@ -642,6 +733,10 @@ function SyllabusStep({
   setOwnObjective,
   scanBusy,
   busy,
+  sourceReview,
+  sourceReviewBusy,
+  approvedResourceIds,
+  setApprovedResourceIds,
   onApprove,
   onKeepCurrent,
   onSkipSources,
@@ -650,6 +745,10 @@ function SyllabusStep({
   chosen: Chosen;
   scan: ScanReply | null;
   objectives: ObjectiveDraft[];
+  sourceReview: SourceReview | null;
+  sourceReviewBusy: boolean;
+  approvedResourceIds: string[];
+  setApprovedResourceIds: (ids: string[]) => void;
   setObjectives: (rows: ObjectiveDraft[]) => void;
   ownObjective: string;
   setOwnObjective: (v: string) => void;
@@ -694,6 +793,65 @@ function SyllabusStep({
         ) : (
           <p role="status">The list is not ready yet.</p>
         )}
+      </Card>
+
+      <Card title="Candidate notes and videos — review before learning" tone="mint">
+        <p>
+          Adapt may find notes, papers, books, or videos for this subject. These are only candidates:
+          they will not be used until you explicitly approve them below.
+        </p>
+        {sourceReviewBusy ? <p role="status">Looking for candidate notes and available videos…</p> : null}
+        {!sourceReviewBusy && sourceReview && sourceReview.results.length === 0 ? (
+          <Notice tone="info">
+            {sourceReview.note ?? "No candidate material was returned. Your approved scope remains the boundary, and the built-in lesson can continue."}
+          </Notice>
+        ) : null}
+        {!sourceReviewBusy && sourceReview && sourceReview.results.length > 0 ? (
+          <div className="stack-3" aria-label="Candidate source list">
+            {sourceReview.results.map((candidate) => {
+              const id = candidate.candidate_id;
+              const selected = Boolean(id && approvedResourceIds.includes(id));
+              return (
+                <label key={id ?? candidate.url} className="border-b border-[var(--line)] pb-3">
+                  <div className="wrap-2" style={{ alignItems: "flex-start" }}>
+                    {id ? (
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(event) => setApprovedResourceIds(
+                          event.target.checked
+                            ? [...approvedResourceIds, id]
+                            : approvedResourceIds.filter((value) => value !== id),
+                        )}
+                        aria-label={`Approve ${candidate.title}`}
+                      />
+                    ) : null}
+                    <span style={{ flex: "1 1 260px" }}>
+                      <strong>{candidate.title}</strong>
+                      <span className="t-small" style={{ display: "block", color: "var(--muted)" }}>
+                        {candidate.kind === "video" ? "Video" : candidate.kind} · candidate only
+                      </span>
+                      {candidate.snippet ? <span className="t-small" style={{ display: "block" }}>{candidate.snippet}</span> : null}
+                      <span className="t-small" style={{ display: "block", color: "var(--muted)" }}>
+                        Attribution: {candidate.attribution ?? candidate.authors?.join(", ") ?? "provider attribution not supplied"}
+                      </span>
+                      <span className="t-small" style={{ display: "block", color: "var(--muted)" }}>
+                        Licence: {candidate.licence_status ?? candidate.license ?? "not supplied by provider; review the source page"}
+                      </span>
+                      <a className="link-inline t-small" href={candidate.url} target="_blank" rel="noreferrer">
+                        Open source for review
+                      </a>
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
+            <p className="t-small" style={{ margin: 0, color: "var(--muted)" }}>
+              Tick only sources you have reviewed and approve. Unchecked candidates remain review-only.
+            </p>
+          </div>
+        ) : null}
+        {sourceReview?.retrieval_note ? <p className="t-small" style={{ color: "var(--muted)" }}>{sourceReview.retrieval_note}</p> : null}
       </Card>
 
       <Card title="Your list" tone="sand">
@@ -759,8 +917,8 @@ function SyllabusStep({
       </Card>
 
       <div className="wrap-2">
-        <Btn icon="play" kind="primary" disabled={!kept || busy || scanBusy} onClick={onApprove}>
-          {busy ? "Saving…" : "Use this plan"}
+        <Btn icon="play" kind="primary" disabled={!kept || busy || scanBusy || sourceReviewBusy} onClick={onApprove}>
+          {busy ? "Saving…" : "Approve scope and use this plan"}
         </Btn>
         {scan?.approved_version ? (
           <Btn kind="secondary" onClick={onKeepCurrent}>

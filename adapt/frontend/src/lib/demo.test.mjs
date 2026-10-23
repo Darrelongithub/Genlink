@@ -104,6 +104,12 @@ test("evidence is offered only for one complete server-graded run", () => {
     grading_seal: `seal-${index}`,
   }));
   assert.equal(demoRunId(server), "run-demo");
+  const topLevelRun = validatedDemoItems(server.map(({ item }) => {
+    const { run_id: _runId, ...withoutItemRun } = item;
+    return withoutItemRun;
+  }), "run-top-level");
+  assert.ok(topLevelRun);
+  assert.ok(topLevelRun.every((item) => item.run_id === "run-top-level"));
   const rows = demoEvidenceRows(server);
   assert.equal(rows.length, 3);
   assert.deepEqual(rows.map((row) => row.item_id), ["server-0", "server-1", "server-2"]);

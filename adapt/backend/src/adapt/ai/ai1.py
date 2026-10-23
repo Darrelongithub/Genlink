@@ -70,6 +70,7 @@ from ..learning import strategies as ST
 from ..learning.effect import evaluate_change, retention_calibration
 from ..learning.profile import Directive, LearnerProfile, TopicTrace, to_llm_payload
 from ..security.redact import redact_payload
+from ..subjects.models import LearnerSubject
 from . import static_context as SC
 from .prompts import fill_approval_script
 
@@ -1019,6 +1020,27 @@ class LearningIntelligence:
             s.commit()
             return touched
 
+    def _source_review_approved(self, student_id: str) -> bool:
+        """Whether this learner has explicitly approved the source-review gate.
+
+        AI 1 may still use its configured psychology URL in direct operator
+        calls and tests, but the learner-facing analyze cycle does not fetch
+        external findings until a subject scope/checklist has been approved.
+        """
+        try:
+            with self.sf() as s:
+                plans = s.execute(
+                    select(LearnerSubject.plan).where(
+                        LearnerSubject.student_id == student_id,
+                        LearnerSubject.active.is_(True),
+                    )
+                ).scalars().all()
+            return any(bool((plan or {}).get("source_review_approved")) for plan in plans if isinstance(plan, dict))
+        except Exception:
+            # A source gate failure must fail closed: local evidence analysis
+            # continues, but no external source is contacted.
+            return False
+
     def _fetch_psychology_for_drafts(self, drafts: Sequence[H.Draft]) -> dict[str, Any]:
         """Pull empirical cognitive-science findings via Slot 1 when configured."""
         if not drafts or not PSYCH.slot_enabled(self.settings):
@@ -1653,7 +1675,15 @@ class LearningIntelligence:
         self.rebuild_traces(student_id)
         evidence = self.collect_evidence(student_id, session_id=session_id)
         drafts = self.update_hypotheses(student_id, evidence)
-        psychology = self._fetch_psychology_for_drafts(drafts)
+        if self._source_review_approved(student_id):
+            psychology = self._fetch_psychology_for_drafts(drafts)
+        else:
+            psychology = {
+                "enabled": False,
+                "blocked": "source_review_required",
+                "sources_used": [],
+                "by_strategy": {},
+            }
         graph, mastery, plan = self.plan(student_id)
         llm_meta: dict[str, Any] = {}
         llm_text: dict[str, Any] | None = None

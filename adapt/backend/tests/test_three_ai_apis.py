@@ -125,6 +125,9 @@ def test_slot1_custom_psychology_api_enriches_ai1_proposals(tmp_path: Path) -> N
         assert "Sweller et al. (2019)" in draft.citations
         assert "Worked examples reduce extraneous load" in prop["hypothesis"]
         assert "<b>" not in prop["hypothesis"]
+        fact = next(fact for fact in svcs.ai1._fetch_psychology_for_drafts([draft])["by_strategy"]["worked_examples"])
+        assert fact["attribution"] == "Cognitive Lab API (CC BY 4.0)"
+        assert fact["url"] == "https://psych.example.org/sweller2019"
         assert seen_headers and seen_headers[0].get("X-API-Key") == "ai1-secret-psych-key-9999"
     finally:
         db.dispose()

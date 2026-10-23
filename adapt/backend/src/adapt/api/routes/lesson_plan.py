@@ -35,6 +35,7 @@ from ...ai.adapter import AdaptationError, adapter
 from ...ai.adaptation_policy import Policy, adaptation_policy, plan_words, verify_adapted
 from ...ai.monitor import service as monitor
 from ...content.skeleton import objectives as OBJ
+from ...content.sources import normalise_reviewed_sources
 from ...curriculum import service as gate
 from ...db.models import Student
 from ...lesson import templates as TPL
@@ -78,6 +79,38 @@ class ContrastBody(BaseModel):
     profiles: list[dict[str, Any]] = Field(default_factory=list)
 
 
+def _with_approved_sources(
+    pack: dict[str, Any] | None,
+    materials: list[dict[str, Any]],
+    *,
+    concept: str,
+    title: str,
+) -> dict[str, Any] | None:
+    """Attach only server-stored, learner-approved material to a lesson pack.
+
+    The source cards are not merely a gate. Their checked snippets and exact
+    provenance travel into the adapter input and into the returned plan's
+    provenance, so a generated lesson can say what it learned from.
+    """
+    if not materials:
+        return pack
+    out = dict(pack or {})
+    reviewed = normalise_reviewed_sources(materials)
+    out["approved_sources"] = reviewed
+    snippets = [str(row.get("snippet") or "").strip() for row in reviewed]
+    snippets = [snippet[:1200] for snippet in snippets if snippet]
+    if snippets:
+        existing = out.get("explanation") or out.get("source_text") or ""
+        joined = " ".join(snippets)
+        out["explanation"] = f"{existing} {joined}".strip() if existing else joined
+        facts = list(out.get("facts") or [])
+        out["facts"] = [*facts, *[snippet for snippet in snippets if snippet not in facts]][:24]
+    out.setdefault("concept", concept)
+    out.setdefault("title", title or concept)
+    out["source"] = "learner_approved_materials"
+    return out
+
+
 def _pack_for(
     s: Session,
     *,
@@ -86,16 +119,23 @@ def _pack_for(
     learner_id: str,
     concept: str = "",
     title: str = "",
+    approved_materials: list[dict[str, Any]] | None = None,
+    allow_external: bool = True,
 ) -> dict[str, Any] | None:
-    """The pack the lesson is built from: the body's, the authored bank's, or Slot 2's Education API."""
+    """Resolve a pack without reading external education outside the review gate."""
+    materials = approved_materials or []
     if body_pack:
-        return body_pack
+        return _with_approved_sources(body_pack, materials, concept=concept, title=title)
     if topic_id:
         from ...services import lessons as lessons_service
 
         versions = lessons_service.concept_versions_for(s, topic_id, learner_id=learner_id)
         if versions is not None:
-            return versions
+            return _with_approved_sources(versions, materials, concept=concept, title=title)
+    # A subject may use its approved snippets or local/authored fallback, but
+    # not a configured educational URL that was never shown for review.
+    if not allow_external:
+        return _with_approved_sources(None, materials, concept=concept, title=title)
     query = (title or concept or topic_id or "").strip()
     svcs = current()
     from ...connectors import ai2_education as EDU
@@ -108,7 +148,7 @@ def _pack_for(
             transport=getattr(svcs.ai2, "education_transport", None),
         )
         if mat.has_content:
-            return {
+            return _with_approved_sources({
                 "concept": concept or mat.topic,
                 "title": mat.title,
                 "explanation": mat.summary or " ".join(f.statement for f in mat.facts[:4]),
@@ -120,8 +160,8 @@ def _pack_for(
                     if q.get("stem")
                 ],
                 "source": "authored",
-            }
-    return None
+            }, materials, concept=concept, title=title)
+    return _with_approved_sources(None, materials, concept=concept, title=title)
 
 
 def _legacy_frozen_pack(content_pack: dict[str, Any] | None, *, concept_id: str, title: str) -> dict[str, Any]:
@@ -256,7 +296,14 @@ def _contrast_ai3(
     }
 
 
-def _inputs(s: Session, student_id: str, body: PlanBody) -> dict[str, Any]:
+def _inputs(
+    s: Session,
+    student_id: str,
+    body: PlanBody,
+    *,
+    approved_materials: list[dict[str, Any]] | None = None,
+    allow_external: bool = True,
+) -> dict[str, Any]:
     svcs = current()
     levers = body.levers
     if levers is None:
@@ -284,6 +331,8 @@ def _inputs(s: Session, student_id: str, body: PlanBody) -> dict[str, Any]:
             learner_id=student_id,
             concept=body.concept,
             title=body.title,
+            approved_materials=approved_materials,
+            allow_external=allow_external,
         ),
         "recent_evidence": body.recent_evidence,
         "preferences": body.preferences,
@@ -354,15 +403,9 @@ def build_lesson(
     verified afterwards, with the unshaped lesson as the fallback and an
     undo (``undo_adaptation``) always one request away.
     """
-    inputs = _inputs(s, student.id, body)
-    # Version 0 is a real answer — the cold start — so it is recorded as 0,
-    # not disguised as "unknown".
-    inputs["model_version"] = current().state.latest_version(student.id)
-
-    pack_like = inputs.get("content_pack")
-    skeleton_ids = OBJ.skeleton_objective_ids(pack_like if isinstance(pack_like, dict) else None)
     guideline = None
     guideline_ids: list[str] = []
+    approved_materials: list[dict[str, Any]] = []
     if body.subject_id:
         row = s.execute(
             select(LearnerSubject).where(LearnerSubject.id == body.subject_id, LearnerSubject.student_id == student.id)
@@ -375,8 +418,36 @@ def build_lesson(
                 status_code=422,
                 detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
             )
+        subject_plan = dict(row.plan or {})
+        if not subject_plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "source_review_required",
+                    "message": "review and approve the candidate notes/materials before a subject lesson is prepared",
+                },
+            )
+        approved_materials = normalise_reviewed_sources(
+            subject_plan.get("approved_materials") or []
+        )
         guideline_ids = [str(o.get("id")) for o in (guideline.objectives or []) if isinstance(o, dict) and o.get("id")]
 
+    # Validate the subject and review gate before resolving a pack. In
+    # particular, a configured education URL is never contacted for a subject
+    # that has not completed the learner-facing review.
+    inputs = _inputs(
+        s,
+        student.id,
+        body,
+        approved_materials=approved_materials,
+        allow_external=not bool(body.subject_id),
+    )
+    # Version 0 is a real answer — the cold start — so it is recorded as 0,
+    # not disguised as "unknown".
+    inputs["model_version"] = current().state.latest_version(student.id)
+
+    pack_like = inputs.get("content_pack")
+    skeleton_ids = OBJ.skeleton_objective_ids(pack_like if isinstance(pack_like, dict) else None)
     # The skeleton's own objective list binds when it declares one; the
     # approved guideline binds otherwise. Objectives outside the binding
     # list are dropped and reported — never carried into the lesson.
@@ -471,7 +542,13 @@ def build_lesson(
             "undone": bool(body.undo_adaptation),
         },
         "guideline": (
-            {"version": int(guideline.version), "source_label": guideline.source_label, "attribution": guideline.attribution}
+            {
+                "version": int(guideline.version),
+                "source_label": guideline.source_label,
+                "attribution": guideline.attribution,
+                "source_review_approved": bool(body.subject_id),
+                "approved_materials": approved_materials,
+            }
             if guideline is not None
             else None
         ),
@@ -484,6 +561,7 @@ class PracticeScoreBody(BaseModel):
     answer: str = Field(min_length=1, max_length=240)
     level: int = Field(default=0, ge=0, le=20)
     language: str = Field(default="en", min_length=2, max_length=32)
+    subject_id: str | None = Field(default=None, max_length=120)
 
 
 @router.post("/practice/score")
@@ -500,15 +578,67 @@ def practice_score(
     """
     from ...content.skeleton.authored import authored_pack
     from ...content.skeleton.cache import cache_identity, get_cached
-    from ...content.skeleton.service import canonical_topic_key
+    from ...content.skeleton.service import PACK_SPEC_VERSION, canonical_topic_key, get_pack
 
     pack = None
-    identity = cache_identity(canonical_topic_key(body.topic), level=body.level, language=body.language)
+    spec_version = PACK_SPEC_VERSION
+    approved_materials: list[dict[str, Any]] = []
+    approved_objectives: list[dict[str, Any]] = []
+    if body.subject_id:
+        row = s.execute(
+            select(LearnerSubject).where(
+                LearnerSubject.id == body.subject_id,
+                LearnerSubject.student_id == student.id,
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail={"error": "unknown_subject", "message": "no such subject"})
+        guideline = gate.approved(s, student_id=student.id, subject_id=row.id)
+        if guideline is None:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "syllabus_not_approved", "message": gate.gate_message(row.title)},
+            )
+        subject_plan = dict(row.plan or {})
+        if not subject_plan.get("source_review_approved"):
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "source_review_required", "message": "review and approve candidate materials first"},
+            )
+        approved_materials = normalise_reviewed_sources(
+            subject_plan.get("approved_materials") or []
+        )
+        approved_objectives = [
+            dict(objective)
+            for objective in (guideline.objectives or [])
+            if isinstance(objective, dict)
+        ][:30]
+        from ...content.skeleton.service import subject_spec_version
+
+        spec_version = subject_spec_version(body.subject_id, approved_materials, approved_objectives)
+    identity = cache_identity(
+        canonical_topic_key(body.topic),
+        level=body.level,
+        language=body.language,
+        spec_version=spec_version,
+    )
     cached = get_cached(s, identity)
     if cached is not None:
         pack = cached[0]
     if pack is None:
-        pack = authored_pack(body.topic, level=body.level, language=body.language)
+        if body.subject_id:
+            pack = get_pack(
+                body.topic,
+                level=body.level,
+                language=body.language,
+                curriculum=guideline.curriculum if guideline is not None else None,
+                grade=guideline.grade if guideline is not None else None,
+                objectives=approved_objectives,
+                allow_external=False,
+                source_materials=approved_materials,
+            )
+        else:
+            pack = authored_pack(body.topic, level=body.level, language=body.language)
     if pack is None:
         raise HTTPException(
             status_code=404,

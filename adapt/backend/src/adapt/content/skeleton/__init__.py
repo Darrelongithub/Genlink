@@ -14,6 +14,7 @@ from .cache import (
 from .service import (
     PACK_SPEC_VERSION,
     canonical_topic_key,
+    subject_spec_version,
     get_pack,
     item_is_scorable,
     reset_runtime_state,
@@ -36,6 +37,7 @@ __all__ = [
     "PackItemCalibration",
     "cache_identity",
     "canonical_topic_key",
+    "subject_spec_version",
     "content_hash",
     "get_cached",
     "get_pack",

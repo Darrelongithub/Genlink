@@ -24,7 +24,7 @@ import type { ItemResult, PlanItem } from "@/lib/tests/registry";
 import "@/components/tests/tests.css";
 import "./demo.css";
 
-type Stage = "welcome" | "preparing" | "games" | "analysis";
+type Stage = "welcome" | "warning" | "preparing" | "games" | "analysis";
 type SaveState = "idle" | "saving" | "saved" | "unsaved" | "built-in";
 type PlanReply = { items: unknown[]; run_id: string };
 
@@ -75,7 +75,7 @@ export default function DemoPage() {
           style: "see",
           goal: "skills",
         });
-        const items = validatedDemoItems(plan.items);
+        const items = validatedDemoItems(plan.items, plan.run_id);
         if (!items || !plan.run_id) throw new Error("The demo plan was not usable");
         return { items, runId: plan.run_id, origin: "server" };
       })());
@@ -137,7 +137,7 @@ export default function DemoPage() {
     <div className="demo-page" data-demo-screen={stage}>
       <header className="demo-topline">
         <span className="demo-wordmark" aria-label="Adapt">ad<b>apt</b></span>
-        <span>Three-game demo</span>
+        <span>Three-game demo · time-limited preview</span>
       </header>
 
       <main id="main-content" className="demo-main">
@@ -159,8 +159,32 @@ export default function DemoPage() {
                 By continuing, you agree to Adapt using your game answers, response times and hint use for this demo analysis.
               </p>
               <p className="t-small">No name, email or password. You can stop by closing the page.</p>
-              <button type="button" className="btn btn-ctl btn-primary demo-start" onClick={() => void prepare()}>
-                I agree — start the demo
+              <button type="button" className="btn btn-ctl btn-primary demo-start" onClick={() => { setStage("warning"); setSaveState("idle"); }}>
+                Continue to try demo mode
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {stage === "warning" ? (
+          <section className="demo-warning" aria-labelledby="demo-warning-title">
+            <p className="demo-kicker">Please read before playing</p>
+            <h1 id="demo-warning-title">This is only a demo.</h1>
+            <p>
+              Because of time and scope limits, this preview runs only three games. It can describe
+              this short run, but it cannot reliably assess how you learn or create a settled learner
+              profile.
+            </p>
+            <p>
+              Statistics that need more evidence will say <strong>Not enough data</strong>. Play more
+              games in the full Adapt engine, and return later for retention and trend checks.
+            </p>
+            <div className="demo-warning-actions">
+              <button type="button" className="btn btn-ctl btn-primary" onClick={() => void prepare()}>
+                Start the three-game demo
+              </button>
+              <button type="button" className="btn btn-ctl btn-ghost" onClick={() => setStage("welcome")}>
+                Back to consent
               </button>
             </div>
           </section>
@@ -205,6 +229,25 @@ export default function DemoPage() {
             <p className="demo-kicker">Your early snapshot</p>
             <h1 id="analysis-title">Here’s what Adapt noticed.</h1>
             <p className="demo-intro">{analysis.headline} Three games show what happened here, not a fixed label about how you learn.</p>
+            <div className="demo-limit-note" role="note">
+              <strong>Demo limitation:</strong> three games are not enough to make a reliable learner profile.
+              This screen reports the run, and labels the unanswered questions as <strong>Not enough data</strong>.
+            </div>
+
+            <section className="demo-statistics" aria-labelledby="demo-statistics-title">
+              <div>
+                <p className="demo-kicker">Statistics and analysis</p>
+                <h2 id="demo-statistics-title">What this run can and cannot show</h2>
+              </div>
+              <dl className="demo-statistics-list">
+                {analysis.statistics.map((stat) => (
+                  <div key={stat.label} className={stat.insufficient ? "insufficient" : ""}>
+                    <dt>{stat.label}</dt>
+                    <dd>{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
 
             <div className="demo-analysis-grid">
               <section className="demo-result-card" aria-labelledby="demo-results-title">
@@ -257,7 +300,7 @@ export default function DemoPage() {
 
       <footer className="demo-badge" aria-label="Demo version">
         <strong>DEMO</strong>
-        <span>Demo version · early snapshot.</span>
+        <span>Demo only · three games are not enough for a reliable profile.</span>
       </footer>
     </div>
   );

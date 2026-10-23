@@ -13,6 +13,27 @@ function configuredAdaptOrigin(): string | null {
   return value ? value : null;
 }
 
+/**
+ * Arena exposes a process as a port-prefixed hostname, for example
+ * `https://8080-sandbox.e2b.app`, rather than as `https://sandbox.e2b.app:8080`.
+ * Setting `url.port` in that environment produces the invalid
+ * `https://8080-sandbox.e2b.app:3000`. Replace the prefix instead. On a local
+ * or LAN URL the normal port replacement remains the right thing to do.
+ */
+function isPreviewHostname(hostname: string): boolean {
+  return /^(?:\d+)-.+\.(?:e2b\.app|e2b\.dev)$/i.test(hostname);
+}
+
+function withAdaptPort(url: URL, adaptPort: string): URL {
+  if (isPreviewHostname(url.hostname)) {
+    url.hostname = url.hostname.replace(/^\d+-/, `${adaptPort}-`);
+    url.port = "";
+  } else {
+    url.port = adaptPort;
+  }
+  return url;
+}
+
 export function getAdaptUrl(path = "/"): string {
   const configured = configuredAdaptOrigin();
   if (configured) {
@@ -27,11 +48,14 @@ export function getAdaptUrl(path = "/"): string {
   if (typeof window === "undefined") return path;
 
   const url = new URL(window.location.href);
-  url.port = import.meta.env.VITE_ADAPT_PORT?.trim() || DEFAULT_ADAPT_PORT;
+  const adaptPort = import.meta.env.VITE_ADAPT_PORT?.trim() || DEFAULT_ADAPT_PORT;
+  withAdaptPort(url, adaptPort);
   url.pathname = path;
   url.search = "";
   url.hash = "";
   return url.toString();
 }
 
-export const ADAPT_ENGINE_NAME = "ADAPT Engine";
+/** Genlink's Adapt entry opens the consent-first, three-game demo. */
+export const ADAPT_ENTRY_PATH = "/demo";
+export const ADAPT_ENGINE_NAME = "Try ADAPT demo";

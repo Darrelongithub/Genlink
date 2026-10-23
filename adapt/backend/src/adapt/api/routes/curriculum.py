@@ -21,9 +21,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ...content.sources import normalise_reviewed_sources
 from ...curriculum import scanner as SCAN
 from ...curriculum import service as GATE
-from ...db.models import Student
+from ...db.models import ResourceReference, Student
 from ...services import current
 from ...subjects.models import LearnerSubject
 from ..deps import db_session, rate, student_from_request
@@ -36,6 +37,9 @@ class ScanBody(BaseModel):
     curriculum: str | None = Field(default=None, max_length=24)
     grade: str | None = Field(default=None, max_length=24)
     goal: str | None = Field(default=None, max_length=24)
+    #: Learner-provided notes or a subject boundary. When present, the
+    #: scanner does not widen the candidate list beyond this scope.
+    scope: str | None = Field(default=None, max_length=2000)
     #: "Skip": no source is consulted; objectives are proposed instead and
     #: stay labelled as not checked. The learner still approves them.
     skip_sources: bool = False
@@ -52,6 +56,9 @@ class ApproveBody(BaseModel):
     objectives: list[ObjectiveBody] = Field(min_length=1, max_length=30)
     curriculum: str | None = Field(default=None, max_length=24)
     grade: str | None = Field(default=None, max_length=24)
+    #: IDs returned by the candidate-source review. The server checks that
+    #: every ID belongs to this learner before recording it as approved.
+    approved_resource_ids: list[str] = Field(default_factory=list, max_length=12)
 
 
 class RejectBody(BaseModel):
@@ -94,8 +101,11 @@ def scan(
     fingerprint = "oak" if str(getattr(settings, "oak_api_key", "") or "") else "nooak"
     fingerprint += "+wiki" if getattr(settings, "connector_wikimedia_enabled", False) else ""
     fingerprint += "+skip" if body.skip_sources else ""
+    # A learner's notes are private scope, not shared curriculum-cache input.
+    # Never serve another learner's scoped candidate list.
+    fingerprint += "+scope" if body.scope else ""
     key = GATE.scan_cache_key(subject=row.text, curriculum=curriculum, grade=grade, sources_fingerprint=fingerprint)
-    cached = None if body.skip_sources else GATE.cached_scan(s, key)
+    cached = None if body.skip_sources or body.scope else GATE.cached_scan(s, key)
     if cached and cached.get("objectives"):
         result = SCAN.ScanResult(
             subject=str(cached.get("subject") or row.text),
@@ -120,9 +130,10 @@ def scan(
             llm=_llm(),
             student_id=student.id,
             goal=body.goal,
+            scope=body.scope,
             skip_sources=body.skip_sources,
         )
-        if not body.skip_sources:
+        if not body.skip_sources and not body.scope:
             GATE.store_scan(s, key, result)
     GATE.remember_candidate(s, student_id=student.id, subject_id=row.id, result=result)
     proposal = GATE.note_rescan(s, student_id=student.id, subject_id=row.id, result=result)
@@ -142,6 +153,45 @@ def approve(
     student: Student = Depends(rate("mutation")),
 ) -> dict[str, Any]:
     row = _subject(s, student.id, body.subject_id)
+    requested_resource_ids = list(dict.fromkeys(str(value) for value in body.approved_resource_ids if str(value).strip()))
+    resources = []
+    if requested_resource_ids:
+        resources = s.execute(
+            select(ResourceReference).where(
+                ResourceReference.id.in_(requested_resource_ids),
+                ResourceReference.student_id == student.id,
+            )
+        ).scalars().all()
+        found = {str(resource.id) for resource in resources}
+        missing = [resource_id for resource_id in requested_resource_ids if resource_id not in found]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "unknown_review_candidate", "message": "review the candidate materials again before approving them"},
+            )
+    approved_materials = normalise_reviewed_sources(
+        [
+            {
+                "id": str(resource.id),
+                "kind": str(resource.kind),
+                "title": str(resource.title)[:300],
+                "url": str(resource.url)[:500],
+                "snippet": str(resource.snippet or "")[:600],
+                "authors": list(resource.authors or [])[:6],
+                "attribution": (
+                    ", ".join(str(author) for author in (resource.authors or [])[:6] if str(author).strip())
+                    or str(resource.provider)
+                    or "provider attribution not supplied"
+                )[:240],
+                "licence": str(resource.license or "")[:120],
+                "licence_status": str(resource.license or "not supplied by provider; learner should check the source page")[:160],
+                "provider": str(resource.provider),
+                "external_id": str(resource.external_id or "")[:128],
+                "provenance": "candidate source shown to and approved by the learner",
+            }
+            for resource in resources
+        ]
+    )
     try:
         guideline = GATE.approve(
             s,
@@ -153,8 +203,17 @@ def approve(
         )
     except GATE.GuidelineError as exc:
         raise HTTPException(status_code=422, detail={"error": "guideline_refused", "message": str(exc)}) from exc
+    # The approval is the gate: candidate notes/videos remain review-only
+    # unless this learner explicitly selected them here. Keep the selected
+    # title, URL, licence and provenance with the encrypted subject plan.
+    plan = dict(row.plan or {})
+    plan["approved_materials"] = approved_materials
+    plan["source_review_approved"] = True
+    row.plan = plan
     s.commit()
-    return {"guideline": guideline.as_dict()}
+    payload = guideline.as_dict()
+    payload["approved_materials"] = approved_materials
+    return {"guideline": payload}
 
 
 @router.post("/reject-proposal")

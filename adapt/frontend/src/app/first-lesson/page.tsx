@@ -97,7 +97,7 @@ function FirstLesson() {
   const [scene, setScene] = useState<SceneSpec | null>(null);
   const [lessonFinished, setLessonFinished] = useState(false);
   const [subjectId, setSubjectId] = useState<string | null>(null);
-  const [curriculumScope, setCurriculumScope] = useState<{ curriculum?: string | null; grade?: string | null }>({});
+  const [curriculumScope, setCurriculumScope] = useState<{ curriculum?: string | null; grade?: string | null; scope?: string | null }>({});
   const [adaptation, setAdaptation] = useState<AdaptationNote | null>(null);
   const [guidelineNote, setGuidelineNote] = useState<PlanReply["guideline"]>(null);
   const [misconceptions, setMisconceptions] = useState<MisconceptionRow[]>([]);
@@ -158,6 +158,7 @@ function FirstLesson() {
         topic: wanted,
         ...(curriculumScope.curriculum ? { curriculum: curriculumScope.curriculum } : {}),
         ...(curriculumScope.grade ? { grade: curriculumScope.grade } : {}),
+        ...(subjectId ? { subject_id: subjectId } : {}),
       });
       for (let attempt = 0; attempt < 90; attempt += 1) {
         const status = await get<{ state: string; pack_source: string | null }>(
@@ -195,7 +196,7 @@ function FirstLesson() {
     setConcepts(listed.concepts);
     setTopicMatch(Boolean(listed.topic_match));
     setSource(listed.source ?? null);
-  }, [curriculumScope]);
+  }, [curriculumScope, subjectId]);
 
   useEffect(() => {
     if (topic) void loadConcepts(topic);
@@ -244,6 +245,7 @@ function FirstLesson() {
         topic,
         item_id: row.item_id,
         answer: answer.trim(),
+        ...(subjectId ? { subject_id: subjectId } : {}),
       });
       setPracticeVerdicts((rows) => ({ ...rows, [row.item_id]: verdict }));
     } catch (err) {
@@ -257,7 +259,12 @@ function FirstLesson() {
     setNotice(null);
     let out: ExplanationReply;
     try {
-      out = await post<ExplanationReply>("lesson/explain-wrong", { topic, item_id: itemId, answer });
+      out = await post<ExplanationReply>("lesson/explain-wrong", {
+        topic,
+        item_id: itemId,
+        answer,
+        ...(subjectId ? { subject_id: subjectId } : {}),
+      });
     } catch (err) {
       setBusy(false);
       setNotice((err as Error).message || "The explanation could not be written just now.");
@@ -281,7 +288,11 @@ function FirstLesson() {
     setNotice(null);
     let out: ExplanationReply;
     try {
-      out = await post<ExplanationReply>("lesson/reteach", { topic, concept_id: conceptId });
+      out = await post<ExplanationReply>("lesson/reteach", {
+        topic,
+        concept_id: conceptId,
+        ...(subjectId ? { subject_id: subjectId } : {}),
+      });
     } catch (err) {
       setBusy(false);
       setNotice((err as Error).message || "Another explanation could not be written just now.");
@@ -327,7 +338,13 @@ function FirstLesson() {
     try {
       verdict = await post<{ correct: boolean; misconception_id?: string | null }>(
         "lesson/grade",
-        { topic, item_id: itemId, selected: optionId, concept_id: conceptId ?? undefined },
+        {
+          topic,
+          item_id: itemId,
+          selected: optionId,
+          concept_id: conceptId ?? undefined,
+          ...(subjectId ? { subject_id: subjectId } : {}),
+        },
       );
     } catch (err) {
       setPending(null);

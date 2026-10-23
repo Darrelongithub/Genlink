@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getAdaptUrl } from "@/lib/adapt";
+import { ADAPT_ENTRY_PATH, getAdaptUrl } from "@/lib/adapt";
 
 const DEFAULT_DELAY_MS = 90_000;
 
@@ -96,8 +96,8 @@ export default function AdaptCheckInPrompt({ sessionKey }: { sessionKey: string 
               I&apos;m okay, keep reading
             </Button>
             <Button asChild className="bg-[#C9A84C] text-[#0F1B33] hover:bg-[#C9A84C]/90">
-              <a href={getAdaptUrl("/")}>
-                Open ADAPT engine
+              <a href={getAdaptUrl(ADAPT_ENTRY_PATH)}>
+                Try the ADAPT demo
                 <ArrowRight className="ml-2 h-4 w-4" />
                 <ExternalLink className="ml-1 h-3 w-3" aria-hidden="true" />
               </a>
