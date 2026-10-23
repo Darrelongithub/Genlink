@@ -1,0 +1,97 @@
+/* Home layout (Round 6, Track C). Layout only — colours and type are tokens.css. */
+
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: var(--s4);
+  min-height: 300px;
+  padding: var(--s5);
+  margin-bottom: var(--s4);
+}
+.home-hero-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.home-hero-title {
+  margin: 0;
+  max-width: 15ch;
+}
+.home-hero-line {
+  margin: 0;
+  font-size: var(--t-body);
+  line-height: var(--t-body-lh);
+  color: var(--body);
+}
+.home-hero-cta {
+  margin-top: var(--s2);
+}
+.home-hero-art {
+  position: relative;
+  z-index: 1;
+  height: 260px;
+}
+.home-hero-art .artwork {
+  width: 100%;
+  height: 100%;
+}
+.home-hero-topo {
+  display: none;
+}
+
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+
+.subject-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s3);
+}
+.subject-tile {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+  align-content: start;
+}
+.subject-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.subject-tile-title {
+  margin: 0;
+}
+.home-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+
+/* Mobile 390: stacked, hero art ABOVE the headline, both above the fold. */
+@media (max-width: 767px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: var(--s4);
+  }
+  .home-hero-art {
+    order: -1;
+    height: 160px;
+  }
+  .home-hero-title { max-width: none; }
+  .home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+  }
+}

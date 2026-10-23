@@ -1,0 +1,588 @@
+/* ============================================================================
+   Shell (Round 6, Track A). Layout only — colours and type come from
+   styles/tokens.css. The frame is:
+     sidebar (sticky, full viewport height) | topbar + sheet + gutters + footer
+   The topo pattern sits ONLY in the empty gutters beside the sheet and in the
+   empty-state/hero corners that hold no words.
+   ========================================================================== */
+
+:root {
+  --sidebar-w: 232px;
+  --topbar-h: 60px;
+  --rail-min: 56px;
+}
+
+/* ---------- App frame ---------- */
+.app-frame {
+  display: flex;
+  align-items: stretch;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+/* ---------- Sidebar: sticky, 100dvh, never ends mid-page ---------- */
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100dvh;
+  width: var(--sidebar-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4) var(--s2);
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  z-index: 30;
+}
+.sidebar-brand {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 550;
+  color: var(--ink);
+  text-decoration: none;
+  padding: var(--s1) var(--s2);
+}
+.sidebar-brand b { color: var(--accent); font-weight: 650; }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+
+/* Nav items: 16px, icon tile behind each icon, active = blue fill */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 6px var(--s2);
+  border-radius: var(--r-tile);
+  color: var(--body);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 550;
+  text-decoration: none;
+}
+.sidebar-item:hover { background: var(--accent-soft); color: var(--ink); }
+.sidebar-item .icon-tile {
+  width: 32px;
+  height: 32px;
+}
+.sidebar-item .icon-tile svg { width: 18px; height: 18px; }
+.sidebar-item.active {
+  background: var(--accent);
+  color: var(--white);
+}
+.sidebar-item.active .icon-tile {
+  background: color-mix(in srgb, var(--white) 22%, transparent);
+  color: var(--white);
+}
+.sidebar-item.active:hover { background: var(--accent-strong); color: var(--white); }
+.sidebar-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-more {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.sidebar-more .sidebar-label { font-size: 14px; font-weight: 600; color: var(--muted); }
+.sidebar-more:hover .sidebar-label { color: var(--ink); }
+.sidebar-status {
+  margin-top: auto;
+  padding: var(--s2);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Main column ---------- */
+.main-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Top bar (every page): voice toggle, learner name, sign out ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: var(--topbar-h);
+  padding: var(--s1) var(--gutter);
+  background: color-mix(in srgb, var(--bg) 88%, white);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-section {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.topbar-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hamburger {
+  display: none;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: var(--r-tile);
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.topbar-who {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 14px;
+}
+.topbar-name {
+  color: var(--body);
+  font-weight: 550;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-name:hover { color: var(--ink); }
+
+.voice-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-chip);
+  background: var(--white);
+  color: var(--body);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 550;
+}
+.voice-switch:hover { border-color: var(--accent); color: var(--accent); }
+.voice-switch.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+.voice-switch svg { width: 18px; height: 18px; }
+
+/* ---------- Sheet + pattern gutters ---------- */
+.page-frame {
+  display: grid;
+  /* The side tracks keep a real minimum: at 1440 there is barely spare room, and
+     a 1fr track that may reach 0 will — taking the topo gutter with it. */
+  grid-template-columns: minmax(var(--rail-min), 1fr) minmax(0, var(--content-max)) minmax(var(--rail-min), 1fr);
+  flex: 1;
+  width: 100%;
+  position: relative;
+}
+.page-sheet {
+  grid-column: 2;
+  position: relative;
+  z-index: 1; /* above the rails, below nothing: art and words are always on top of the pattern */
+  min-width: 0;
+  padding: var(--s5) var(--gutter) var(--s6);
+}
+/* The rails carry the contour pattern. They are their own grid columns, so the pattern
+   can never sit behind words, and they are painted below the sheet (z-index 0 vs 1). The
+   lines are the accent blue, strongest at the window edge and fading toward the sheet. */
+.pattern-zone {
+  grid-row: 1;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.page-frame-access .pattern-zone {
+  display: none;
+}
+.pattern-left { grid-column: 1; --rail-fade: to right; --rail-pos: left top; }
+.pattern-right { grid-column: 3; --rail-fade: to left; --rail-pos: right top; }
+
+/* Below the width where a real gutter exists, the pattern would be a smear
+   against the text: omit it there rather than crowding the sheet. */
+@media (max-width: 1180px) {
+  .pattern-zone { display: none; }
+  .page-frame { grid-template-columns: minmax(0, 1fr); }
+  .page-sheet { grid-column: 1; }
+}
+@media (max-width: 899px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.2s var(--ease);
+    box-shadow: var(--shadow);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .hamburger { display: inline-flex; }
+  .topbar-label { display: none; }
+  .page-frame { display: block; }
+  .page-sheet { padding: var(--s4) var(--gutter) var(--s6); }
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  border: none;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+@media (max-width: 899px) {
+  .sidebar-overlay.show { display: block; }
+}
+
+/* ---------- Footer (legal, 12px allowed here) ---------- */
+.page-footer {
+  padding: var(--s3) var(--gutter) var(--s5);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted);
+  max-width: calc(var(--content-max) + 2 * var(--gutter));
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ---------- Access screens (sign in / consent / welcome): flower bottom-left ---------- */
+.access-shell {
+  position: relative;
+  min-height: 100dvh;
+}
+.access-flower {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  height: 380px;
+  pointer-events: none;
+  z-index: 0;
+}
+.access-flower .artwork {
+  width: 100%;
+  height: 100%;
+  mask-position: left bottom;
+}
+@media (max-width: 899px) {
+  .access-flower {
+    position: static;
+    width: 180px;
+    height: 160px;
+  }
+}
+
+/* ---------- Artwork (mask-based, currentColor-like: art is tinted with the accent) ---------- */
+.artwork {
+  pointer-events: none;
+  background: var(--accent);
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+}
+
+/* ---- Art sizing & placement: governed solely by artMap.ts ----
+   Every illustration sits in a fixed-height box and keeps its own proportions
+   (aspect-ratio is set from the file's real size), so a wide scene and a tall tree
+   take the same vertical room and no page jumps when its art arrives. */
+.art-size-large {
+  height: 210px;
+  width: auto;
+  max-width: 100%;
+}
+.art-size-small {
+  height: 150px;
+  width: auto;
+  max-width: 100%;
+}
+.art-position-hero-top,
+.art-position-hero-top-right {
+  /* anchored in hero or header, no overlap */
+}
+.art-position-header-right {
+  margin-left: auto;
+}
+
+/* The scene that closes a page: ideas along a horizon. In flow, after the last card. */
+.page-scene {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: 132px;
+  margin-top: var(--s6);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.page-scene .artwork {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  height: 100%;
+  mask-position: center;
+  -webkit-mask-position: center;
+}
+/* the art's own horizon sits at 91.5% of its height; extend it to the edges and fade it out */
+.page-scene::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 91.5%;
+  height: 1.5px;
+  background: var(--accent);
+  -webkit-mask-image: linear-gradient(to right, transparent, rgb(0 0 0) 22%, rgb(0 0 0) 78%, transparent);
+  mask-image: linear-gradient(to right, transparent, rgb(0 0 0) 22%, rgb(0 0 0) 78%, transparent);
+}
+@media (max-width: 767px) {
+  .page-scene { height: 88px; margin-top: var(--s5); }
+}
+
+/* ---------- Page heroes & empty states ---------- */
+.lesson-empty {
+  display: grid;
+  gap: var(--s4);
+}
+.lesson-empty-art {
+  height: 280px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+@media (max-width: 767px) {
+  .lesson-empty-art { height: 180px; }
+}
+
+/* The wizard hero: stepping-stones art BIG and fully visible in the empty state. */
+.wizard-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s4);
+  min-height: 320px;
+  padding: var(--s5);
+  margin-bottom: var(--s4);
+}
+.wizard-hero-art {
+  height: 280px;
+  z-index: 1;
+}
+.wizard-hero-art .artwork { width: 100%; height: 100%; }
+.wizard-hero-copy { z-index: 2; display: grid; gap: var(--s2); justify-items: start; }
+@media (max-width: 767px) {
+  .wizard-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: var(--s4);
+  }
+  .wizard-hero-art { order: -1; height: 170px; }
+}
+
+/* Generic page hero (Review, Proposals, Lesson) */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: var(--s4);
+  min-height: 260px;
+  padding: var(--s5);
+  margin-bottom: var(--s4);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-soft);
+}
+.page-hero-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.page-hero-art {
+  position: relative;
+  z-index: 1;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.page-hero-art .artwork { width: 100%; height: 100%; }
+@media (max-width: 767px) {
+  .page-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: var(--s4);
+  }
+  .page-hero-art { order: -1; height: 160px; }
+}
+
+/* Empty state: short calm text → clear primary button, no large white space */
+.empty-state {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+  text-align: left;
+  padding: var(--s1) 0;
+}
+.empty-state-art {
+  height: 110px;
+  width: 100%;
+  max-width: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.empty-state-art .artwork { width: 100%; height: 100%; }
+.empty-state-text {
+  max-width: 56ch;
+  font-size: var(--t-body);
+  line-height: var(--t-body-lh);
+  color: var(--body);
+}
+@media (max-width: 767px) {
+  .empty-state-art { height: 96px; }
+}
+
+/* ---------- Loading states: compact inline status & skeleton ---------- */
+.loading-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  text-align: left;
+  padding: var(--s3) var(--s4);
+}
+.loading-card-art {
+  display: none;
+}
+.loading-card-art .artwork { width: 100%; height: 100%; }
+.loading-text {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.loading-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Skeleton cards matching final layout */
+.skeleton-grid {
+  display: grid;
+  gap: var(--s4);
+}
+.skeleton-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: var(--s4);
+  display: grid;
+  gap: var(--s3);
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--line);
+  opacity: 0.7;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.full { width: 100%; }
+.skeleton-line.large { height: 16px; }
+.skeleton-row {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+.skeleton-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--line);
+  opacity: 0.6;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.skeleton-avatar {
+  display: flex;
+  gap: var(--s3);
+  align-items: center;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner, .skeleton-line, .skeleton-circle { animation: none; }
+}
+
+/* Proposal card visual separation */
+.proposal-section {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.proposal-section:last-child { border-bottom: none; }
+.proposal-section-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Dense pages vertical rhythm: Progress & Proposals */
+.page-dense {
+  display: grid;
+  gap: var(--s5); /* 32px between sections, not a wall of cards */
+}
+.page-dense .card + .card {
+  margin-top: 0; /* gap handles it */
+}
+
+/* Improve vertical spacing inside dense stacks */
+.stack-dense {
+  display: grid;
+  gap: var(--s5);
+}
+.stack-dense > * + * {
+  margin-top: 0;
+}
+
+/* ---------- Focus ---------- */
+.sidebar-more:focus-visible,
+.btn:focus-visible,
+.btn-ctl:focus-visible,
+.sidebar-item:focus-visible,
+.voice-switch:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
