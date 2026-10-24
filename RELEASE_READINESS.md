@@ -11,8 +11,8 @@ below was re-executed on this branch after the fourth merge. No AI credential wa
 or used. All load numbers are **single-machine loopback measurements**, not capacity
 guarantees. Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/`
 (ignored by Git). Evidence commit: `c63d101...` (fourth merge of `origin/main` at `bca7d15`
-into the release branch, including the refreshed post-merge evidence). The final documentation
-commit is reported in the task/PR.
+into the release branch, including the refreshed post-merge evidence). Final documentation
+commit: `f42f1a7...`; final merge commit is reported in the task/PR.
 
 ## Decisions
 
@@ -174,8 +174,9 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
     regression. Fixed and covered by a green CI run.
 15. F-20 was a flaky test, not a product regression. Fixed and covered by a green CI run.
 16. F-21 was a colour-formatting assumption in CI-only help text. Fixed; CI run
-    `40067319614` at `8a021ab` was fully green (all three jobs). After the fourth `main`
-    merge the gate must be re-run once more before the branch is merged.
+    `40067319614` at `8a021ab` was fully green (all three jobs), and the post-fourth-merge
+    CI run `40068913606` at `f42f1a7` is also fully green: static-contract, backend pytest and
+    release-smoke all pass. The gate is verified for this branch.
 
 ## Conflict report for the four `main` merges
 

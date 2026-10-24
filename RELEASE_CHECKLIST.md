@@ -47,8 +47,8 @@ with head `R10`; E2E 9/9 including the exhausted-credit 402 case; secret scan 13
 files / 0 high; host scan 187 Adapt + 179 Genlink browser files / 0 loopback calls;
 diff-aware lint 24 changed files / 79 inherited findings / 0 on added lines; **Adapt-frontend
 npm audit 0, root Genlink npm 18 high + 9 moderate, pip 4 advisories**; browser E2E is
-`BLOCKED` for all four suites in the sandbox. CI run `40067319614` at `8a021ab` was fully
-green before the fourth merge; the post-fourth-merge run must be green before merge.
+`BLOCKED` for all four suites in the sandbox. CI run `40068913606` at `f42f1a7` is fully
+green across all three jobs after the fourth merge; the branch is ready to merge.
 
 ## 1. Demo Ready — conditional YES
 
