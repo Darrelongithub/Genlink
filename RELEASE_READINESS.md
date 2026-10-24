@@ -45,6 +45,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | F-16 | S1 | Root Genlink `package-lock.json` audit reports **27 vulnerabilities**: 18 high, 9 moderate, 0 critical (transitive `react-router`, `postcss`, `rollup`, `js-yaml`, `lodash`, `minimatch`, etc.). This lockfile was only added on `main` and was not covered by the earlier single-frontend audit. | `release/evidence/dependency-audit.json::npm_genlink_root` | **OPEN — report only.** No `--force`/unpinned upgrade was applied. Must be triaged before distributing the extracted Genlink app. |
 | F-17 | S2 | Integration route still ignores `institution_id` and does not debit the new wallets; credit enforcement applies to stateful Adapt generation, not to the stateless Genlink contract. | `SYSTEM_ARCHITECTURE.md` §3–4, backend contract tests | **OPEN — new contract needed** if institution-scoped integration traffic is a pilot requirement. |
 | F-18 | S2 | One full-suite run failed `test_typed_topic_flows_from_prepare_through_all_three_lesson_moments`: an async lesson-upgrade job reported `state=fallback` instead of `ready`. The same test passed 5/5 in isolation and the next full-suite rerun passed 1617/1617. Cause not proven; credit enforcement and the new session commit both touch the shared test services. | `release-artifacts/backend-pytest-final.log` vs `backend-pytest-final-rerun.log` | **FLAKY — observed once, not hidden.** Full gate rerun is green; keep the test and watch for recurrence under load. |
+| F-19 | S2 | First CI run after the third merge failed the `Backend pytest` job with exit 1, but the log upload reported `No files were found with the provided path: release-artifacts/backend-pytest.log`. Cause: the backend job piped pytest through `tee` into a directory it had not created, so `set -o pipefail` turned the missing parent directory into a job failure — **not a backend test failure**. | GH Actions run `40060477554`, job `120772677039` annotations | **FIXED in workflow.** `mkdir -p ../../release-artifacts` added before the suite; a fresh run will confirm. |
 
 ### Fixed during this gate (with regression tests)
 
@@ -58,6 +59,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | Demo walker contract drift (F-10) | `scripts/demo.mjs` fallback | `release/e2e_smoke.py --demo-script` |
 | Engine console implied live billing/metering | earlier branch copy/labels were superseded by `main` PR #5's rebuilt console, which ships its own "example / not live billing / no live institution connected" labels; this branch took main's version on merge | `release/e2e_smoke.py --web` asserts sample + no-live-connection labels; new `npm run test:e2e:engine` exists but is BLOCKED until Chromium is available |
 | Critical/high Adapt-frontend npm advisories (F-01) | `main` PR #5 upgraded `next` to 15.5.28 and pinned `postcss`/`undici` overrides; this branch re-audited after merging | `release/evidence/dependency-audit.json` now reports 0 Adapt-frontend vulnerabilities |
+| CI backend job failed on a missing log directory (F-19) | `.github/workflows/release-gate.yml`: `mkdir -p ../../release-artifacts` before `pytest \| tee` | fresh CI run after the fix; the suite itself already passes 1645/2 locally |
 
 ## Test matrix — exact commands and outcomes
 
@@ -161,6 +163,9 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
 13. Post-merge loopback throughput fell from 199.30 to 135.26 req/s (p50 96 → 134 ms) after
     the production middleware/security work. This is one sandbox measurement, not a capacity
     guarantee; size the pilot/production topology from its own load test.
+14. F-19 was a CI harness defect (missing `release-artifacts` directory), not a backend
+    regression. The fresh workflow run after the fix must be green before treating CI as
+    verified.
 
 ## Conflict report for the three `main` merges
 

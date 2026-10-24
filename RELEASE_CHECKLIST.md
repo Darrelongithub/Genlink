@@ -112,6 +112,9 @@ A pilot means real learners. Do not start one until every box is ticked.
       stateful Adapt generation only.
 - [ ] Close F-18: watch the async lesson-upgrade job. If `state=fallback` recurs in a full
       suite run, capture server logs and add a regression test; do not disable the test.
+- [x] Close F-19: the first post-merge CI backend failure was a missing
+      `release-artifacts/` directory before the `tee`, not a test failure. Workflow now
+      creates the directory; confirm the fresh run is green before relying on CI evidence.
 - [ ] Write the pilot protocol that `docs/PILOT.md` currently points to: who the learners
       are, consent text, what data leaves which system, retention/delete process, and the
       exact "pilot data" label used in the UI.
