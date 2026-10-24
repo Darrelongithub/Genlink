@@ -200,7 +200,7 @@ def demo_session(
     s: Session = Depends(db_session),
 ) -> dict[str, Any]:
     """Trusted-LAN demo entry: explicit consent, no credentials or password hashing."""
-    if not get_settings().demo_mode or get_settings().mode == "tunnel":
+    if not get_settings().demo_mode or get_settings().mode in {"tunnel", "production"}:
         raise HTTPException(status_code=404, detail="LAN demo mode is not enabled")
     if not body.consent_analytics:
         raise HTTPException(status_code=422, detail="consent is required to analyse the demo games")

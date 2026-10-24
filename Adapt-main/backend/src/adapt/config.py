@@ -14,16 +14,18 @@ must not kill the demo" rule.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
-from pydantic import Field, computed_field, field_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-Mode = Literal["local", "tunnel", "test"]
+Mode = Literal["local", "tunnel", "production", "test"]
 
 
 # --------------------------------------------------------------------------- #
@@ -76,6 +78,46 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
+def _clean_origin(value: str) -> str:
+    """Validate an origin without ever echoing a credential-bearing value."""
+    text = value.strip().rstrip("/")
+    try:
+        parsed = urlsplit(text)
+        # Accessing port also validates malformed/non-numeric ports.
+        _ = parsed.port
+    except ValueError:
+        raise ValueError("origin must be a valid absolute HTTP(S) URL") from None
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or "*" in text
+    ):
+        raise ValueError(
+            "origin must be an exact HTTP(S) origin with no wildcard, credentials, path, query or fragment"
+        )
+    return text
+
+
+def _clean_host(value: str) -> str:
+    text = value.strip()
+    if not text or "*" in text or "://" in text or "/" in text:
+        raise ValueError("allowed hosts must be exact host names or IP addresses, without wildcards")
+    try:
+        parsed = urlsplit(f"//{text}")
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        raise ValueError("allowed host is not a valid host name or IP address") from None
+    if not hostname or port is not None or parsed.username is not None or parsed.password is not None:
+        raise ValueError("allowed hosts must not include a scheme, port, path or credentials")
+    return text
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ADAPT_",
@@ -98,6 +140,9 @@ class Settings(BaseSettings):
     port: int = 8000
     data_dir: Path = _repo_root() / "var"
     log_level: str = "INFO"
+    # One JSON event per HTTP response; query strings, IPs and learner payloads are
+    # deliberately excluded. Request IDs remain available even when this is disabled.
+    request_log_enabled: bool = True
 
     # -- frontend / transport ------------------------------------------
     # The browser only ever talks to the Next.js origin; Next proxies /api and
@@ -120,6 +165,9 @@ class Settings(BaseSettings):
     tls_certfile: Path | None = None
     tls_keyfile: Path | None = None
     max_body_bytes: int = 8 * 1024 * 1024  # 8 MB: enough for a voice clip upload
+    max_concurrent_requests: int = 100
+    graceful_shutdown_timeout_s: int = 30
+    keepalive_timeout_s: int = 5
 
     # -- database + encryption at rest ---------------------------------
     db_path: Path | None = None
@@ -392,6 +440,64 @@ class Settings(BaseSettings):
             task, _, name = chunk.partition("=")
             out[task.strip()] = name.strip()
         return out
+
+    @field_validator("frontend_origin")
+    @classmethod
+    def _frontend_origin_is_exact(cls, v: str) -> str:
+        return _clean_origin(v)
+
+    @field_validator("allowed_origins")
+    @classmethod
+    def _origins_are_exact(cls, v: list[str]) -> list[str]:
+        return [_clean_origin(item) for item in v]
+
+    @field_validator("extra_allowed_hosts")
+    @classmethod
+    def _hosts_are_exact(cls, v: list[str]) -> list[str]:
+        return [_clean_host(item) for item in v]
+
+    @field_validator("trusted_proxies")
+    @classmethod
+    def _proxies_are_explicit(cls, v: list[str]) -> list[str]:
+        for item in v:
+            try:
+                network = ipaddress.ip_network(item.strip(), strict=False)
+            except ValueError:
+                raise ValueError("trusted proxies must be IP addresses or CIDR networks") from None
+            if network.prefixlen == 0:
+                raise ValueError("trusting every proxy address is not allowed")
+        return v
+
+    @model_validator(mode="after")
+    def _deployment_invariants(self) -> Settings:
+        if bool(self.tls_certfile) != bool(self.tls_keyfile):
+            raise ValueError("ADAPT_TLS_CERTFILE and ADAPT_TLS_KEYFILE must be configured together")
+        if self.mode != "production":
+            return self
+        if self.debug:
+            raise ValueError("ADAPT_DEBUG must be false in production mode")
+        if self.demo_mode:
+            raise ValueError("ADAPT_DEMO_MODE is a trusted-LAN feature and cannot run in production mode")
+        if self.db_encryption == "off":
+            raise ValueError("ADAPT_DB_ENCRYPTION=off is not allowed in production mode")
+        parsed = urlsplit(self.frontend_origin)
+        if parsed.scheme == "https" and not self.require_https:
+            raise ValueError("production HTTPS origins require ADAPT_REQUIRE_HTTPS=true")
+        if parsed.scheme == "http":
+            if self.require_https:
+                raise ValueError("ADAPT_FRONTEND_ORIGIN must use HTTPS when HTTPS is required")
+            try:
+                address = ipaddress.ip_address(parsed.hostname or "")
+                loopback = address.is_loopback
+            except ValueError:
+                loopback = parsed.hostname == "localhost"
+            if not loopback:
+                raise ValueError("production HTTP origins are allowed only for loopback smoke tests")
+        if self.require_https and not self.trusted_proxies and not self.tls_certfile:
+            raise ValueError(
+                "production HTTPS needs either explicit ADAPT_TRUSTED_PROXIES or the direct TLS certificate/key pair"
+            )
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property

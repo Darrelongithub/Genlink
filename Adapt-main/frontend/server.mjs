@@ -1,18 +1,14 @@
 /**
- * ADAPT's front door.
+ * ADAPT's production front door.
  *
- * One origin for the browser: Next.js serves the app, and `/api/*`, `/healthz` and the
- * `/ws/voice` socket are proxied to the Python backend on the same machine. That means
- * the learner's session cookie is first-party to this origin (no CORS, no cross-site
- * cookie rules to get wrong) and the API never has to expose itself publicly.
- *
- * `ADAPT_API` points at the backend (default http://127.0.0.1:8000). Set
- * `ADAPT_API=offline` to start the UI with the API closed: every call fails, and the
- * app shows what it could not reach instead of pretending.
+ * Next serves the learner UI and this small Node server proxies API and voice
+ * traffic to FastAPI. Browser clients never need direct access to the API.
+ * Provider credentials are neither loaded by env.mjs nor accepted in ADAPT_API.
  */
 import { createServer } from "node:http";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { BlockList, isIP } from "node:net";
 import next from "next";
 import "./env.mjs";
 
@@ -22,109 +18,311 @@ const port = Number(process.env.PORT ?? 3000);
 const backend = process.env.ADAPT_API ?? "http://127.0.0.1:8000";
 const offline = backend === "offline";
 
-/* Next reports anonymous usage by default. This app's own stance is that nothing leaves the
- * machine unless the operator opts in -- `local_only` is a health field, not a slogan -- so the
- * dev/serve entry point opts out on the user's behalf and says so. Set
- * NEXT_TELEMETRY_DISABLED=0 to put the choice back. */
+function integerEnv(name, fallback, { min, max }) {
+  const value = Number(process.env[name] ?? fallback);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new Error(`${name} must be an integer between ${min} and ${max}`);
+  }
+  return value;
+}
+
+const maxBodyBytes = integerEnv("ADAPT_MAX_BODY_BYTES", 8 * 1024 * 1024, {
+  min: 1024,
+  max: 64 * 1024 * 1024,
+});
+const proxyTimeoutMs = integerEnv("ADAPT_PROXY_TIMEOUT_MS", 120_000, {
+  min: 1_000,
+  max: 600_000,
+});
+const shutdownTimeoutMs = integerEnv("ADAPT_SHUTDOWN_TIMEOUT_MS", 5_000, {
+  min: 1_000,
+  max: 120_000,
+});
+
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("PORT must be an integer between 1 and 65535");
+}
+
+function parsedHost(value) {
+  const text = String(value ?? "").trim();
+  if (!text || /[\s/]/.test(text) || text.includes("*")) return null;
+  try {
+    const parsed = new URL(`http://${text}`);
+    if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") {
+      return null;
+    }
+    const bracketed = parsed.hostname.startsWith("[") && parsed.hostname.endsWith("]");
+    const hostname = (bracketed ? parsed.hostname.slice(1, -1) : parsed.hostname)
+      .toLowerCase()
+      .replace(/\.$/, "");
+    return hostname ? { hostname, port: parsed.port } : null;
+  } catch {
+    return null;
+  }
+}
+
+const allowedHosts = new Set();
+for (const entry of (process.env.ADAPT_ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)) {
+  const parsed = parsedHost(entry);
+  if (!parsed || parsed.port) {
+    throw new Error("ADAPT_ALLOWED_HOSTS must contain exact host names without schemes, ports or wildcards");
+  }
+  allowedHosts.add(parsed.hostname);
+}
+
+function hostAllowed(req) {
+  // Empty preserves the local/LAN launchers. Public production assets set an
+  // exact list because the API proxy intentionally replaces Host with its target.
+  if (!allowedHosts.size) return true;
+  const parsed = parsedHost(req.headers.host);
+  return Boolean(parsed && allowedHosts.has(parsed.hostname));
+}
+
 process.env.NEXT_TELEMETRY_DISABLED ??= "1";
+
+function makeTarget(value) {
+  if (value === "offline") return null;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("ADAPT_API must be an absolute HTTP(S) URL or 'offline'");
+  }
+  if (
+    !["http:", "https:"].includes(parsed.protocol) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    (parsed.pathname && parsed.pathname !== "/")
+  ) {
+    throw new Error(
+      "ADAPT_API must be an origin-only HTTP(S) URL without credentials, a path, query or fragment",
+    );
+  }
+  return parsed;
+}
+
+const target = makeTarget(backend);
+const transport = target?.protocol === "https:" ? httpsRequest : httpRequest;
+const targetPort = target?.port || (target?.protocol === "https:" ? 443 : 80);
+
+const proxyNetworks = new BlockList();
+for (const entry of (process.env.ADAPT_TRUSTED_PROXIES ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)) {
+  const [address, prefixText] = entry.split("/");
+  const family = isIP(address);
+  if (!family) throw new Error("ADAPT_TRUSTED_PROXIES must contain only IP addresses or CIDR networks");
+  if (prefixText === undefined) {
+    proxyNetworks.addAddress(address, family === 4 ? "ipv4" : "ipv6");
+    continue;
+  }
+  const prefix = Number(prefixText);
+  const max = family === 4 ? 32 : 128;
+  if (!Number.isInteger(prefix) || prefix < 1 || prefix > max || (prefix === 0)) {
+    throw new Error("ADAPT_TRUSTED_PROXIES cannot contain an invalid or world-wide network");
+  }
+  proxyNetworks.addSubnet(address, prefix, family === 4 ? "ipv4" : "ipv6");
+}
+
+function normalizedIP(value) {
+  const text = String(value ?? "").trim();
+  if (text.startsWith("::ffff:") && isIP(text.slice(7)) === 4) return text.slice(7);
+  return text;
+}
+
+function trustedPeer(req) {
+  const address = normalizedIP(req.socket.remoteAddress);
+  const family = isIP(address);
+  if (!family) return false;
+  return proxyNetworks.check(address, family === 4 ? "ipv4" : "ipv6");
+}
+
+function validForwardedChain(value) {
+  if (typeof value !== "string" || !value.trim()) return [];
+  const values = value.split(",").map((part) => normalizedIP(part));
+  return values.every((part) => isIP(part)) ? values : [];
+}
+
+function forwardedHeaders(req) {
+  const headers = { ...req.headers };
+  delete headers.host;
+  delete headers.connection;
+  delete headers["accept-encoding"];
+  delete headers.forwarded;
+  const peer = normalizedIP(req.socket.remoteAddress);
+  const trusted = trustedPeer(req);
+  const prior = trusted ? validForwardedChain(req.headers["x-forwarded-for"]) : [];
+  headers["x-forwarded-for"] = [...prior, peer].filter(Boolean).join(", ");
+
+  let protocol = "http";
+  if (trusted && typeof req.headers["x-forwarded-proto"] === "string") {
+    const chain = req.headers["x-forwarded-proto"]
+      .split(",")
+      .map((part) => part.trim().toLowerCase())
+      .filter(Boolean);
+    if (chain.length && chain.every((value) => ["http", "https"].includes(value))) {
+      protocol = chain.at(-1);
+    }
+  }
+  // Direct clients cannot claim HTTPS merely by sending this header to Node.
+  headers["x-forwarded-proto"] = protocol;
+  headers["x-forwarded-host"] = req.headers.host ?? "";
+  if (target) headers.host = target.host;
+  return headers;
+}
+
+function jsonResponse(res, status, body) {
+  if (res.headersSent || res.destroyed) return;
+  const payload = JSON.stringify(body);
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(payload),
+    "cache-control": "no-store",
+  });
+  res.end(payload);
+}
+
+const activeUpstreams = new Set();
+
+function proxy(req, res) {
+  if (offline) {
+    jsonResponse(res, 503, {
+      error: "api_offline",
+      detail: "the frontend was started with ADAPT_API=offline; start the backend and reload",
+    });
+    return;
+  }
+
+  const declared = Number(req.headers["content-length"] ?? 0);
+  if (Number.isFinite(declared) && declared > maxBodyBytes) {
+    jsonResponse(res, 413, { error: "request_too_large", max_body_bytes: maxBodyBytes });
+    req.resume();
+    return;
+  }
+
+  const chunks = [];
+  let size = 0;
+  let refused = false;
+  req.on("data", (chunk) => {
+    if (refused) return;
+    size += chunk.length;
+    if (size > maxBodyBytes) {
+      refused = true;
+      chunks.length = 0;
+      jsonResponse(res, 413, { error: "request_too_large", max_body_bytes: maxBodyBytes });
+      return;
+    }
+    chunks.push(chunk);
+  });
+  req.on("end", () => {
+    if (refused || res.destroyed) return;
+    const body = Buffer.concat(chunks);
+    const upstream = transport(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: targetPort,
+        method: req.method,
+        path: req.url,
+        headers: forwardedHeaders(req),
+      },
+      (up) => {
+        res.writeHead(up.statusCode ?? 502, { ...up.headers });
+        up.pipe(res);
+      },
+    );
+    activeUpstreams.add(upstream);
+    upstream.on("close", () => activeUpstreams.delete(upstream));
+    upstream.setTimeout(proxyTimeoutMs, () => {
+      upstream.destroy(Object.assign(new Error("upstream timeout"), { code: "ADAPT_UPSTREAM_TIMEOUT" }));
+    });
+    upstream.on("error", (error) => {
+      // Never return the internal URL, socket error text or a credential-bearing
+      // configuration value to the browser.
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
+      jsonResponse(res, error.code === "ADAPT_UPSTREAM_TIMEOUT" ? 504 : 502, {
+        error: error.code === "ADAPT_UPSTREAM_TIMEOUT" ? "api_timeout" : "api_unreachable",
+        detail: "the learning service did not answer; retry after it recovers",
+      });
+    });
+    upstream.end(body);
+  });
+  req.on("aborted", () => {
+    refused = true;
+    chunks.length = 0;
+  });
+}
 
 const app = next({ dev, hostname });
 const handle = app.getRequestHandler();
 await app.prepare();
 
-const API_PREFIXES = ["/api/", "/healthz"];
-const WS_PREFIXES = ["/ws/"];
-
-// `offline` means "there is no backend URL at all", so construction has to wait for that check:
-// `new URL("offline")` throws at import time, which turned the documented flag into a crash instead
-// of the honest 503 the proxy below is written to return.
-const target = offline ? null : new URL(backend);
-const transport = target?.protocol === "https:" ? httpsRequest : httpRequest;
-
-function proxy(req, res) {
-  if (offline) {
-    res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" });
-    res.end(
-      JSON.stringify({
-        error: "api_offline",
-        detail: "the frontend was started with ADAPT_API=offline; start the backend and reload",
-        backend,
-      }),
-    );
-    return;
-  }
-  const chunks = [];
-  req.on("data", (c) => chunks.push(c));
-  req.on("end", () => {
-    const body = Buffer.concat(chunks);
-    const headers = { ...req.headers };
-    delete headers.host;
-    delete headers.connection;
-    delete headers["accept-encoding"]; // keep the upstream body gzipped-free: we forward bytes verbatim
-    if (target.port) headers.host = `${target.hostname}:${target.port}`;
-    const upstream = transport(
-      {
-        protocol: target.protocol,
-        hostname: target.hostname,
-        port: target.port || (target.protocol === "https:" ? 443 : 80),
-        method: req.method,
-        path: req.originalUrl ?? req.url,
-        headers,
-      },
-      (up) => {
-        const out = { ...up.headers };
-        // The session cookie is scoped to this origin by the browser; the backend sets
-        // it without a Domain attribute, so it passes through unchanged.
-        res.writeHead(up.statusCode ?? 502, out);
-        up.pipe(res);
-      },
-    );
-    upstream.on("error", (err) => {
-      res.writeHead(502, { "content-type": "application/json", "cache-control": "no-store" });
-      res.end(
-        JSON.stringify({
-          error: "api_unreachable",
-          detail: `the backend at ${backend} did not answer (${err.code || err.message}). Start it with: uvicorn adapt.api.app:app --port 8000`,
-        }),
-      );
-    });
-    if (body.length) upstream.end(body);
-    else upstream.end();
-  });
-}
-
 const server = createServer((req, res) => {
-  const url = req.url ?? "/";
-  if (API_PREFIXES.some((p) => url.startsWith(p)) || url === "/healthz") return proxy(req, res);
+  if (!hostAllowed(req)) {
+    return jsonResponse(res, 400, {
+      error: "untrusted_host",
+      detail: "the requested host is not configured for this deployment",
+    });
+  }
+  const path = (req.url ?? "/").split("?", 1)[0];
+  if (path.startsWith("/api/") || ["/healthz", "/readyz"].includes(path)) {
+    return proxy(req, res);
+  }
   return handle(req, res);
 });
 
+// Bound slow clients as well as upstream model/resource calls. WebSockets are
+// explicitly taken out of the timeout path after their handshake.
+server.headersTimeout = 15_000;
+server.requestTimeout = Math.max(15_000, proxyTimeoutMs + 5_000);
+server.keepAliveTimeout = 5_000;
+
+const sockets = new Set();
+server.on("connection", (socket) => {
+  sockets.add(socket);
+  socket.on("close", () => sockets.delete(socket));
+});
+server.on("clientError", (_error, socket) => {
+  if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+});
+
 server.on("upgrade", (req, socket, head) => {
-  const url = req.url ?? "";
-  if (offline || !WS_PREFIXES.some((p) => url.startsWith(p))) {
+  const path = (req.url ?? "").split("?", 1)[0];
+  if (!hostAllowed(req)) {
+    socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    return;
+  }
+  if (offline || !path.startsWith("/ws/")) {
     socket.destroy();
     return;
   }
-  const headers = { ...req.headers };
-  delete headers.host;
-  if (target.port) headers.host = `${target.hostname}:${target.port}`;
+  const headers = {
+    ...forwardedHeaders(req),
+    connection: "Upgrade",
+    upgrade: req.headers.upgrade ?? "websocket",
+  };
   const proxyReq = transport({
     protocol: target.protocol,
     hostname: target.hostname,
-    port: target.port || 80,
+    port: targetPort,
     method: "GET",
-    path: url,
-    headers: { ...headers, connection: "Upgrade", upgrade: req.headers.upgrade ?? "websocket" },
+    path: req.url,
+    headers,
   });
+  activeUpstreams.add(proxyReq);
+  proxyReq.on("close", () => activeUpstreams.delete(proxyReq));
+  proxyReq.setTimeout(proxyTimeoutMs, () => proxyReq.destroy());
   proxyReq.on("upgrade", (upReq, upSocket, upHead) => {
-    // The 101 is forwarded header for header, not rebuilt from three hand-picked ones.
-    // Writing only Upgrade / Connection / Sec-WebSocket-Accept *dropped*
-    // `Sec-WebSocket-Extensions`: the browser (which always offers permessage-deflate) was
-    // told nothing was negotiated while uvicorn compressed the frames anyway, so it rejected
-    // the first frame with "reserved bits must be zero" and the voice screen stayed silent --
-    // through this proxy only, which is why the direct-API tests never saw it. `head` and
-    // `upHead` carry whatever arrived in the same segment as a handshake and have to be
-    // written before the pipes start, or the first frame is read from the wrong offset.
+    proxyReq.setTimeout(0);
     const lines = ["HTTP/1.1 101 Switching Protocols"];
     for (const [name, value] of Object.entries(upReq.headers)) {
       lines.push(`${name}: ${Array.isArray(value) ? value.join(", ") : value}`);
@@ -138,20 +336,17 @@ server.on("upgrade", (req, socket, head) => {
     socket.pipe(upSocket);
   });
   proxyReq.on("error", () => socket.destroy());
-  // A refused handshake must reach the browser as a refusal. Without this the socket
-  // simply hangs: the user sees "connecting forever" instead of "your session is not
-  // valid for voice", which is the difference between a confusing app and a broken one.
   proxyReq.on("response", (up) => {
     const chunks = [];
-    up.on("data", (c) => chunks.push(c));
+    up.on("data", (chunk) => chunks.push(chunk));
     up.on("end", () => {
-      const note =
-        up.statusCode === 401 || up.statusCode === 403 || up.statusCode === 4401
-          ? `the backend refused the voice socket (${up.statusCode}): sign in first, then reconnect`
-          : `the backend answered the upgrade with HTTP ${up.statusCode}`;
-      const body = JSON.stringify({ error: "ws_handshake_refused", detail: note });
+      const status = up.statusCode === 101 ? 502 : up.statusCode ?? 502;
+      const body = JSON.stringify({
+        error: "ws_handshake_refused",
+        detail: "the voice service refused the socket; sign in and reconnect",
+      });
       socket.write(
-        `HTTP/1.1 ${up.statusCode === 101 ? 502 : up.statusCode} Bad Gateway\r\n` +
+        `HTTP/1.1 ${status} Bad Gateway\r\n` +
           "content-type: application/json\r\ncontent-length: " +
           Buffer.byteLength(body) +
           "\r\nconnection: close\r\n\r\n" +
@@ -163,7 +358,29 @@ server.on("upgrade", (req, socket, head) => {
   proxyReq.end();
 });
 
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) {
+    for (const socket of sockets) socket.destroy();
+    return;
+  }
+  shuttingDown = true;
+  console.log(JSON.stringify({ event: "web_shutdown", signal }));
+  const closed = new Promise((resolve) => server.close(resolve));
+  server.closeIdleConnections?.();
+  const force = setTimeout(() => {
+    for (const upstream of activeUpstreams) upstream.destroy();
+    for (const socket of sockets) socket.destroy();
+  }, shutdownTimeoutMs);
+  await closed;
+  clearTimeout(force);
+  await app.close().catch(() => undefined);
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+
 server.listen(port, hostname, () => {
-  console.log(`ADAPT web  http://${hostname}:${port}  (dev=${dev})`);
-  console.log(`API + voice socket proxied to ${offline ? "offline (503 for every call)" : backend}`);
+  console.log(JSON.stringify({ event: "web_listen", host: hostname, port, dev }));
 });

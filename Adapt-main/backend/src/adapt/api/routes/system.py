@@ -12,49 +12,72 @@ today's model spend from the audit table.
 from __future__ import annotations
 
 import asyncio
-
+import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..deps import db_session, require_csrf, shared_bank_write, student_from_request
+from ... import __version__
 from ...config import get_settings
-from sqlalchemy import text
 from ...db.models import Student
 from ...services import current
 from ...services import telemetry as TEL
 from ...voice import stt as STT
 from ...voice import tts as TTS
-from ... import __version__
+from ..deps import db_session, require_csrf, shared_bank_write, student_from_request
 
 router = APIRouter(prefix="/api/v1", tags=["system"])
+log = logging.getLogger("adapt.health")
+
+
+def _database_ok(*, writable: bool = False) -> bool:
+    """Probe real database state without returning driver text to a public caller."""
+    try:
+        svcs = current()
+        if not writable:
+            with svcs.db.session() as s:
+                s.execute(text("select 1"))
+            return True
+        # SELECT 1 and BEGIN IMMEDIATE both succeed on a read-only SQLite file.
+        # A real write followed by ROLLBACK is the smallest honest write probe; it
+        # leaves the revision marker and every learner row unchanged.
+        with svcs.db.engine.connect() as connection:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
+            connection.exec_driver_sql(
+                "UPDATE alembic_version SET version_num = version_num"
+            )
+            connection.rollback()
+        return True
+    except Exception as exc:
+        log.warning("database readiness check failed (%s)", type(exc).__name__)
+        return False
 
 
 @router.get("/health")
 def health() -> dict[str, Any]:
     get_settings()
-    svcs = current()
-    db_ok = True
-    db_error: str | None = None
-    try:
-        with svcs.db.session() as s:
-            s.execute(text("select 1"))
-    except Exception as exc:  # never let a probe take the app down with it -- but name the cause
-        # A health endpoint that answers {"ok": false} and nothing else cannot be acted on: a
-        # missing column, a locked file and a wrong key all look identical, and this is the one
-        # request an operator reads when something is already wrong. The sentence is truncated
-        # and never contains a key, a path query or a row value -- driver errors carry those.
-        db_ok = False
-        first = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
-        db_error = f"{type(exc).__name__}: {first[:180]}"
+    db_ok = _database_ok()
     return {
         "ok": bool(db_ok),
         "version": __version__,
         "lessons": lessons_state(),
         "database_reachable": bool(db_ok),
-        **({"database_error": db_error} if db_error else {}),
+        **({"database_error": "database unavailable"} if not db_ok else {}),
     }
+
+
+def readiness_response() -> JSONResponse:
+    db_ok = _database_ok(writable=True)
+    return JSONResponse(
+        status_code=200 if db_ok else 503,
+        content={
+            "ok": db_ok,
+            "checks": {"database": "ok" if db_ok else "unavailable", "database_writable": db_ok},
+        },
+    )
 
 
 def lessons_state() -> dict[str, Any]:
@@ -105,7 +128,7 @@ def status(s: Session = Depends(db_session), student: Student = Depends(student_
         "ok": True,
         "version": __version__,
         "lessons": lessons_state(),
-        "demo_mode": svcs.settings.mode == "demo",
+        "demo_mode": bool(svcs.settings.demo_mode),
         "data_protection": data_protection(),
     }
 

@@ -56,7 +56,7 @@ trap cleanup EXIT
 
 ready=0
 for _ in $(seq 1 60); do
-  if curl -sf -o /dev/null "http://127.0.0.1:$API_PORT/healthz" &&
+  if curl -sf -o /dev/null "http://127.0.0.1:$API_PORT/readyz" &&
      curl -sf -o /dev/null "http://127.0.0.1:$WEB_PORT/"; then ready=1; break; fi
   sleep 0.5
 done

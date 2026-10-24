@@ -2,7 +2,7 @@
 
 Defined here rather than in ``db/models.py`` because that file is frozen for this round (six agents
 adding columns to one module is six merge conflicts and one lost migration). The migration in
-``backend/migrations/versions/P2_subject_round.py`` creates these four tables, existence-aware, on
+``adapt/migrations/versions/P2_subject_round.py`` creates these four tables, existence-aware, on
 top of revision ``0008``.
 
 **One consequence the integrator has to know:** ``Base.metadata.create_all`` only creates tables from
