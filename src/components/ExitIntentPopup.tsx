@@ -1,3 +1,4 @@
+import { safeSessionGet, safeSessionSet } from "@/lib/safeStorage";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -18,7 +19,7 @@ const ExitIntentPopup = () => {
 
   useEffect(() => {
     // Check if already shown this session
-    const shown = sessionStorage.getItem("exitPopupShown");
+    const shown = safeSessionGet("exitPopupShown");
     if (shown) {
       setHasShown(true);
       return;
@@ -28,7 +29,7 @@ const ExitIntentPopup = () => {
       if (e.clientY <= 0 && !hasShown) {
         setIsOpen(true);
         setHasShown(true);
-        sessionStorage.setItem("exitPopupShown", "true");
+        safeSessionSet("exitPopupShown", "true");
       }
     };
 
@@ -40,7 +41,7 @@ const ExitIntentPopup = () => {
         if (!hasShown) {
           setIsOpen(true);
           setHasShown(true);
-          sessionStorage.setItem("exitPopupShown", "true");
+          safeSessionSet("exitPopupShown", "true");
         }
       }, 30000);
     };

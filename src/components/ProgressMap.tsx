@@ -1,3 +1,4 @@
+import { safeLocalGet, safeLocalSet } from "@/lib/safeStorage";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -135,8 +136,8 @@ const ProgressMap = () => {
   useEffect(() => {
     if (!user || !foundationDone) return;
     const key = `genlink_junction_seen_${user.id}`;
-    if (localStorage.getItem(key)) { setLit(true); return; }
-    localStorage.setItem(key, "1");
+    if (safeLocalGet(key)) { setLit(true); return; }
+    safeLocalSet(key, "1");
     runJunction();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, foundationDone]);

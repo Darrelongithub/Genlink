@@ -50,6 +50,35 @@ export function csrfToken(): string | null {
   return cookieValue(CSRF_COOKIE);
 }
 
+/** sessionStorage that cannot throw. Safari private windows (and in-app
+ *  browsers with storage blocked) throw on `setItem`/`getItem`; because
+ *  `isMock()` runs inside every API call, that one throw used to take down
+ *  every screen for exactly those browsers. Storage here is a convenience
+ *  cache for one flag -- losing it must lose nothing else. */
+const safeSession = {
+  get(key: string): string | null {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string): void {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch {
+      /* storage unavailable: the in-memory flag below still holds for this page */
+    }
+  },
+  remove(key: string): void {
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      /* as above */
+    }
+  },
+};
+
 let mockFlag: boolean | null = null;
 
 /** True when the page was opened with `?mock=1` (kept in sessionStorage so it survives navigation). */
@@ -59,16 +88,36 @@ export function isMock(): boolean {
   const url = new URL(window.location.href);
   const inUrl = url.searchParams.get("mock");
   if (inUrl === "1" || inUrl === "true") {
-    window.sessionStorage.setItem("adapt-mock", "1");
+    safeSession.set("adapt-mock", "1");
     mockFlag = true;
   } else if (inUrl) {
-    window.sessionStorage.removeItem("adapt-mock");
+    safeSession.remove("adapt-mock");
     mockFlag = false;
   } else {
-    mockFlag = window.sessionStorage.getItem("adapt-mock") === "1";
+    mockFlag = safeSession.get("adapt-mock") === "1";
   }
   return mockFlag;
 }
+
+/** How long to wait before retrying a refused *read*, from the server's own
+ *  `Retry-After` when it sends one (the rate limiter does), capped so a page
+ *  never parks on a misbehaving value. A small random spread is added by the
+ *  caller so a whole room does not retry in lockstep. */
+function retryWaitMs(res: Response | null, attempt: number): number {
+  const header = res?.headers.get("retry-after");
+  const seconds = header ? Number.parseFloat(header) : Number.NaN;
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds * 1000, 5_000);
+  return 400 * (attempt + 1);
+}
+
+/** Reads may be retried through a moment of overload; writes may not.
+ *  A 429/502/503 on a GET during a whole-room page switch is a queue, not a
+ *  failure -- retrying it quietly is the difference between "the page took a
+ *  breath" and an error screen. A mutation is never resent automatically:
+ *  the server may have recorded it, and a duplicate answer is worse than an
+ *  honest error the learner can act on. */
+const RETRYABLE_STATUSES = new Set([429, 502, 503]);
+const MAX_GET_RETRIES = 2;
 
 type Options = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -119,48 +168,65 @@ export async function api<T = Record<string, unknown>>(path: string, opts: Optio
     headers["content-type"] = "application/json";
     body = JSON.stringify(opts.json);
   }
-  let res: Response;
   // A request that never answers must not disable the page forever. The games lock their controls
   // while a submission is in flight, so a hung fetch used to look exactly like "it won't let me
   // click" — the learner had no way back except a reload.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25_000);
-  try {
-    res = await fetch(url + qs(opts.query), {
-      method,
-      headers,
-      body,
-      credentials: "same-origin",
-      signal: controller.signal,
-    });
-  } catch (err) {
-    const aborted = (err as Error)?.name === "AbortError";
-    throw new ApiError(
-      0,
-      aborted
-        ? "the backend did not answer in 25 seconds, so the request was stopped — nothing was recorded; try again"
-        : `the backend is not reachable from the browser (${(err as Error).message})`,
-    );
-  } finally {
-    clearTimeout(timer);
-  }
-  const text = await res.text();
-  let payload: unknown = null;
-  if (text) {
+  const retryable = method === "GET";
+  for (let attempt = 0; ; attempt++) {
+    let res: Response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25_000);
     try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = text;
+      res = await fetch(url + qs(opts.query), {
+        method,
+        headers,
+        body,
+        credentials: "same-origin",
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      const aborted = (err as Error)?.name === "AbortError";
+      // A network-level failure on a read (wifi blip, proxy restart under a
+      // full room) gets the same quiet retry as an overload refusal below.
+      // A timeout we imposed ourselves does not: 25s of silence is a real
+      // answer about the backend's state, and retrying just triples it.
+      if (retryable && !aborted && attempt < MAX_GET_RETRIES) {
+        await new Promise((r) => setTimeout(r, retryWaitMs(null, attempt) + Math.random() * 250));
+        continue;
+      }
+      throw new ApiError(
+        0,
+        aborted
+          ? "the backend did not answer in 25 seconds, so the request was stopped — nothing was recorded; try again"
+          : `the backend is not reachable from the browser (${(err as Error).message})`,
+      );
     }
+    clearTimeout(timer);
+    if (retryable && RETRYABLE_STATUSES.has(res.status) && attempt < MAX_GET_RETRIES) {
+      const wait = retryWaitMs(res, attempt) + Math.random() * 250;
+      await res.text().catch(() => ""); // drain the body so the connection can be reused
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    const text = await res.text();
+    let payload: unknown = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = text;
+      }
+    }
+    if (!res.ok) {
+      const detail =
+        payload && typeof payload === "object" && "detail" in (payload as Record<string, unknown>)
+          ? (payload as Record<string, unknown>).detail
+          : payload;
+      throw new ApiError(res.status, `${method} ${url} -> ${res.status}`, detail);
+    }
+    return payload as T;
   }
-  if (!res.ok) {
-    const detail =
-      payload && typeof payload === "object" && "detail" in (payload as Record<string, unknown>)
-        ? (payload as Record<string, unknown>).detail
-        : payload;
-    throw new ApiError(res.status, `${method} ${url} -> ${res.status}`, detail);
-  }
-  return payload as T;
 }
 
 /** GET with the failure kept as data, for screens that should still render their frame. */

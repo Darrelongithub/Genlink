@@ -1,11 +1,54 @@
-/* The pitch route has its own quiet frame: no sidebar, voice controls or study tools. */
+/* The pitch route has its own quiet frame: no sidebar, voice controls or study tools.
+ * It is also unmistakably BLUE end to end -- the full app sits on beige, so a blue
+ * wash + pinned blue banner + blue badge is how a room (and a screenshot) can tell
+ * at a glance: this is the demo version, not the product. */
 .demo-page {
+  /* 100vh first: dvh needs Safari 15.4+; without the fallback older iPhones
+   * dropped the declaration and the page collapsed to content height. */
+  min-height: 100vh;
   min-height: 100dvh;
   padding-bottom: 88px;
   background:
     radial-gradient(ellipse at 50% 0%, var(--accent-soft), transparent 58%),
-    var(--bg);
+    var(--tint-blue);
   color: var(--body);
+}
+
+/* Pinned to the top of the viewport on every demo stage. */
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  padding: var(--s2) var(--gutter);
+  background: var(--accent);
+  color: var(--white);
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+}
+
+.demo-banner strong {
+  font-size: var(--t-body);
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.demo-banner span {
+  font-size: var(--t-small);
+  line-height: var(--t-small-lh);
+}
+
+.demo-chip {
+  padding: 2px var(--s2);
+  border-radius: var(--r-chip);
+  background: var(--accent);
+  color: var(--white);
+  font-weight: 650;
 }
 
 .demo-topline {
@@ -114,11 +157,14 @@
 
 .demo-warning {
   max-width: 680px;
+  margin: 10vh auto 0;
   margin: 10dvh auto 0;
   padding: var(--s5);
-  border: 2px solid color-mix(in srgb, var(--bad) 45%, var(--line));
+  /* Blue, like everything demo-branded: "this is a demo" is a scope
+   * statement to read before playing, not an error to alarm about. */
+  border: 2px solid var(--accent);
   border-radius: var(--r-card);
-  background: color-mix(in srgb, var(--bad) 8%, var(--panel));
+  background: var(--tint-blue);
   box-shadow: var(--shadow-soft);
 }
 
@@ -148,6 +194,7 @@
   display: grid;
   justify-items: start;
   max-width: 620px;
+  margin: 12vh auto 0;
   margin: 12dvh auto 0;
   padding: var(--s5);
   border: 1px solid var(--line);
@@ -430,12 +477,16 @@
   min-height: 44px;
   margin: 0 auto;
   padding: var(--s2) var(--s3);
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  /* Solid demo blue, readable across a room -- the old translucent panel
+   * wash was easy to miss entirely. Hex-with-alpha instead of color-mix so
+   * Safari older than 16.2 still paints it. */
+  border: 1px solid var(--accent-strong);
   border-radius: var(--r-chip);
-  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  background: var(--accent);
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  color: var(--body);
+  color: var(--white);
   font-size: var(--t-small);
   line-height: var(--t-small-lh);
   pointer-events: none;
@@ -445,8 +496,9 @@
   flex: none;
   padding: 2px var(--s1);
   border-radius: var(--r-tile);
-  background: var(--accent);
-  color: var(--white);
+  /* Inverted against the solid-blue badge: white chip, blue word. */
+  background: var(--white);
+  color: var(--accent-strong);
   font-size: var(--t-chip);
   letter-spacing: 0.08em;
 }

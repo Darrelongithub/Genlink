@@ -159,16 +159,30 @@ def test_the_duplicate_window_drops_a_repeat_but_not_a_deliberate_second_ask():
 
 
 @pytest.fixture()
-def saturated(client, services):
+def saturated(client, services, settings):
     """Saturate the process-wide in-flight guard for this test's client, then give it back.
 
     The middleware holds the same object ``realtime_guard()`` returns, so filling it here is
     exactly what a page firing a dozen parallel requests would do — without a thread pool, and
     deterministically. The fixture releases every slot it took, because a leaked slot in a
     session-scoped app would quietly lower the cap for every later test.
+
+    The key saturated is the one the middleware will derive for *this* client: the client is
+    session-scoped and earlier tests sign in on it, so by the time this runs it usually carries
+    a session cookie — and signed-in requests are keyed by that session, not by the shared
+    connection address (``security/middleware.py:_session_bucket_key``). Hardcoding the
+    address key made this fixture saturate a key nobody was using, which only showed up in a
+    full-suite run, in whichever order signed a learner in first.
     """
+    import hashlib
+
     guard = realtime_guard()
-    key = "rt:testclient"
+    token = client.cookies.get(settings.cookie_name)
+    key = (
+        "rt:session:" + hashlib.sha256(token.encode()).hexdigest()
+        if token
+        else "rt:testclient"
+    )
     taken = 0
     while guard.begin(key)[0]:
         taken += 1
@@ -195,6 +209,24 @@ def test_a_saturated_realtime_route_answers_429_in_the_house_shape(client, satur
     assert "at once" in detail["message"] or "wait" in detail["message"]
     assert taken >= 1
     assert guard.snapshot()["refused_in_flight"] >= 1
+
+
+def test_one_learners_saturation_does_not_refuse_another_learner(client, saturated, settings):
+    """The room case: everyone arrives through one proxy/NAT address.
+
+    Saturating this learner's key must refuse *this* learner (previous test) and nobody else:
+    with address keying, one stuck tab used to spend the whole class's in-flight allowance and
+    every other phone got 429s. A request carrying a different session is a different learner,
+    so the guard admits it and the answer comes from deeper in the stack (here, the route's
+    own 405/401) — anything except the concurrency refusal.
+    """
+    other = client.post(
+        "/api/v1/subjects/plan",
+        json={"topic": "adding fractions"},
+        cookies={settings.cookie_name: "a-different-learners-session"},
+    )
+    assert other.status_code != 429, other.text
+    assert "too_many_concurrent" not in other.text
 
 
 def test_a_read_is_never_counted_against_the_concurrency_guard(client, saturated):

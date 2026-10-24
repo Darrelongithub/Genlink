@@ -123,20 +123,24 @@ export function brokeredPreviewStorage(): PreviewAuthStorage | undefined {
         }
         return res.value;
       }
-      return localStorage.getItem(key);
+      return readLocal(key) ?? null;
     },
     setItem: (key, value) => {
-      localStorage.setItem(key, value);
+      // Blocked storage (Safari private windows) must not break sign-in:
+      // the broker request below still carries the session where it can.
+      try { localStorage.setItem(key, value); } catch { /* see readLocal */ }
       return request('lovable-preview-auth:set', key, value).then((res) => {
-        if (res?.ok && res.value !== null && localStorage.getItem(key) === value) {
-          if (res.value === '') localStorage.removeItem(key);
-          else localStorage.setItem(key, res.value);
+        if (res?.ok && res.value !== null && readLocal(key) === value) {
+          try {
+            if (res.value === '') localStorage.removeItem(key);
+            else localStorage.setItem(key, res.value);
+          } catch { /* storage blocked: the broker copy above is authoritative */ }
         }
       });
     },
     removeItem: (key) => {
       const local = readLocal(key);
-      localStorage.removeItem(key);
+      try { localStorage.removeItem(key); } catch { /* see readLocal */ }
       return request('lovable-preview-auth:remove', key, local ?? undefined).then(() => {});
     },
   };

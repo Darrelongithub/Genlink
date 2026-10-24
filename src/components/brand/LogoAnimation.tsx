@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import "./brand.css";
+import { safeSessionGet, safeSessionSet } from "@/lib/safeStorage";
 
 const SPLASH_KEY = "gl_splash";
 const SPLASH_MS = 2200;
@@ -32,7 +33,7 @@ export function LogoSplash() {
   const [state, setState] = useState<"hidden" | "play" | "exit">(() => {
     if (typeof window === "undefined") return "hidden";
     if (!SPLASH_ROUTES.includes(window.location.pathname)) return "hidden";
-    if (sessionStorage.getItem(SPLASH_KEY)) return "hidden";
+    if (safeSessionGet(SPLASH_KEY)) return "hidden";
     return "play";
   });
   const exitTimer = useRef<number>();
@@ -55,7 +56,7 @@ export function LogoSplash() {
 
   useEffect(() => {
     if (state !== "play") return;
-    sessionStorage.setItem(SPLASH_KEY, "1");
+    safeSessionSet(SPLASH_KEY, "1");
     exitTimer.current = window.setTimeout(exit, SPLASH_MS);
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") exit(); };
     window.addEventListener("keydown", onKey);
