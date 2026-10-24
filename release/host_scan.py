@@ -73,21 +73,47 @@ def main() -> int:
     violations: list[dict[str, Any]] = []
     notes: list[dict[str, Any]] = []
     files = 0
+    members = 0
 
-    adapt_src = ROOT / "Adapt-main" / "frontend" / "src"
-    for path in sorted(adapt_src.rglob("*")):
-        if not path.is_file() or path.suffix.lower() not in BROWSER_SUFFIXES:
-            continue
-        rel = str(path.relative_to(ROOT))
-        if SKIP_NAME.search(rel):
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        violations.extend(_violations(rel, text))
-        notes.extend(_notes(rel, text))
-        files += 1
+    adapt_sources = [ROOT / "Adapt-main" / "frontend" / "src"]
+    # main extracted a second, refactored Adapt copy at the top level on 2026-10-23.
+    # Scan it too when present so the gate does not silently cover only the older path.
+    if (ROOT / "adapt" / "frontend" / "src").exists():
+        adapt_sources.append(ROOT / "adapt" / "frontend" / "src")
+    for adapt_src in adapt_sources:
+        for path in sorted(adapt_src.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in BROWSER_SUFFIXES:
+                continue
+            rel = str(path.relative_to(ROOT))
+            if SKIP_NAME.search(rel):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            violations.extend(_violations(rel, text))
+            notes.extend(_notes(rel, text))
+            files += 1
+
+    # Genlink was also extracted to the repository root on main. Prefer the real
+    # source tree; fall back to the archive on older checkouts.
+    genlink_src = ROOT / "src"
+    if genlink_src.exists():
+        for path in sorted(genlink_src.rglob("*")):
+            if not path.is_file() or path.suffix.lower() not in BROWSER_SUFFIXES:
+                continue
+            rel = str(path.relative_to(ROOT))
+            if SKIP_NAME.search(rel):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            violations.extend(_violations(rel, text))
+            notes.extend(_notes(rel, text))
+            members += 1
+        index = ROOT / "index.html"
+        if index.exists():
+            text = index.read_text(encoding="utf-8", errors="replace")
+            violations.extend(_violations("index.html", text))
+            notes.extend(_notes("index.html", text))
+            members += 1
 
     archive = ROOT / "genink-school-of-the-elites-main (1).zip"
-    members = 0
     if archive.exists():
         with zipfile.ZipFile(archive) as zf:
             for name in zf.namelist():
@@ -108,7 +134,8 @@ def main() -> int:
 
     report = {
         "adapt_browser_files_scanned": files,
-        "genlink_archive_browser_files_scanned": members,
+        "genlink_browser_files_scanned": members,
+        "genlink_source": "root src/ (extracted on main)" if (ROOT / "src").exists() else "archive only",
         "violations": violations,
         "informational_loopback_mentions": notes[:40],
         "informational_count": len(notes),
@@ -118,7 +145,7 @@ def main() -> int:
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"scanned {files} Adapt browser files + {members} archived Genlink browser files")
+    print(f"scanned {files} Adapt browser files + {members} Genlink browser files")
     for item in violations:
         print(f"  FAIL {item['path']}:{item['line']} {item['kind']}")
     for item in notes[:8]:

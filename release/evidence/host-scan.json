@@ -1,15 +1,16 @@
 {
-  "adapt_browser_files_scanned": 92,
-  "genlink_archive_browser_files_scanned": 174,
+  "adapt_browser_files_scanned": 183,
+  "genlink_browser_files_scanned": 177,
+  "genlink_source": "root src/ (extracted on main)",
   "violations": [],
   "informational_loopback_mentions": [
     {
-      "path": "zip:genink-school-of-the-elites-main (1).zip:genink-school-of-the-elites-main/src/integrations/supabase/previewAuthStorage.ts",
+      "path": "src/integrations/supabase/previewAuthStorage.ts",
       "line": 63,
       "kind": "loopback_string_in_non_call_context"
     },
     {
-      "path": "zip:genink-school-of-the-elites-main (1).zip:genink-school-of-the-elites-main/src/integrations/supabase/previewAuthStorage.ts",
+      "path": "src/integrations/supabase/previewAuthStorage.ts",
       "line": 69,
       "kind": "loopback_string_in_non_call_context"
     }

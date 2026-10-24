@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791316459527,
+      "tag": "0000_support_code_blocks_and_staff_session_preview",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791317949631,
+      "tag": "0001_light_guide_platform_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791319385018,
+      "tag": "0002_tiers_xp_totals_visitor_caps",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791358830219,
+      "tag": "0003_fix_refresh_unit_xp_where",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791450368052,
+      "tag": "0004_foundation_specialisation_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792398087830,
+      "tag": "0005_unit_status_and_completion_flags",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,148 +1,2380 @@
 {
   "base": "working tree",
   "changed_python_files": [
-    "Adapt-main/backend/src/adapt/db/engine.py",
-    "Adapt-main/backend/tests/test_integration_release_contract.py",
-    "Adapt-main/backend/tests/test_release_concurrency_pool.py",
-    "Adapt-main/scripts/write_efficiency_doc.py",
-    "integration/__init__.py",
-    "integration/contract/__init__.py",
-    "integration/contract/validate.py",
-    "integration/reference_client.py",
-    "integration/test_reference_client.py",
-    "release/__init__.py",
-    "release/audit_summary.py",
-    "release/e2e_smoke.py",
-    "release/host_scan.py",
-    "release/lint_changed.py",
-    "release/migration_smoke.py",
-    "release/secret_scan.py",
-    "release/stress_check.py"
+    "adapt/backend/migrations/env.py",
+    "adapt/backend/migrations/versions/0001_initial_schema.py",
+    "adapt/backend/migrations/versions/0002_learning_engine.py",
+    "adapt/backend/migrations/versions/0003_scene_authorship.py",
+    "adapt/backend/migrations/versions/0004_item_calibration.py",
+    "adapt/backend/migrations/versions/0005_teaching_methods.py",
+    "adapt/backend/migrations/versions/0006_username_accounts.py",
+    "adapt/backend/migrations/versions/0007_learner_state_store.py",
+    "adapt/backend/migrations/versions/0008_baseline_tables.py",
+    "adapt/backend/migrations/versions/0009_journey_state.py",
+    "adapt/backend/migrations/versions/0010_call_class_and_cache.py",
+    "adapt/backend/migrations/versions/0011_study_tools.py",
+    "adapt/backend/migrations/versions/C1_lesson_writer_memory.py",
+    "adapt/backend/migrations/versions/P2_subject_round.py",
+    "adapt/backend/migrations/versions/P3_content_pack_cache.py",
+    "adapt/backend/migrations/versions/P4_learner_subjects.py",
+    "adapt/backend/migrations/versions/P5_subject_test_evidence.py",
+    "adapt/backend/migrations/versions/R10_learner_resource_review.py",
+    "adapt/backend/migrations/versions/R9_round9.py",
+    "adapt/backend/src/adapt/__init__.py",
+    "adapt/backend/src/adapt/ai/adaptation_policy.py",
+    "adapt/backend/src/adapt/ai/adapter.py",
+    "adapt/backend/src/adapt/ai/ai1.py",
+    "adapt/backend/src/adapt/ai/ai2.py",
+    "adapt/backend/src/adapt/ai/chain.py",
+    "adapt/backend/src/adapt/ai/context_cache.py",
+    "adapt/backend/src/adapt/ai/lesson_writer/__init__.py",
+    "adapt/backend/src/adapt/ai/lesson_writer/core.py",
+    "adapt/backend/src/adapt/ai/llm.py",
+    "adapt/backend/src/adapt/ai/local_tutor.py",
+    "adapt/backend/src/adapt/ai/monitor/__init__.py",
+    "adapt/backend/src/adapt/ai/monitor/checkin.py",
+    "adapt/backend/src/adapt/ai/monitor/models.py",
+    "adapt/backend/src/adapt/ai/monitor/service.py",
+    "adapt/backend/src/adapt/ai/prompts.py",
+    "adapt/backend/src/adapt/ai/routing.py",
+    "adapt/backend/src/adapt/ai/scene_narrator.py",
+    "adapt/backend/src/adapt/ai/static_context.py",
+    "adapt/backend/src/adapt/api/__init__.py",
+    "adapt/backend/src/adapt/api/app.py",
+    "adapt/backend/src/adapt/api/deps.py",
+    "adapt/backend/src/adapt/api/routes/__init__.py",
+    "adapt/backend/src/adapt/api/routes/adaptations.py",
+    "adapt/backend/src/adapt/api/routes/auth.py",
+    "adapt/backend/src/adapt/api/routes/baseline.py",
+    "adapt/backend/src/adapt/api/routes/check_in.py",
+    "adapt/backend/src/adapt/api/routes/content.py",
+    "adapt/backend/src/adapt/api/routes/content_prepare.py",
+    "adapt/backend/src/adapt/api/routes/curriculum.py",
+    "adapt/backend/src/adapt/api/routes/evidence.py",
+    "adapt/backend/src/adapt/api/routes/integration.py",
+    "adapt/backend/src/adapt/api/routes/journey.py",
+    "adapt/backend/src/adapt/api/routes/learning.py",
+    "adapt/backend/src/adapt/api/routes/lesson.py",
+    "adapt/backend/src/adapt/api/routes/lesson_plan.py",
+    "adapt/backend/src/adapt/api/routes/lessons.py",
+    "adapt/backend/src/adapt/api/routes/study.py",
+    "adapt/backend/src/adapt/api/routes/subjects.py",
+    "adapt/backend/src/adapt/api/routes/system.py",
+    "adapt/backend/src/adapt/api/routes/tests.py",
+    "adapt/backend/src/adapt/api/routes/tutor.py",
+    "adapt/backend/src/adapt/api/ws.py",
+    "adapt/backend/src/adapt/assessment/bank.py",
+    "adapt/backend/src/adapt/assessment/generated.py",
+    "adapt/backend/src/adapt/assessment/grading.py",
+    "adapt/backend/src/adapt/assessment/numbas.py",
+    "adapt/backend/src/adapt/assessment/selector.py",
+    "adapt/backend/src/adapt/assessment/teachback.py",
+    "adapt/backend/src/adapt/assessment/worked.py",
+    "adapt/backend/src/adapt/baseline/__init__.py",
+    "adapt/backend/src/adapt/baseline/factors.py",
+    "adapt/backend/src/adapt/baseline/flow.py",
+    "adapt/backend/src/adapt/baseline/games.py",
+    "adapt/backend/src/adapt/baseline/service.py",
+    "adapt/backend/src/adapt/cli.py",
+    "adapt/backend/src/adapt/config.py",
+    "adapt/backend/src/adapt/config_secrets.py",
+    "adapt/backend/src/adapt/connectors/__init__.py",
+    "adapt/backend/src/adapt/connectors/ai1_psychology.py",
+    "adapt/backend/src/adapt/connectors/ai2_education.py",
+    "adapt/backend/src/adapt/connectors/ai3_adaptation.py",
+    "adapt/backend/src/adapt/connectors/http.py",
+    "adapt/backend/src/adapt/connectors/oak.py",
+    "adapt/backend/src/adapt/connectors/psychologie.py",
+    "adapt/backend/src/adapt/connectors/registry.py",
+    "adapt/backend/src/adapt/connectors/slots.py",
+    "adapt/backend/src/adapt/connectors/wikimedia.py",
+    "adapt/backend/src/adapt/content/__init__.py",
+    "adapt/backend/src/adapt/content/breakdown.py",
+    "adapt/backend/src/adapt/content/concept_why.py",
+    "adapt/backend/src/adapt/content/distractors.py",
+    "adapt/backend/src/adapt/content/pack.py",
+    "adapt/backend/src/adapt/content/pipeline.py",
+    "adapt/backend/src/adapt/content/skeleton/__init__.py",
+    "adapt/backend/src/adapt/content/skeleton/authored.py",
+    "adapt/backend/src/adapt/content/skeleton/cache.py",
+    "adapt/backend/src/adapt/content/skeleton/objectives.py",
+    "adapt/backend/src/adapt/content/skeleton/schema.py",
+    "adapt/backend/src/adapt/content/skeleton/service.py",
+    "adapt/backend/src/adapt/content/skeleton/simple.py",
+    "adapt/backend/src/adapt/content/skeleton/types.py",
+    "adapt/backend/src/adapt/content/skeleton/validation.py",
+    "adapt/backend/src/adapt/content/sources.py",
+    "adapt/backend/src/adapt/content/symbolic.py",
+    "adapt/backend/src/adapt/content/validation.py",
+    "adapt/backend/src/adapt/crypto/__init__.py",
+    "adapt/backend/src/adapt/crypto/fields.py",
+    "adapt/backend/src/adapt/crypto/keys.py",
+    "adapt/backend/src/adapt/curriculum/__init__.py",
+    "adapt/backend/src/adapt/curriculum/models.py",
+    "adapt/backend/src/adapt/curriculum/scanner.py",
+    "adapt/backend/src/adapt/curriculum/service.py",
+    "adapt/backend/src/adapt/curriculum/syllabus_map.py",
+    "adapt/backend/src/adapt/db/__init__.py",
+    "adapt/backend/src/adapt/db/engine.py",
+    "adapt/backend/src/adapt/db/init_db.py",
+    "adapt/backend/src/adapt/db/models.py",
+    "adapt/backend/src/adapt/db/schema.py",
+    "adapt/backend/src/adapt/hosting.py",
+    "adapt/backend/src/adapt/journey/__init__.py",
+    "adapt/backend/src/adapt/journey/models.py",
+    "adapt/backend/src/adapt/journey/stages.py",
+    "adapt/backend/src/adapt/journey/state.py",
+    "adapt/backend/src/adapt/learning/__init__.py",
+    "adapt/backend/src/adapt/learning/bkt.py",
+    "adapt/backend/src/adapt/learning/content.py",
+    "adapt/backend/src/adapt/learning/effect.py",
+    "adapt/backend/src/adapt/learning/failure.py",
+    "adapt/backend/src/adapt/learning/gaps.py",
+    "adapt/backend/src/adapt/learning/hypotheses.py",
+    "adapt/backend/src/adapt/learning/methods.py",
+    "adapt/backend/src/adapt/learning/patterns.py",
+    "adapt/backend/src/adapt/learning/pilot.py",
+    "adapt/backend/src/adapt/learning/profile.py",
+    "adapt/backend/src/adapt/learning/reteach.py",
+    "adapt/backend/src/adapt/learning/scene_api.py",
+    "adapt/backend/src/adapt/learning/scenespec.py",
+    "adapt/backend/src/adapt/learning/seeds.py",
+    "adapt/backend/src/adapt/learning/segments.py",
+    "adapt/backend/src/adapt/learning/sims/__init__.py",
+    "adapt/backend/src/adapt/learning/sims/_choice.py",
+    "adapt/backend/src/adapt/learning/sims/binary_search.py",
+    "adapt/backend/src/adapt/learning/sims/cpu_cycle.py",
+    "adapt/backend/src/adapt/learning/sims/logic_gates.py",
+    "adapt/backend/src/adapt/learning/sims/sorting.py",
+    "adapt/backend/src/adapt/learning/spacing.py",
+    "adapt/backend/src/adapt/learning/strategies.py",
+    "adapt/backend/src/adapt/learning/telemetry.py",
+    "adapt/backend/src/adapt/learning/template_library.py",
+    "adapt/backend/src/adapt/learning/visuals.py",
+    "adapt/backend/src/adapt/lesson/__init__.py",
+    "adapt/backend/src/adapt/lesson/templates.py",
+    "adapt/backend/src/adapt/pitch_contracts.py",
+    "adapt/backend/src/adapt/resources/base.py",
+    "adapt/backend/src/adapt/resources/curation.py",
+    "adapt/backend/src/adapt/resources/providers.py",
+    "adapt/backend/src/adapt/resources/service.py",
+    "adapt/backend/src/adapt/security/__init__.py",
+    "adapt/backend/src/adapt/security/audit.py",
+    "adapt/backend/src/adapt/security/auth.py",
+    "adapt/backend/src/adapt/security/demo_capacity.py",
+    "adapt/backend/src/adapt/security/middleware.py",
+    "adapt/backend/src/adapt/security/ratelimit.py",
+    "adapt/backend/src/adapt/security/redact.py",
+    "adapt/backend/src/adapt/security/secrecy.py",
+    "adapt/backend/src/adapt/services/__init__.py",
+    "adapt/backend/src/adapt/services/adaptations.py",
+    "adapt/backend/src/adapt/services/attempts.py",
+    "adapt/backend/src/adapt/services/dashboard.py",
+    "adapt/backend/src/adapt/services/evidence.py",
+    "adapt/backend/src/adapt/services/export.py",
+    "adapt/backend/src/adapt/services/journey.py",
+    "adapt/backend/src/adapt/services/lessons.py",
+    "adapt/backend/src/adapt/services/pilot.py",
+    "adapt/backend/src/adapt/services/sessions.py",
+    "adapt/backend/src/adapt/services/telemetry.py",
+    "adapt/backend/src/adapt/state/__init__.py",
+    "adapt/backend/src/adapt/state/model.py",
+    "adapt/backend/src/adapt/state/orchestrator.py",
+    "adapt/backend/src/adapt/state/permissions.py",
+    "adapt/backend/src/adapt/state/snapshot.py",
+    "adapt/backend/src/adapt/state/store.py",
+    "adapt/backend/src/adapt/subjects/__init__.py",
+    "adapt/backend/src/adapt/subjects/catalog.py",
+    "adapt/backend/src/adapt/subjects/curriculum.py",
+    "adapt/backend/src/adapt/subjects/games.py",
+    "adapt/backend/src/adapt/subjects/grading.py",
+    "adapt/backend/src/adapt/subjects/ladder.py",
+    "adapt/backend/src/adapt/subjects/leanings.py",
+    "adapt/backend/src/adapt/subjects/methodtest.py",
+    "adapt/backend/src/adapt/subjects/models.py",
+    "adapt/backend/src/adapt/subjects/placement.py",
+    "adapt/backend/src/adapt/subjects/plan.py",
+    "adapt/backend/src/adapt/subjects/resolve.py",
+    "adapt/backend/src/adapt/subjects/service.py",
+    "adapt/backend/src/adapt/subjects/taxonomy.py",
+    "adapt/backend/src/adapt/subjects/test_items.py",
+    "adapt/backend/src/adapt/subjects/topics.py",
+    "adapt/backend/src/adapt/voice/audio.py",
+    "adapt/backend/src/adapt/voice/pipeline.py",
+    "adapt/backend/src/adapt/voice/stt.py",
+    "adapt/backend/src/adapt/voice/tts.py",
+    "adapt/backend/src/adapt/voice/vad.py",
+    "adapt/backend/tests/conftest.py",
+    "adapt/backend/tests/content_skeleton/__init__.py",
+    "adapt/backend/tests/content_skeleton/fakes.py",
+    "adapt/backend/tests/content_skeleton/test_cache_and_route.py",
+    "adapt/backend/tests/content_skeleton/test_service.py",
+    "adapt/backend/tests/fixtures/model/contract_stub.py",
+    "adapt/backend/tests/fixtures/model/e2e_model.py",
+    "adapt/backend/tests/fixtures/model/scripted_model.py",
+    "adapt/backend/tests/lesson_writer/fixture_data.py",
+    "adapt/backend/tests/lesson_writer/test_round4.py",
+    "adapt/backend/tests/lesson_writer/test_routes.py",
+    "adapt/backend/tests/lesson_writer/test_writer.py",
+    "adapt/backend/tests/test_adapter.py",
+    "adapt/backend/tests/test_ai_efficiency.py",
+    "adapt/backend/tests/test_analytics_default.py",
+    "adapt/backend/tests/test_api_learner_loop.py",
+    "adapt/backend/tests/test_assessment.py",
+    "adapt/backend/tests/test_baseline.py",
+    "adapt/backend/tests/test_config_secrecy.py",
+    "adapt/backend/tests/test_content_engine.py",
+    "adapt/backend/tests/test_crypto_and_encryption.py",
+    "adapt/backend/tests/test_db_session_scope.py",
+    "adapt/backend/tests/test_demo_capacity.py",
+    "adapt/backend/tests/test_detectors.py",
+    "adapt/backend/tests/test_entry_and_home.py",
+    "adapt/backend/tests/test_env_setup.py",
+    "adapt/backend/tests/test_evidence_integration.py",
+    "adapt/backend/tests/test_failure_loop.py",
+    "adapt/backend/tests/test_functionality_round_phase1.py",
+    "adapt/backend/tests/test_generated_items.py",
+    "adapt/backend/tests/test_hosting.py",
+    "adapt/backend/tests/test_integration_endpoint.py",
+    "adapt/backend/tests/test_item_variant_rendering.py",
+    "adapt/backend/tests/test_learner_export.py",
+    "adapt/backend/tests/test_learner_model_consistency.py",
+    "adapt/backend/tests/test_learning_math.py",
+    "adapt/backend/tests/test_lesson_reflection.py",
+    "adapt/backend/tests/test_lessons_api.py",
+    "adapt/backend/tests/test_live_check_harness.py",
+    "adapt/backend/tests/test_llm_consent.py",
+    "adapt/backend/tests/test_llm_gemini_path.py",
+    "adapt/backend/tests/test_llm_plumbing.py",
+    "adapt/backend/tests/test_master_prompts_4_5_6.py",
+    "adapt/backend/tests/test_migration_encryption.py",
+    "adapt/backend/tests/test_migrations.py",
+    "adapt/backend/tests/test_numbas_import_fidelity.py",
+    "adapt/backend/tests/test_pilot_labelling.py",
+    "adapt/backend/tests/test_pitch_contracts.py",
+    "adapt/backend/tests/test_prompt_injection.py",
+    "adapt/backend/tests/test_realtime_guards.py",
+    "adapt/backend/tests/test_resource_providers.py",
+    "adapt/backend/tests/test_review_schedule_direction.py",
+    "adapt/backend/tests/test_round2_a_public_privacy_and_logs.py",
+    "adapt/backend/tests/test_round2_a_teaching_text.py",
+    "adapt/backend/tests/test_round2_f_baseline_games.py",
+    "adapt/backend/tests/test_round2_f_subjects.py",
+    "adapt/backend/tests/test_round2_g_integration.py",
+    "adapt/backend/tests/test_round2_phase_a.py",
+    "adapt/backend/tests/test_round2_phase_d_journey.py",
+    "adapt/backend/tests/test_round5_subject_spine.py",
+    "adapt/backend/tests/test_round7_games.py",
+    "adapt/backend/tests/test_round9.py",
+    "adapt/backend/tests/test_scenespec.py",
+    "adapt/backend/tests/test_shipped_catalogue_has_prose_subjects.py",
+    "adapt/backend/tests/test_sims.py",
+    "adapt/backend/tests/test_smoke_new_endpoints.py",
+    "adapt/backend/tests/test_startup_schema.py",
+    "adapt/backend/tests/test_state_foundation.py",
+    "adapt/backend/tests/test_study_tools.py",
+    "adapt/backend/tests/test_subject_agnostic_content.py",
+    "adapt/backend/tests/test_subject_run_resume.py",
+    "adapt/backend/tests/test_subject_test_grading.py",
+    "adapt/backend/tests/test_subject_test_items.py",
+    "adapt/backend/tests/test_subjects.py",
+    "adapt/backend/tests/test_teachback_master_prompt.py",
+    "adapt/backend/tests/test_teaching_quality.py",
+    "adapt/backend/tests/test_telemetry.py",
+    "adapt/backend/tests/test_telemetry_consent.py",
+    "adapt/backend/tests/test_the_loop_closes.py",
+    "adapt/backend/tests/test_three_ai_apis.py",
+    "adapt/backend/tests/test_track_f_scenes.py",
+    "adapt/backend/tests/test_trusted_proxy.py",
+    "adapt/backend/tests/test_voice_pipeline.py",
+    "adapt/backend/tests/test_wrong_answers_are_actually_wrong.py",
+    "adapt/scripts/adaptation_check.py",
+    "adapt/scripts/demo_seed.py",
+    "adapt/scripts/failure_matrix_check.py",
+    "adapt/scripts/journey_check.py",
+    "adapt/scripts/live_model_check.py",
+    "adapt/scripts/load_demo.py",
+    "adapt/scripts/serve_with_fake_model.py",
+    "adapt/scripts/teaching_quality_eval.py",
+    "release/host_scan.py"
   ],
   "files": [
     {
-      "path": "Adapt-main/backend/src/adapt/db/engine.py",
+      "path": "adapt/backend/migrations/env.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0001_initial_schema.py",
+      "untracked": false,
+      "ruff_findings_in_file": 35,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0002_learning_engine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0003_scene_authorship.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0004_item_calibration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0005_teaching_methods.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0006_username_accounts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0007_learner_state_store.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0008_baseline_tables.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0009_journey_state.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0010_call_class_and_cache.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/0011_study_tools.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/C1_lesson_writer_memory.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/P2_subject_round.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/P3_content_pack_cache.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/P4_learner_subjects.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/P5_subject_test_evidence.py",
+      "untracked": false,
+      "ruff_findings_in_file": 7,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/R10_learner_resource_review.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/migrations/versions/R9_round9.py",
       "untracked": false,
       "ruff_findings_in_file": 11,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 13
+      "added_lines": 0
     },
     {
-      "path": "Adapt-main/backend/tests/test_integration_release_contract.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/__init__.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 330
+      "added_lines": 0
     },
     {
-      "path": "Adapt-main/backend/tests/test_release_concurrency_pool.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
+      "path": "adapt/backend/src/adapt/ai/adaptation_policy.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 46
+      "added_lines": 0
     },
     {
-      "path": "Adapt-main/scripts/write_efficiency_doc.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
+      "path": "adapt/backend/src/adapt/ai/adapter.py",
+      "untracked": false,
+      "ruff_findings_in_file": 147,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 102
+      "added_lines": 0
     },
     {
-      "path": "integration/__init__.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
+      "path": "adapt/backend/src/adapt/ai/ai1.py",
+      "untracked": false,
+      "ruff_findings_in_file": 92,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 1
+      "added_lines": 0
     },
     {
-      "path": "integration/contract/__init__.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
+      "path": "adapt/backend/src/adapt/ai/ai2.py",
+      "untracked": false,
+      "ruff_findings_in_file": 82,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 1
+      "added_lines": 0
     },
     {
-      "path": "integration/contract/validate.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
+      "path": "adapt/backend/src/adapt/ai/chain.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 174
+      "added_lines": 0
     },
     {
-      "path": "integration/reference_client.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/ai/context_cache.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 210
+      "added_lines": 0
     },
     {
-      "path": "integration/test_reference_client.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/ai/lesson_writer/__init__.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 368
+      "added_lines": 0
     },
     {
-      "path": "release/__init__.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/ai/lesson_writer/core.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 1
+      "added_lines": 0
     },
     {
-      "path": "release/audit_summary.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/ai/llm.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 127
+      "added_lines": 0
     },
     {
-      "path": "release/e2e_smoke.py",
-      "untracked": true,
+      "path": "adapt/backend/src/adapt/ai/local_tutor.py",
+      "untracked": false,
+      "ruff_findings_in_file": 87,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/monitor/__init__.py",
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 447
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/monitor/checkin.py",
+      "untracked": false,
+      "ruff_findings_in_file": 19,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/monitor/models.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/monitor/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 16,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/prompts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/routing.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/scene_narrator.py",
+      "untracked": false,
+      "ruff_findings_in_file": 20,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/ai/static_context.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/app.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/deps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/adaptations.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/auth.py",
+      "untracked": false,
+      "ruff_findings_in_file": 18,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/baseline.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/check_in.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/content.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/content_prepare.py",
+      "untracked": false,
+      "ruff_findings_in_file": 7,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/curriculum.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/evidence.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/integration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/journey.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/learning.py",
+      "untracked": false,
+      "ruff_findings_in_file": 42,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/lesson.py",
+      "untracked": false,
+      "ruff_findings_in_file": 7,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/lesson_plan.py",
+      "untracked": false,
+      "ruff_findings_in_file": 35,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/lessons.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/study.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/subjects.py",
+      "untracked": false,
+      "ruff_findings_in_file": 24,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/system.py",
+      "untracked": false,
+      "ruff_findings_in_file": 26,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/tests.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/routes/tutor.py",
+      "untracked": false,
+      "ruff_findings_in_file": 29,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/ws.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/bank.py",
+      "untracked": false,
+      "ruff_findings_in_file": 170,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/generated.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/grading.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/numbas.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/selector.py",
+      "untracked": false,
+      "ruff_findings_in_file": 30,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/teachback.py",
+      "untracked": false,
+      "ruff_findings_in_file": 33,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/assessment/worked.py",
+      "untracked": false,
+      "ruff_findings_in_file": 41,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/baseline/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/baseline/factors.py",
+      "untracked": false,
+      "ruff_findings_in_file": 70,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/baseline/flow.py",
+      "untracked": false,
+      "ruff_findings_in_file": 17,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/baseline/games.py",
+      "untracked": false,
+      "ruff_findings_in_file": 43,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/baseline/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 62,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/cli.py",
+      "untracked": false,
+      "ruff_findings_in_file": 75,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/config.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/config_secrets.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/ai1_psychology.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/ai2_education.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/ai3_adaptation.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/http.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/oak.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/psychologie.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/registry.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/slots.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/connectors/wikimedia.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/breakdown.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/concept_why.py",
+      "untracked": false,
+      "ruff_findings_in_file": 44,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/distractors.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/pack.py",
+      "untracked": false,
+      "ruff_findings_in_file": 43,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/pipeline.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/authored.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/cache.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/objectives.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/schema.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/simple.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/types.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/skeleton/validation.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/sources.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/symbolic.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/content/validation.py",
+      "untracked": false,
+      "ruff_findings_in_file": 40,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/crypto/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/crypto/fields.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/crypto/keys.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/curriculum/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/curriculum/models.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/curriculum/scanner.py",
+      "untracked": false,
+      "ruff_findings_in_file": 24,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/curriculum/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/curriculum/syllabus_map.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/db/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/db/engine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/db/init_db.py",
+      "untracked": false,
+      "ruff_findings_in_file": 18,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/db/models.py",
+      "untracked": false,
+      "ruff_findings_in_file": 70,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/db/schema.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/hosting.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/journey/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/journey/models.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/journey/stages.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/journey/state.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/bkt.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/content.py",
+      "untracked": false,
+      "ruff_findings_in_file": 12,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/effect.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/failure.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/gaps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/hypotheses.py",
+      "untracked": false,
+      "ruff_findings_in_file": 84,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/methods.py",
+      "untracked": false,
+      "ruff_findings_in_file": 19,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/patterns.py",
+      "untracked": false,
+      "ruff_findings_in_file": 23,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/pilot.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/profile.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/reteach.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/scene_api.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/scenespec.py",
+      "untracked": false,
+      "ruff_findings_in_file": 36,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/seeds.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/segments.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/_choice.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/binary_search.py",
+      "untracked": false,
+      "ruff_findings_in_file": 34,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/cpu_cycle.py",
+      "untracked": false,
+      "ruff_findings_in_file": 44,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/logic_gates.py",
+      "untracked": false,
+      "ruff_findings_in_file": 22,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/sims/sorting.py",
+      "untracked": false,
+      "ruff_findings_in_file": 22,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/spacing.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/strategies.py",
+      "untracked": false,
+      "ruff_findings_in_file": 50,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/telemetry.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/template_library.py",
+      "untracked": false,
+      "ruff_findings_in_file": 48,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/learning/visuals.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/lesson/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/lesson/templates.py",
+      "untracked": false,
+      "ruff_findings_in_file": 50,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/pitch_contracts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/resources/base.py",
+      "untracked": false,
+      "ruff_findings_in_file": 24,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/resources/curation.py",
+      "untracked": false,
+      "ruff_findings_in_file": 7,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/resources/providers.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/resources/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 16,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/audit.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/auth.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/demo_capacity.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/middleware.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/ratelimit.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/redact.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/security/secrecy.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 17,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/adaptations.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/attempts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/dashboard.py",
+      "untracked": false,
+      "ruff_findings_in_file": 18,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/evidence.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/export.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/journey.py",
+      "untracked": false,
+      "ruff_findings_in_file": 24,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/lessons.py",
+      "untracked": false,
+      "ruff_findings_in_file": 40,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/pilot.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/sessions.py",
+      "untracked": false,
+      "ruff_findings_in_file": 23,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/services/telemetry.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/model.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/orchestrator.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/permissions.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/snapshot.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/state/store.py",
+      "untracked": false,
+      "ruff_findings_in_file": 26,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/catalog.py",
+      "untracked": false,
+      "ruff_findings_in_file": 17,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/curriculum.py",
+      "untracked": false,
+      "ruff_findings_in_file": 409,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/games.py",
+      "untracked": false,
+      "ruff_findings_in_file": 249,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/grading.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/ladder.py",
+      "untracked": false,
+      "ruff_findings_in_file": 43,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/leanings.py",
+      "untracked": false,
+      "ruff_findings_in_file": 26,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/methodtest.py",
+      "untracked": false,
+      "ruff_findings_in_file": 276,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/models.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/placement.py",
+      "untracked": false,
+      "ruff_findings_in_file": 12,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/plan.py",
+      "untracked": false,
+      "ruff_findings_in_file": 20,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/resolve.py",
+      "untracked": false,
+      "ruff_findings_in_file": 40,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 131,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/taxonomy.py",
+      "untracked": false,
+      "ruff_findings_in_file": 36,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/test_items.py",
+      "untracked": false,
+      "ruff_findings_in_file": 33,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/subjects/topics.py",
+      "untracked": false,
+      "ruff_findings_in_file": 17,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/voice/audio.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/voice/pipeline.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/voice/stt.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/voice/tts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/src/adapt/voice/vad.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/conftest.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/content_skeleton/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/content_skeleton/fakes.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/content_skeleton/test_cache_and_route.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/content_skeleton/test_service.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/fixtures/model/contract_stub.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/fixtures/model/e2e_model.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/fixtures/model/scripted_model.py",
+      "untracked": false,
+      "ruff_findings_in_file": 21,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/lesson_writer/fixture_data.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/lesson_writer/test_round4.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/lesson_writer/test_routes.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/lesson_writer/test_writer.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_adapter.py",
+      "untracked": false,
+      "ruff_findings_in_file": 69,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_ai_efficiency.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_analytics_default.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_api_learner_loop.py",
+      "untracked": false,
+      "ruff_findings_in_file": 235,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_assessment.py",
+      "untracked": false,
+      "ruff_findings_in_file": 30,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_baseline.py",
+      "untracked": false,
+      "ruff_findings_in_file": 28,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_config_secrecy.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_content_engine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 33,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_crypto_and_encryption.py",
+      "untracked": false,
+      "ruff_findings_in_file": 13,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_db_session_scope.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_demo_capacity.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_detectors.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_entry_and_home.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_env_setup.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_evidence_integration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_failure_loop.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_functionality_round_phase1.py",
+      "untracked": false,
+      "ruff_findings_in_file": 26,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_generated_items.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_hosting.py",
+      "untracked": false,
+      "ruff_findings_in_file": 16,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_integration_endpoint.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_item_variant_rendering.py",
+      "untracked": false,
+      "ruff_findings_in_file": 37,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_learner_export.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_learner_model_consistency.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_learning_math.py",
+      "untracked": false,
+      "ruff_findings_in_file": 14,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_lesson_reflection.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_lessons_api.py",
+      "untracked": false,
+      "ruff_findings_in_file": 101,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_live_check_harness.py",
+      "untracked": false,
+      "ruff_findings_in_file": 25,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_llm_consent.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_llm_gemini_path.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_llm_plumbing.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_master_prompts_4_5_6.py",
+      "untracked": false,
+      "ruff_findings_in_file": 29,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_migration_encryption.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_migrations.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_numbas_import_fidelity.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_pilot_labelling.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_pitch_contracts.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_prompt_injection.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_realtime_guards.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_resource_providers.py",
+      "untracked": false,
+      "ruff_findings_in_file": 12,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_review_schedule_direction.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_a_public_privacy_and_logs.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_a_teaching_text.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_f_baseline_games.py",
+      "untracked": false,
+      "ruff_findings_in_file": 29,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_f_subjects.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_g_integration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_phase_a.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round2_phase_d_journey.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round5_subject_spine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round7_games.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_round9.py",
+      "untracked": false,
+      "ruff_findings_in_file": 33,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_scenespec.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_shipped_catalogue_has_prose_subjects.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_sims.py",
+      "untracked": false,
+      "ruff_findings_in_file": 27,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_smoke_new_endpoints.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_startup_schema.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_state_foundation.py",
+      "untracked": false,
+      "ruff_findings_in_file": 25,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_study_tools.py",
+      "untracked": false,
+      "ruff_findings_in_file": 5,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_subject_agnostic_content.py",
+      "untracked": false,
+      "ruff_findings_in_file": 24,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_subject_run_resume.py",
+      "untracked": false,
+      "ruff_findings_in_file": 8,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_subject_test_grading.py",
+      "untracked": false,
+      "ruff_findings_in_file": 19,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_subject_test_items.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_subjects.py",
+      "untracked": false,
+      "ruff_findings_in_file": 172,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_teachback_master_prompt.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_teaching_quality.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_telemetry.py",
+      "untracked": false,
+      "ruff_findings_in_file": 10,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_telemetry_consent.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_the_loop_closes.py",
+      "untracked": false,
+      "ruff_findings_in_file": 4,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_three_ai_apis.py",
+      "untracked": false,
+      "ruff_findings_in_file": 23,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_track_f_scenes.py",
+      "untracked": false,
+      "ruff_findings_in_file": 15,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_trusted_proxy.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_voice_pipeline.py",
+      "untracked": false,
+      "ruff_findings_in_file": 20,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/backend/tests/test_wrong_answers_are_actually_wrong.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/adaptation_check.py",
+      "untracked": false,
+      "ruff_findings_in_file": 9,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/demo_seed.py",
+      "untracked": false,
+      "ruff_findings_in_file": 2,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/failure_matrix_check.py",
+      "untracked": false,
+      "ruff_findings_in_file": 20,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/journey_check.py",
+      "untracked": false,
+      "ruff_findings_in_file": 53,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/live_model_check.py",
+      "untracked": false,
+      "ruff_findings_in_file": 92,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/load_demo.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/serve_with_fake_model.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
+    },
+    {
+      "path": "adapt/scripts/teaching_quality_eval.py",
+      "untracked": false,
+      "ruff_findings_in_file": 60,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 0
     },
     {
       "path": "release/host_scan.py",
-      "untracked": true,
+      "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 131
-    },
-    {
-      "path": "release/lint_changed.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
-      "ruff_findings_on_added_lines": 0,
-      "added_lines": 160
-    },
-    {
-      "path": "release/migration_smoke.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
-      "ruff_findings_on_added_lines": 0,
-      "added_lines": 184
-    },
-    {
-      "path": "release/secret_scan.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
-      "ruff_findings_on_added_lines": 0,
-      "added_lines": 185
-    },
-    {
-      "path": "release/stress_check.py",
-      "untracked": true,
-      "ruff_findings_in_file": 0,
-      "ruff_findings_on_added_lines": 0,
-      "added_lines": 693
+      "added_lines": 41
     }
   ],
   "compile_errors": [],
   "diff_findings": [],
-  "baseline_findings": 11,
+  "baseline_findings": 5521,
   "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
   "outcome": "PASS"
 }
