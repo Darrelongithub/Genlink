@@ -81,11 +81,23 @@ def get_keyring() -> keymod.Keyring:
     return _KEYRING
 
 
+# A hosted room is a few dozen learners writing through one process. SQLite
+# serialises writers, so the pool must have enough connections for the
+# request threads serving them (SQLAlchemy's file default is 5 + 10 overflow,
+# which a class answering at once exhausts -- the overflow requests then wait
+# on the *pool*, not the database, and time out as 500s), and a writer that
+# finds the database busy must wait for the queue in front of it rather than
+# failing at 5s. 15s of busy-wait under WAL is still far inside the client's
+# own 25s request timeout.
+_POOL_KWARGS = {"pool_size": 12, "max_overflow": 24, "pool_timeout": 30}
+BUSY_TIMEOUT_MS = 15000
+
+
 def _sqlite_pragmas(shared: bool) -> Callable[[object, object], None]:
     def _apply(dbapi_conn, _record) -> None:
         cur = dbapi_conn.cursor()
         cur.execute("PRAGMA foreign_keys = ON")
-        cur.execute("PRAGMA busy_timeout = 5000")
+        cur.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
         cur.execute("PRAGMA synchronous = NORMAL")
         cur.execute("PRAGMA journal_mode = WAL" if shared else "PRAGMA journal_mode = MEMORY")
         cur.close()
@@ -167,6 +179,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
             module=sqlcipher,
             future=True,
             connect_args={"check_same_thread": False},
+            **_POOL_KWARGS,
         )
         key_hex = keyring.subkey("sqlcipher").hex()
         memory_kib = max(128, settings.sqlcipher_memory // 1024)
@@ -180,7 +193,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
             cur.execute(f"PRAGMA cipher_memory_capacity = {memory_kib}")
             cur.execute("PRAGMA cipher_plaintext_header_size = 0")
             cur.execute("PRAGMA foreign_keys = ON")
-            cur.execute("PRAGMA busy_timeout = 5000")
+            cur.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
             cur.execute("PRAGMA journal_mode = WAL")
             cur.execute("PRAGMA synchronous = NORMAL")
             cur.close()
@@ -204,6 +217,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
         f"sqlite:///{db_file}",
         future=True,
         connect_args={"check_same_thread": False} if is_file else {},
+        **(_POOL_KWARGS if is_file else {}),
     )
     event.listen(engine, "connect", _sqlite_pragmas(is_file))
 

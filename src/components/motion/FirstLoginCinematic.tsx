@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { safeLocalGet, safeLocalSet } from "@/lib/safeStorage";
 
 const STORAGE_PREFIX = "genlink:firstLoginCinematic:";
 
@@ -13,9 +14,9 @@ export default function FirstLoginCinematic() {
   useEffect(() => {
     if (!user?.id) return;
     const key = STORAGE_PREFIX + user.id;
-    if (localStorage.getItem(key)) return;
+    if (safeLocalGet(key)) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    localStorage.setItem(key, "1");
+    safeLocalSet(key, "1");
     if (reduce) return;
     setVisible(true);
   }, [user?.id]);

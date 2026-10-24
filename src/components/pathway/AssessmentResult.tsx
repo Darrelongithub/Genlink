@@ -1,3 +1,4 @@
+import { safeLocalSet } from "@/lib/safeStorage";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -99,7 +100,7 @@ const AssessmentResult = ({ result, onRetake }: Props) => {
         secondary_pillar_recommended: profile.secondaryPillarId,
         raw_dimensions: profile.dimensionPercentages,
       };
-      localStorage.setItem("genlink_pending_assessment", JSON.stringify(snapshot));
+      safeLocalSet("genlink_pending_assessment", JSON.stringify(snapshot));
 
       // Best-effort lead capture.
       await supabase.from("leads").insert({

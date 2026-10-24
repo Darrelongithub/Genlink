@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { makeId, safeSessionGet, safeSessionSet } from "@/lib/safeStorage";
 import LightGuide from "./LightGuide";
 import "./lightGuide.css";
 import type { TutorContext } from "./LightGuideProvider";
@@ -24,8 +25,11 @@ interface Msg { role: "user" | "assistant"; content: string; actions?: GuideActi
 
 const ANON_ID_KEY = "lg-anon-id";
 function anonId() {
-  let id = sessionStorage.getItem(ANON_ID_KEY);
-  if (!id) { id = crypto.randomUUID(); sessionStorage.setItem(ANON_ID_KEY, id); }
+  // safeSession*/makeId: on a plain-http LAN address Safari has no
+  // crypto.randomUUID (secure contexts only) and may refuse storage --
+  // both used to throw here and take the tutor down on Apple devices.
+  let id = safeSessionGet(ANON_ID_KEY);
+  if (!id) { id = makeId(); safeSessionSet(ANON_ID_KEY, id); }
   return id;
 }
 
@@ -44,12 +48,12 @@ export default function TutorPanel({ open, onClose, route, pageContext }: Props)
   // One conversation per browser tab, persisted across navigation.
   useEffect(() => {
     try {
-      setMessages(JSON.parse(sessionStorage.getItem(storeKey) || "[]"));
-      setUsage(JSON.parse(sessionStorage.getItem(usageKey) || "null"));
+      setMessages(JSON.parse(safeSessionGet(storeKey) || "[]"));
+      setUsage(JSON.parse(safeSessionGet(usageKey) || "null"));
     } catch { setMessages([]); setUsage(null); }
   }, [storeKey, usageKey]);
-  useEffect(() => { sessionStorage.setItem(storeKey, JSON.stringify(messages.slice(-40))); }, [messages, storeKey]);
-  useEffect(() => { if (usage) sessionStorage.setItem(usageKey, JSON.stringify(usage)); }, [usage, usageKey]);
+  useEffect(() => { safeSessionSet(storeKey, JSON.stringify(messages.slice(-40))); }, [messages, storeKey]);
+  useEffect(() => { if (usage) safeSessionSet(usageKey, JSON.stringify(usage)); }, [usage, usageKey]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

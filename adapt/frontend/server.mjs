@@ -11,8 +11,8 @@
  * app shows what it could not reach instead of pretending.
  */
 import { createServer } from "node:http";
-import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
+import { Agent as HttpAgent, request as httpRequest } from "node:http";
+import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import next from "next";
 import "./env.mjs";
 
@@ -40,6 +40,16 @@ const WS_PREFIXES = ["/ws/"];
 // of the honest 503 the proxy below is written to return.
 const target = offline ? null : new URL(backend);
 const transport = target?.protocol === "https:" ? httpsRequest : httpRequest;
+// One keep-alive pool to the backend. Without it, every API call from every
+// learner opened a fresh TCP connection: under a full room that churn (plus
+// the TIME_WAIT sockets it leaves behind) was latency nobody asked for, on
+// the one machine serving everybody.
+const backendAgent = target
+  ? new (target.protocol === "https:" ? HttpsAgent : HttpAgent)({ keepAlive: true, maxSockets: 64 })
+  : null;
+// The browser client gives up at 25s (src/lib/api.ts); the proxy holding a
+// backend request longer than that only queues work nobody is waiting for.
+const UPSTREAM_TIMEOUT_MS = 30_000;
 
 function proxy(req, res) {
   if (offline) {
@@ -53,44 +63,62 @@ function proxy(req, res) {
     );
     return;
   }
-  const chunks = [];
-  req.on("data", (c) => chunks.push(c));
-  req.on("end", () => {
-    const body = Buffer.concat(chunks);
-    const headers = { ...req.headers };
-    delete headers.host;
-    delete headers.connection;
-    delete headers["accept-encoding"]; // keep the upstream body gzipped-free: we forward bytes verbatim
-    if (target.port) headers.host = `${target.hostname}:${target.port}`;
-    const upstream = transport(
-      {
-        protocol: target.protocol,
-        hostname: target.hostname,
-        port: target.port || (target.protocol === "https:" ? 443 : 80),
-        method: req.method,
-        path: req.originalUrl ?? req.url,
-        headers,
-      },
-      (up) => {
-        const out = { ...up.headers };
-        // The session cookie is scoped to this origin by the browser; the backend sets
-        // it without a Domain attribute, so it passes through unchanged.
-        res.writeHead(up.statusCode ?? 502, out);
-        up.pipe(res);
-      },
-    );
-    upstream.on("error", (err) => {
-      res.writeHead(502, { "content-type": "application/json", "cache-control": "no-store" });
-      res.end(
-        JSON.stringify({
-          error: "api_unreachable",
-          detail: `the backend at ${backend} did not answer (${err.code || err.message}). Start it with: uvicorn adapt.api.app:app --port 8000`,
-        }),
-      );
-    });
-    if (body.length) upstream.end(body);
-    else upstream.end();
+  const headers = { ...req.headers };
+  delete headers.host;
+  delete headers.connection;
+  delete headers["transfer-encoding"]; // we re-frame the body by piping; Node re-chunks as needed
+  delete headers["accept-encoding"]; // keep the upstream body gzipped-free: we forward bytes verbatim
+  if (target.port) headers.host = `${target.hostname}:${target.port}`;
+  const upstream = transport(
+    {
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port || (target.protocol === "https:" ? 443 : 80),
+      method: req.method,
+      path: req.originalUrl ?? req.url,
+      headers,
+      agent: backendAgent,
+    },
+    (up) => {
+      const out = { ...up.headers };
+      // The session cookie is scoped to this origin by the browser; the backend sets
+      // it without a Domain attribute, so it passes through unchanged.
+      res.writeHead(up.statusCode ?? 502, out);
+      up.pipe(res);
+      up.on("error", () => res.destroy());
+    },
+  );
+  upstream.setTimeout(UPSTREAM_TIMEOUT_MS, () => {
+    upstream.destroy(new Error(`the backend did not answer within ${UPSTREAM_TIMEOUT_MS / 1000} seconds`));
   });
+  upstream.on("error", (err) => {
+    // If the response already started, a fresh 502 can no longer be written:
+    // writeHead after headers are sent THROWS, and an uncaught throw here
+    // killed this process -- one backend hiccup mid-response took the web
+    // server down for the host and every joined learner at once. Cutting
+    // the one broken response is the honest failure; the room stays up.
+    if (res.headersSent || res.writableEnded) {
+      res.destroy();
+      return;
+    }
+    res.writeHead(502, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(
+      JSON.stringify({
+        error: "api_unreachable",
+        detail: `the backend at ${backend} did not answer (${err.code || err.message}). Start it with: uvicorn adapt.api.app:app --port 8000`,
+      }),
+    );
+  });
+  // A learner navigating away frees the backend request too, instead of the
+  // backend finishing work for a socket nobody is reading.
+  res.on("close", () => {
+    if (!res.writableEnded) upstream.destroy();
+  });
+  req.on("error", () => upstream.destroy());
+  // Stream the body through instead of buffering it whole first: the buffered
+  // version added a full upload's wait to every call and held a roomful of
+  // request bodies in memory at once.
+  req.pipe(upstream);
 }
 
 const server = createServer((req, res) => {
@@ -162,6 +190,12 @@ server.on("upgrade", (req, socket, head) => {
   });
   proxyReq.end();
 });
+
+// Slightly patient keep-alive: mobile Safari reuses connections aggressively
+// across page switches, and a 5s server timeout raced its reuse into reset
+// errors that read as random slowness. 65s sits above Safari's own idle cut.
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
 
 server.listen(port, hostname, () => {
   console.log(`ADAPT web  http://${hostname}:${port}  (dev=${dev})`);

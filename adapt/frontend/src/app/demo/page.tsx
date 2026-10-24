@@ -135,9 +135,15 @@ export default function DemoPage() {
 
   return (
     <div className="demo-page" data-demo-screen={stage}>
+      {/* The demo must be unmistakable from across a room, on every stage:
+          a solid blue banner that stays pinned while the page scrolls. */}
+      <div className="demo-banner" role="note" aria-label="Demo version">
+        <strong>Demo version</strong>
+        <span>Preview only · three games · a snapshot of one short run, not a learner profile</span>
+      </div>
       <header className="demo-topline">
         <span className="demo-wordmark" aria-label="Adapt">ad<b>apt</b></span>
-        <span>Three-game demo · time-limited preview</span>
+        <span className="demo-chip">Three-game demo · time-limited preview</span>
       </header>
 
       <main id="main-content" className="demo-main">

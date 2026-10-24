@@ -2,8 +2,9 @@
 
 The showcase path is a single command. The API and the web app start together, the machine's
 own wifi address is detected, printed, and added to the API's host allowlist as *that exact
-address* -- and the two things a room will actually run into are said out loud, before anyone
-joins:
+address* (together with the machine's other local addresses and its ``.local`` mDNS name --
+see :func:`room_hosts`; still exact hosts only, never a wildcard) -- and the two things a
+room will actually run into are said out loud, before anyone joins:
 
 * **The microphone needs https.** Browsers only expose the microphone APIs (``getUserMedia``,
   and the ``SpeechRecognition`` dictation the voice screen uses) in a *secure context*: https,
@@ -187,6 +188,55 @@ def detect_lan_ip(override: str | None = None) -> tuple[str | None, list[str]]:
     return pick_lan_ip(candidates), candidates
 
 
+def mdns_name(hostname: str | None = None) -> str | None:
+    """``<hostname>.local`` -- the name Apple devices use for this machine.
+
+    iPhones and Macs discover and remember machines by their Bonjour/mDNS
+    name, so a learner who was told an IP address may still arrive with
+    ``Host: mymachine.local`` (Safari even completes it for them). Trusting
+    only the numeric address made those arrivals fail as "untrusted host"
+    while the same device worked by IP -- the classic "some iPhones can't
+    join". The name is derived from this machine's own hostname, validated to
+    a single DNS label, and trusted *exactly*, like the addresses: it is not
+    a ``*.local`` wildcard.
+    """
+    name = (hostname or socket.gethostname() or "").strip().rstrip(".").lower()
+    if not name:
+        return None
+    short = name.split(".")[0]
+    if not re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?", short):
+        return None
+    return f"{short}.local"
+
+
+def room_hosts(lan_ip: str | None, considered: Iterable[str] = ()) -> list[str]:
+    """Every exact name/address this machine answers to on the local network.
+
+    The banner still advertises one address, but a machine with both wifi and
+    ethernet (or a hotspot plus a router) is reachable at several, and the
+    room will find all of them -- pupils on the other interface were refused
+    even though the machine in front of them was the right one. Each entry is
+    still an exact host: the advertised address, every other usable local
+    address detected on this machine, and its mDNS name. Nothing routable
+    from the internet is added, and there is still no wildcard or subnet.
+    """
+    out: list[str] = []
+    if lan_ip and str(lan_ip) not in out:
+        out.append(str(lan_ip))
+    for raw in considered:
+        ip = str(raw).strip()
+        # Extras are *local* addresses only (private / CGNAT / link-local:
+        # rank 0 or 1): the advertised address above is always trusted, but a
+        # routable extra from name resolution is not something to vouch for.
+        rank = lan_rank(ip)
+        if ip and rank is not None and rank <= 1 and ip not in out:
+            out.append(ip)
+    name = mdns_name()
+    if name and name not in out:
+        out.append(name)
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # the environment the children get
 # --------------------------------------------------------------------------- #
@@ -298,6 +348,7 @@ def build_api_env(
     web_port: int,
     api_port: int,
     extra_hosts: Sequence[str] = (),
+    extra_room_hosts: Sequence[str] = (),
     origins: Sequence[str] = (),
     data_dir: str | None = None,
     configured_multiplier: float = 1.0,
@@ -319,9 +370,14 @@ def build_api_env(
     directory the operator chose -- is left exactly as their environment set it.
     """
     env = dict(base)
-    hosts = [*extra_hosts, *( [lan_ip] if lan_ip else [] )]
+    hosts = [*extra_hosts, *extra_room_hosts, *( [lan_ip] if lan_ip else [] )]
     env["ADAPT_EXTRA_ALLOWED_HOSTS"] = merge_csv(base.get("ADAPT_EXTRA_ALLOWED_HOSTS"), hosts)
-    origin_additions = [f"http://{lan_ip}:{web_port}"] if lan_ip else []
+    # One origin per trusted room host: a browser that arrived by the `.local`
+    # name sends `Origin: http://name.local:<port>`, and an allowlist that
+    # only knew the numeric origin refused its very first write (joining).
+    origin_additions = [f"http://{host}:{web_port}" for host in dict.fromkeys(
+        [*( [lan_ip] if lan_ip else [] ), *extra_room_hosts]
+    )]
     existing_origins = merge_csv(base.get("ADAPT_ALLOWED_ORIGINS"), origins)
     env["ADAPT_ALLOWED_ORIGINS"] = merge_csv(existing_origins, origin_additions)
     room = raised_multiplier(configured_multiplier, room_multiplier)
@@ -339,6 +395,7 @@ def build_web_env(
     web_port: int,
     production: bool,
     lan_ip: str | None = None,
+    extra_origins: Sequence[str] = (),
 ) -> dict[str, str]:
     """The web child's environment.
 
@@ -437,6 +494,13 @@ def host_report(plan: HostPlan) -> list[str]:
         f"  share this:    {plan.share_url}"
         + ("   <- https, works off the wifi too" if plan.tunnel_url else f"   <- {SHARE_NOTE}"),
         f"  this machine:  {plan.local_url}",
+        *(
+            [
+                f"  by name:       http://{name}:{plan.web_port}   <- the name iPhones/Macs know this machine by"
+            ]
+            for name in plan.allowed_hosts
+            if name.endswith(".local")
+        ),
         f"  API:           {plan.api_url}  (bound to {plan.api_host})",
         f"  extra hosts the API trusts: {trusted}",
         "  stop with:     Ctrl-C",
@@ -489,7 +553,8 @@ def rate_lines(multiplier: float, configured: float) -> list[str]:
     effective = effective_limits(multiplier)
     lines = [
         "RATE LIMITS (shared connection): everyone on this wifi reaches the API from one",
-        "  address, so the room shares one bucket. For the servers this command started:",
+        "  address, so joining and sign-in share one bucket (signed-in work is counted per",
+        "  learner). For the servers this command started:",
     ]
     for scope, label in ROOM_SCOPES:
         base = DEFAULT_LIMITS.get(scope)
@@ -738,6 +803,7 @@ __all__ = [
     "host_report",
     "hostname_addresses",
     "lan_rank",
+    "mdns_name",
     "merge_csv",
     "parse_tunnel_url",
     "pick_lan_ip",
@@ -745,6 +811,7 @@ __all__ = [
     "raised_multiplier",
     "rate_lines",
     "repo_root",
+    "room_hosts",
     "route_address",
     "tunnel_command",
     "uvicorn_command",
