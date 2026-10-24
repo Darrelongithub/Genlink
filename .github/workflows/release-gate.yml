@@ -146,7 +146,12 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p ../../release-artifacts
-          python -m pytest -q 2>&1 | tee ../../release-artifacts/backend-pytest.log
+          if ! python -m pytest -q --tb=short > ../../release-artifacts/backend-pytest.log 2>&1; then
+            echo '--- backend suite failure tail ---'
+            tail -120 ../../release-artifacts/backend-pytest.log
+            exit 1
+          fi
+          tail -5 ../../release-artifacts/backend-pytest.log
       - name: The extracted adapt/ layout carries the same pool bound
         run: python release/check_second_layout.py --src adapt/backend/src
 
