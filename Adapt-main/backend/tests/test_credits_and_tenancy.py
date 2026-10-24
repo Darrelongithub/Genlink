@@ -760,6 +760,80 @@ def test_an_unknown_username_costs_the_same_work_as_a_wrong_password(client, ser
     assert performed == [], "a real account verifies for real; there is no dummy in the way"
 
 
+def test_a_cross_site_login_does_not_get_a_session_cookie(client):
+    """``SameSite=Lax`` protects requests that *carry* a cookie, not the ones that mint one.
+
+    A cross-site form post to the login route carries the attacker's credentials and the
+    browser stores whatever session cookie comes back, so the victim would then be
+    studying inside the attacker's account. ``origin_ok`` existed for this and was wired
+    to nothing; the login, registration and demo routes now depend on it.
+    """
+    client.cookies.clear()
+    response = client.post(
+        "/api/v1/login",
+        json={"username": "somebody", "password": "whatever they typed"},
+        headers={"origin": "https://evil.example"},
+    )
+    assert response.status_code == 403, response.text
+    assert response.json()["detail"]["error"] == "origin_not_allowed"
+    assert "adapt_session" not in response.cookies, "a refused login must not set a cookie"
+
+    created = client.post(
+        "/api/v1/students",
+        json={"as_guest": True, "display_name": "Forged", "consent_analytics": True},
+        headers={"origin": "https://evil.example"},
+    )
+    assert created.status_code == 403, created.text
+    assert "adapt_session" not in created.cookies
+
+
+def test_the_apps_own_origin_is_still_accepted(client):
+    """The guard has to be invisible to the real client, or it is an outage."""
+    client.cookies.clear()
+    ok = client.post(
+        "/api/v1/students",
+        json={"as_guest": True, "display_name": "Same origin", "consent_analytics": True},
+        headers={"origin": "http://testserver"},
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.cookies.get("adapt_session")
+
+
+def test_a_missing_origin_is_not_treated_as_a_browser(client):
+    """A missing Origin is a non-browser caller (curl, the tests, a native app)."""
+    client.cookies.clear()
+    ok = client.post(
+        "/api/v1/students",
+        json={"as_guest": True, "display_name": "No origin", "consent_analytics": True},
+    )
+    assert ok.status_code == 200, ok.text
+
+
+def test_a_learner_cannot_be_tricked_into_a_state_change_from_another_site(client):
+    """Even holding a valid CSRF token, a request from another origin is refused.
+
+    The token is unreadable cross-site, but this is the layer that still holds if that
+    ever changes: a forged request is refused for being forged.
+    """
+    learner = _new_learner(client)
+    _as(client, learner)
+    forged = client.post(
+        "/api/v1/events",
+        json={"session_id": "nope", "events": []},
+        headers={**learner["headers"], "origin": "https://evil.example"},
+    )
+    assert forged.status_code == 403, forged.text
+    assert forged.json()["detail"]["error"] == "origin_not_allowed"
+
+    _as(client, learner)
+    honest = client.post(
+        "/api/v1/events",
+        json={"session_id": "nope", "events": []},
+        headers={**learner["headers"], "origin": "http://testserver"},
+    )
+    assert honest.status_code != 403 or honest.json()["detail"] != "origin_not_allowed"
+
+
 def test_scaffolding_is_not_shipped_by_accident():
     """A tiny guard against a leftover: the readiness note and the efficiency note exist."""
     root = Path(__file__).resolve().parents[2]

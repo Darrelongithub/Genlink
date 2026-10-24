@@ -28,7 +28,7 @@ from ..config import Settings, get_settings
 from ..db.engine import get_db
 from ..db.models import Student
 from ..security import auth
-from ..security.middleware import MUTATING, audit_event, client_ip
+from ..security.middleware import MUTATING, audit_event, client_ip, origin_ok
 from ..services import AppServices, current
 
 log = logging.getLogger("adapt.api.deps")
@@ -40,6 +40,12 @@ def services(request: Request | None = None) -> AppServices:
 
 def settings(request: Request | None = None) -> Settings:
     return current().settings
+
+
+def _active_settings() -> Settings:
+    """Return the built service configuration, tolerating narrow test doubles."""
+    svcs = current()
+    return getattr(svcs, "settings", None) or get_settings()
 
 
 def db_session(request: Request) -> Session:
@@ -86,6 +92,39 @@ def student_from_request(request: Request, s: Session = Depends(db_session)) -> 
     return student
 
 
+def same_origin(request: Request) -> None:
+    """Refuse a state-changing request that a *different* site started.
+
+    ``SameSite=Lax`` protects requests that *carry* a session cookie. It cannot protect
+    the three routes that *mint* one: a cross-site form post to ``/login`` carries the
+    attacker's credentials and the browser happily stores the session cookie the reply
+    sets, so the victim ends up studying inside the attacker's account -- and every
+    record they create is then readable by the attacker. The same trick enrols a victim
+    in an account the attacker controls through ``/students``.
+
+    Non-browser callers send no ``Origin`` and are unaffected (``origin_ok`` returns True
+    for them, and they were never the target of this): the guard is exactly as wide as
+    the browser behaviour that creates the hole.
+    """
+    if origin_ok(request, _active_settings()):
+        return
+    origin = (request.headers.get("origin") or "")[:120]
+    log.warning("cross_site_request_rejected path=%s origin=%s", request.url.path, origin)
+    audit_event(
+        request,
+        action="origin_rejected",
+        outcome="denied",
+        detail={"path": request.url.path, "origin": origin},
+    )
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "error": "origin_not_allowed",
+            "message": "this request came from another site; open the app from its own address",
+        },
+    )
+
+
 def require_csrf(request: Request, student: Student = Depends(student_from_request)) -> Student:
     """Double-submit CSRF check, on the methods that can change something.
 
@@ -108,6 +147,23 @@ def require_csrf(request: Request, student: Student = Depends(student_from_reque
     ``GET /items/{id}/reveal`` is the read that spoils a question, and it stays
     rate-limited; its own docstring records that reading it persists nothing.
     """
+    if request.method in MUTATING and not origin_ok(request, _active_settings()):
+        # Defence in depth next to the token: a cross-site form post cannot read the
+        # token, and it also cannot fake an Origin. Checked before the token so a
+        # forgery is refused for being a forgery, not merely for lacking a header.
+        audit_event(
+            request,
+            action="origin_rejected",
+            outcome="denied",
+            detail={"path": request.url.path},
+        )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "origin_not_allowed",
+                "message": "this request came from another site; open the app from its own address",
+            },
+        )
     row = getattr(request.state, "auth_session", None)
     if row is not None and request.method in MUTATING:
         provided = request.headers.get("x-csrf-token")
@@ -387,13 +443,14 @@ __all__ = [
     "Actor",
     "db_session",
     "idempotency_key",
-    "shared_bank_write",
     "issue_login",
     "llm_guard",
     "rate",
     "require_csrf",
     "require_operator",
+    "same_origin",
     "services",
     "settings",
+    "shared_bank_write",
     "student_from_request",
 ]

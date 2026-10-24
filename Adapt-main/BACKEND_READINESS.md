@@ -212,7 +212,7 @@ codebase starts asserting a price it cannot back up. KSh amounts exist nowhere i
 
 | # | Severity | Finding | Fix | Regression test |
 |---|---|---|---|---|
-| 1 | **High** | The product presented institution plans, pools and per-learner allowances; the backend had no institution, plan, wallet or ledger at all. Any claim of billing or metering was unbacked. | `credits/` package + revision `R10` + admin plane + enforcement around three AI routes | `tests/test_credits_and_tenancy.py` (29 tests) |
+| 1 | **High** | The product presented institution plans, pools and per-learner allowances; the backend had no institution, plan, wallet or ledger at all. Any claim of billing or metering was unbacked. | `credits/` package + revision `R10` + admin plane + enforcement around three AI routes | `tests/test_credits_and_tenancy.py` (33 tests) |
 | 2 | **High** | `POST /api/v1/integration/adapt` was **open** when `ADAPT_INTEGRATION_TOKEN` was unset and the demo passphrase was unset — including on a public tunnel, where it is a free compute oracle. | A world-reachable door now fails closed; LAN behaviour unchanged | `test_the_integration_door_is_closed_on_a_public_tunnel_without_a_token` |
 | 3 | **Medium** | The CSRF token was accepted from `?csrf=` on **every** mutating route, so it could reach access logs and `Referer` headers. | Query token accepted only on the telemetry append route (`sendBeacon` cannot set a header); header required everywhere else | `test_csrf_in_the_query_string_is_only_accepted_on_the_telemetry_beacon` |
 | 4 | **Medium** | `students.role` was written by the CLI and **read by nobody**: any signed-in learner reached shared-state mutations in `mode=local`. | `require_operator` (operator token *or* role), applied to the whole admin plane; CSRF still required when the credential is a cookie | `test_a_learner_cannot_reach_the_institution_admin_plane`, `test_an_operator_role_is_enough_and_cookie_auth_still_needs_csrf` |
@@ -220,16 +220,17 @@ codebase starts asserting a price it cannot back up. KSh amounts exist nowhere i
 | 6 | **Medium** | `POST /api/v1/voice/speak` accepted `dict[str, Any]` — any JSON object of any shape, truncated only after parsing. | Typed `SpeakBody` (`text` ≤ 2000 chars, `gender` bounded) | `test_the_speech_route_has_a_bounded_body` |
 | 7 | **Low** | `docs/EFFICIENCY.md` did not exist, so the suite's own "the docs carry the code's table" test failed. | Generated from `static_context`/`routing` tables | `tests/test_ai_efficiency.py::test_the_docs_carry_the_same_table_the_code_does` |
 | 8 | **Medium** | `[tool.setuptools.packages.find]` collects only directories that have an `__init__.py`, so a built wheel silently omitted `adapt.ai`, `adapt.assessment`, `adapt.resources`, `adapt.voice` and `adapt.credits`. An editable install (what the tests run on) hides this: the first `install` from a wheel would fail at import, and it would fail on the AI layer that the whole product depends on. | Added the missing `__init__.py` files (no behaviour change) | `test_every_backend_package_lands_in_a_built_wheel` |
+| 9 | **High** | The browser routes that create a session (`/login`, `/students`, `/demo/session`) did not check `Origin`. `SameSite=Lax` does not protect a route that *mints* a cookie: a cross-site form could sign a victim into an attacker-controlled account, making the victim's later records readable to the attacker (login CSRF/session confusion). The existing `origin_ok` helper was wired to no route. | Added a same-origin dependency to all three session-minting routes and origin defence in depth beside CSRF on every authenticated mutation; CLI/native callers without `Origin` remain supported | `test_a_cross_site_login_does_not_get_a_session_cookie`, `test_the_apps_own_origin_is_still_accepted`, `test_a_missing_origin_is_not_treated_as_a_browser`, `test_a_learner_cannot_be_tricked_into_a_state_change_from_another_site` |
 
 ### Found and accepted (documented, not fixed)
 
 | # | Severity | Finding | Why it is not fixed here |
 |---|---|---|---|
-| 9 | **Medium** | `GET /items/{id}/reveal` returns an answer key before an attempt | Deliberate self-service read, documented in the route; closing it changes learner-facing behaviour and needs a product decision (partial reveal, teacher approval) |
-| 10 | **Low** | Any signed-in learner can read another's content-prepare *job status* (`state`, `pack_source`; no learner or topic text) | Needs an owner column with a real backfill; a nullable column with no semantics would be a false boundary |
-| 11 | **Low** | Shared-state mutations (`POST /learning/train`, `POST /numbas/import`) are gated on tunnel + passphrase, not on `role` | `mode=local` is defined as "the operator is at the terminal"; changing it alters the documented local workflow. The new admin plane does use `role`/token. |
-| 12 | **Low** | Session rows are never garbage-collected automatically (`auth.purge_expired` exists, is called by the CLI) | Bounded by TTL and low volume; a scheduled job belongs to the deployment, not the app |
-| 13 | **Low** | Rate limiting and the model daily budget are **per process**. N workers ⇒ N× the configured budget | A shared store (Redis) is a deployment decision; documented here so nobody assumes a global ceiling |
+| 10 | **Medium** | `GET /items/{id}/reveal` returns an answer key before an attempt | Deliberate self-service read, documented in the route; closing it changes learner-facing behaviour and needs a product decision (partial reveal, teacher approval) |
+| 11 | **Low** | Any signed-in learner can read another's content-prepare *job status* (`state`, `pack_source`; no learner or topic text) | Needs an owner column with a real backfill; a nullable column with no semantics would be a false boundary |
+| 12 | **Low** | Shared-state mutations (`POST /learning/train`, `POST /numbas/import`) are gated on tunnel + passphrase, not on `role` | `mode=local` is defined as "the operator is at the terminal"; changing it alters the documented local workflow. The new admin plane does use `role`/token. |
+| 13 | **Low** | Session rows are never garbage-collected automatically (`auth.purge_expired` exists, is called by the CLI) | Bounded by TTL and low volume; a scheduled job belongs to the deployment, not the app |
+| 14 | **Low** | Rate limiting and the model daily budget are **per process**. N workers ⇒ N× the configured budget | A shared store (Redis) is a deployment decision; documented here so nobody assumes a global ceiling |
 
 ### Verified sound (no change needed)
 
@@ -328,7 +329,7 @@ Ordered by what would have to happen first.
    school. A district needs Postgres; the debit statement and the unique indexes are
    already portable (the only SQLite-specific parts of this change are partial indexes,
    which Postgres also supports).
-7. **Assessment integrity.** `GET /items/{id}/reveal` before an attempt (finding 9). Also
+7. **Assessment integrity.** `GET /items/{id}/reveal` before an attempt (finding 10). Also
    no proctoring or duplicate-timer detection: the app measures what a browser reports.
 8. **Password lifecycle.** No self-service reset, no email verification, no 2FA; a lost
    password is reset by the operator. Acceptable for a pilot, not for a school roll-out.
@@ -385,7 +386,7 @@ Environment: Python 3.11.2, `pip install -e ".[dev]"` into a clean venv,
 
 ```
 $ cd backend && python -m pytest tests -q
-1589 passed, 2 skipped in 240.77s          # before this change: 1559 passed, 1 failed, 2 skipped
+1593 passed, 2 skipped in 232.83s          # before this change: 1559 passed, 1 failed, 2 skipped
 ```
 
 (The single failure at baseline was `test_the_docs_carry_the_same_table_the_code_does`,
@@ -394,7 +395,7 @@ generated from the code's own tables and the test passes.)
 
 ```
 $ python -m pytest tests/test_credits_and_tenancy.py -q
-29 passed
+33 passed
 
 $ python -m pytest tests/test_migrations.py -q
 10 passed          # fresh upgrade, alembic check, stamp+replay paths
