@@ -10,7 +10,9 @@ fourth time at `bca7d15` (PR #7: room joining, page-switch/overload collapse and
 below was re-executed on this branch after the fourth merge. No AI credential was configured
 or used. All load numbers are **single-machine loopback measurements**, not capacity
 guarantees. Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/`
-(ignored by Git). Evidence commit is reported below after the final merge commit.
+(ignored by Git). Evidence commit: `c63d101...` (fourth merge of `origin/main` at `bca7d15`
+into the release branch, including the refreshed post-merge evidence). The final documentation
+commit is reported in the task/PR.
 
 ## Decisions
 
@@ -182,7 +184,7 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
 | `aad6946` (Genlink extracted, top-level `adapt/` added) | `.gitignore` add/add | Combined main's Node/Genlink ignores with the release gate's `.venv/`, cache, `release-artifacts/`, `*.key` and `.env.local` ignores. | `git diff --check` clean; secret scan then covered the extracted trees. |
 | `8851869` (backend credits/operator/security, PR #4) | `Adapt-main/docs/EFFICIENCY.md` add/add | Regenerated from `Adapt-main/scripts/write_efficiency_doc.py` (93 lines, 0 conflict markers), keeping the branch's generator as the source of truth. All other main changes — R10 migration, credit service/routes, operator boundary, cross-site guard — were accepted as staged. | `pytest -q tests/test_ai_efficiency.py` 27/27; full suite 1617 passed / 2 skipped; merge commit `d812f79`. |
 | `1b3add9` (production hosting, WCAG frontend, dependency patches, PRs #5/#6) | `Adapt-main/frontend/src/app/engine/page.tsx` content conflict | Took **main's rebuilt console** (`git checkout --theirs`): it already carries the sample/non-live labels the release gate requires, plus a full operator presentation layer. All other production/packaging/hosting files auto-merged; the `issue_login` `s.commit()` survived the auto-merge of `deps.py`. | frontend lint + 6 unit scripts + build exit 0; `release/e2e_smoke.py --web` engine-label check PASS; full suite 1645 passed / 2 skipped; Adapt npm audit 0 vulnerabilities; merge commit `9aba09a`. |
-| `bca7d15` (PR #7 room joining, page-switch/overload collapse, root Genlink + top-level `adapt/` hardening) | `adapt/backend/src/adapt/db/engine.py` content conflict: release branch had `pool_size=20, max_overflow=20, pool_timeout=5, pre_ping=True`; main chose `_POOL_KWARGS = {12, 24, 30}` | Took **main's version** and relaxed `release/check_second_layout.py` to assert the invariant (QueuePool, total capacity ≥ 20, finite timeout) instead of our exact numbers. Main's `adapt/backend` hosting + realtime tests pass 44/44. | `release/check_second_layout.py` PASS (`size=12, max_overflow=24, timeout=30, total_capacity=36`); secret/host/lint scans re-run PASS; root Genlink browser files now 179; merge commit to follow. |
+| `bca7d15` (PR #7 room joining, page-switch/overload collapse, root Genlink + top-level `adapt/` hardening) | `adapt/backend/src/adapt/db/engine.py` content conflict: release branch had `pool_size=20, max_overflow=20, pool_timeout=5, pre_ping=True`; main chose `_POOL_KWARGS = {12, 24, 30}` | Took **main's version** and relaxed `release/check_second_layout.py` to assert the invariant (QueuePool, total capacity ≥ 20, finite timeout) instead of our exact numbers. Main's `adapt/backend` hosting + realtime tests pass 44/44. | `release/check_second_layout.py` PASS (`size=12, max_overflow=24, timeout=30, total_capacity=36`); secret/host/lint scans re-run PASS; root Genlink browser files now 179; merge commit `c63d101`. |
 
 No other file conflicted in the fourth merge. The deliberate release-owned edits that remain on
 top of all four merges are the `s.commit()` in `issue_login` (both layouts), the new session
