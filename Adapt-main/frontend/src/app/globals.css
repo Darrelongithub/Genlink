@@ -587,7 +587,8 @@ kbd {
   padding: 20px;
   border-radius: var(--r-card);
 }
-.ledger-log h5 {
+.ledger-log h5,
+.ledger-log .ledger-log-title {
   font-family: var(--font-mono);
   font-size: 10.5px;
   text-transform: uppercase;
@@ -1048,6 +1049,17 @@ kbd {
   width: fit-content;
   text-align: left;
   cursor: pointer;
+}
+
+/* WCAG 2.5.8 Target Size (Minimum): standalone buttons and flex-bar action links >= 24px */
+:where(button:not([tabindex="-1"])) {
+  min-height: 24px;
+  min-width: 24px;
+}
+:where(.flex, .inline-flex, .wrap-2, .wrap-3, .welcome-links, .welcome-foot, nav) > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 .btn-primary:disabled,
 .btn-secondary:disabled,

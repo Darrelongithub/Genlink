@@ -63,6 +63,27 @@ def verify_password(password: str, stored: str | None) -> bool:
         return False
 
 
+_dummy_hash: str | None = None
+
+
+def dummy_password_verify(password: str) -> None:
+    """Spend the same work for a username that does not exist as for one that does.
+
+    ``authenticate`` used to return before hashing when no row matched, so a wrong
+    password for a real account cost an Argon2 verification (~tens of milliseconds) and a
+    wrong password for an invented one cost a dictionary lookup. That difference is a
+    username oracle, and a login form that answers "does this learner exist" faster than
+    it answers "is this the password" is the first half of a credential-stuffing run.
+
+    The dummy hash is computed once per process from a random string, so nothing about it
+    is guessable and it is never a valid credential for any account.
+    """
+    global _dummy_hash
+    if _dummy_hash is None:
+        _dummy_hash = _hasher_instance().hash(secrets.token_urlsafe(18))
+    verify_password(password, _dummy_hash)
+
+
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 

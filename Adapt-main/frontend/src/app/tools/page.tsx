@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Btn, Card, Err, Notice, PageHeader, Textarea } from "@/components/ui";
 import { del, post, useApi } from "@/lib/api";
@@ -14,11 +14,14 @@ export default function StudyTools() {
   const [front, setFront] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState<"note" | "card" | string | null>(null);
+  const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
   async function save(kind: "note" | "card", event: FormEvent) {
     event.preventDefault();
+    if (inFlight.current || busy !== null) return;
+    inFlight.current = true;
     setBusy(kind);
     setError(null);
     setSaved(null);
@@ -29,13 +32,17 @@ export default function StudyTools() {
       setSaved(kind === "note" ? "Note saved to your learner record." : "Flashcard saved to your learner record.");
       items.reload();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save. Your text is still in the form.");
+      const shown = (cause as { shown?: string; message?: string })?.shown;
+      setError(shown ?? (cause instanceof Error ? cause.message : "Could not save. Your text is still in the form."));
     } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }
 
   async function remove(item: StudyItem) {
+    if (inFlight.current || busy !== null) return;
+    inFlight.current = true;
     setBusy(item.id);
     setError(null);
     setSaved(null);
@@ -44,8 +51,10 @@ export default function StudyTools() {
       setSaved(item.kind === "note" ? "Note deleted." : "Flashcard deleted.");
       items.reload();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not delete this item.");
+      const shown = (cause as { shown?: string; message?: string })?.shown;
+      setError(shown ?? (cause instanceof Error ? cause.message : "Could not delete this item."));
     } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }
@@ -76,6 +85,7 @@ export default function StudyTools() {
       </div>
 
       <Card title={`Your notes (${notes.length})`} tone="plain">
+        {items.loading && notes.length === 0 ? <p className="text-sm text-[var(--muted)]" role="status">Loading your saved notes…</p> : null}
         {!items.loading && notes.length === 0 ? <p className="text-sm text-[var(--muted)]">No notes saved yet.</p> : null}
         <ul className="stack-3">
           {notes.map(item => (
@@ -88,6 +98,7 @@ export default function StudyTools() {
       </Card>
 
       <Card title={`Your flashcards (${cards.length})`} tone="plain">
+        {items.loading && cards.length === 0 ? <p className="text-sm text-[var(--muted)]" role="status">Loading your saved flashcards…</p> : null}
         {!items.loading && cards.length === 0 ? <p className="text-sm text-[var(--muted)]">No flashcards saved yet.</p> : null}
         <div className="stack-3">
           {cards.map(item => (

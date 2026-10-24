@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, post, useApi, type Me } from "@/lib/api";
 import { PageShell } from "./shell/PageShell";
@@ -9,7 +9,7 @@ import { useFocusTrap } from "@/lib/a11y/useFocusTrap";
 import { Btn, Err, Field, Input, useSession } from "./ui";
 
 /** This is the only signed-out UI. Protected pages are not mounted behind it. */
-export function AccountGate() {
+export function AccountGate({ sessionExpired = false }: { sessionExpired?: boolean } = {}) {
   const { establish } = useSession();
   const router = useRouter();
   const focus = useFocusTrap(true);
@@ -21,6 +21,7 @@ export function AccountGate() {
   const [password, setPassword] = useState("");
   const [ageBand, setAgeBand] = useState("16-18");
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
@@ -28,7 +29,8 @@ export function AccountGate() {
   const privacy = useApi<{ telemetry?: { note?: string } }>("privacy");
 
   async function enter(guest = false) {
-    if (busy) return;
+    if (inFlight.current || busy) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -65,14 +67,20 @@ export function AccountGate() {
       }
       setError(e.shown ?? String(err));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
 
   return (
-    <PageShell access><div className="access-screen" data-auth-step={step}>
+    <PageShell access><main className="access-screen" data-auth-step={step}>
       <div className="access-wordmark" aria-hidden="true">ad<b>apt</b></div>
       <div ref={focus} id="main-content" className="access-card" role="dialog" aria-modal="true" aria-labelledby="access-title" data-account-gate onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); } }}>
+        {sessionExpired ? (
+          <p className="mb-4 rounded-xl border border-[var(--warn)]/40 bg-[var(--tint-sand)] px-3.5 py-2.5 text-sm text-[var(--ink)]" role="status">
+            Your session ended — sign in again to pick up where you left off.
+          </p>
+        ) : null}
         <p className="access-step">{step === "consent" ? "01 · Before you begin" : "02 · Your place to learn"}</p>
         <h1 id="access-title" className="access-title">{step === "consent" ? "Welcome to ADAPT." : "Welcome to ADAPT."}</h1>
         {step === "consent" ? (
@@ -145,6 +153,6 @@ export function AccountGate() {
         )}
 
       </div>
-    </div></PageShell>
+    </main></PageShell>
   );
 }

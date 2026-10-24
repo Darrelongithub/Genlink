@@ -61,6 +61,7 @@ where = ["src"]
 # Alembic revisions are runtime deployment assets, not developer-only files.
 # Keep every revision inside the wheel so a clean non-editable install can migrate.
 adapt = [
+  "credits/data/*.json",
   "curriculum/data/*.json",
   "migrations/*.py",
   "migrations/*.mako",

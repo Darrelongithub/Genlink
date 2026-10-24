@@ -74,7 +74,8 @@ sudo chown -R root:root /opt/adapt
 ```
 
 Do not run an editable backend install in production. The wheel contains all existing Alembic
-revisions and curriculum JSON. Do not copy a developer `.next` directory over a clean build.
+revisions, curriculum JSON and the unpriced credit-plan example. Do not copy a developer `.next`
+directory over a clean build.
 Run the release build as an unprivileged release account where possible; only the installation
 and ownership steps need elevation.
 
@@ -125,6 +126,25 @@ API-only settings. Rolling model aliases can change underneath a deployment; pin
 result must be reproducible. Provider/network/quota failures use the tested local fallback rather
 than disabling learning. `adapt config test` makes a real provider request; it is not part of the
 offline validation performed for this release.
+
+### Credit-plan configuration
+
+Startup applies migration `R10` and seeds plan slugs once from the packaged example. That example
+is illustrative and deliberately has no currency or list price; seeding does not process payments.
+To set commercial terms, install a separate API-only configuration and edit it:
+
+```bash
+sudo install -o root -g adapt -m 0640 \
+  /opt/adapt/backend/src/adapt/credits/data/credit_plans.example.json \
+  /etc/adapt/credit_plans.json
+sudoedit /etc/adapt/credit_plans.json
+```
+
+Set `ADAPT_CREDIT_PLANS_PATH=/etc/adapt/credit_plans.json` in `/etc/adapt/api.env`, never in
+`web.env`, then restart only after the JSON validates and a database backup exists. Existing slugs
+are not overwritten on restart. The credit plane is institution-scoped; the learning plane is not
+an institution-wide multi-tenant reporting system. See `BACKEND_READINESS.md` before making a
+multi-tenant or payment claim.
 
 ## 5. TLS and Nginx
 

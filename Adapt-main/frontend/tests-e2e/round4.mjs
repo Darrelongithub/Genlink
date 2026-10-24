@@ -53,7 +53,7 @@ async function settled(p) {
     await opening.click({ position: { x: 8, y: 8 } });
     await opening.waitFor({ state: "detached" });
   }
-  await p.locator("[data-sheet]").waitFor();
+  await p.locator("[data-sheet], #main-content").first().waitFor();
   await p.evaluate(() => document.fonts.ready);
   await p.waitForTimeout(200);
 }

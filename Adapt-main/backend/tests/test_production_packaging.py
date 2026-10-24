@@ -46,6 +46,7 @@ def test_built_wheel_contains_and_runs_the_migration_chain(tmp_path):
         assert "adapt/migrations/env.py" in names
         assert "adapt/migrations/script.py.mako" in names
         assert "adapt/curriculum/data/syllabus_map.json" in names
+        assert "adapt/credits/data/credit_plans.example.json" in names
         archive.extractall(tmp_path / "installed")
 
     # Run only the extracted wheel code, with no checkout or editable install on
@@ -54,8 +55,10 @@ def test_built_wheel_contains_and_runs_the_migration_chain(tmp_path):
     script = r'''
 from pathlib import Path
 from sqlalchemy import inspect, text
+from adapt.credits.plans import default_config_path, load_plan_config
 from adapt.db.engine import Database
 
+assert load_plan_config(default_config_path())
 db = Database()
 db.upgrade_schema()
 db.upgrade_schema()

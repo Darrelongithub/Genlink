@@ -1929,7 +1929,10 @@ async def test_speech_synthesis_runs_off_the_event_loop(client, monkeypatch):
     import adapt.voice.tts as TTS
 
     monkeypatch.setattr(TTS, "synthesize_or_none", slow_synthesize)
-    result, ticks = await _ticks_during(SYS.speak(body={"text": "One more."}, s=None, student=None))
+    # ``speak`` takes a validated body rather than any dict now (see SpeakBody in
+    # system.py): the route's HTTP contract is typed, so the direct call has to construct
+    # that type. The assertion below is unchanged -- this is still about the event loop.
+    result, ticks = await _ticks_during(SYS.speak(body=SYS.SpeakBody(text="One more."), s=None, student=None))
     assert result["available"] is False and result["fallback"] == "browser speechSynthesis"
     assert ticks > 30, f"synthesis ran on the loop: {ticks} ticks in 300 ms"
 

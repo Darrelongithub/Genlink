@@ -16,7 +16,7 @@
  * inventing a continuous position.
  */
 import { friendlyLabel } from "@/lib/labels";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Btn, Card, Err, Notice, PageHeader, SessionLog, Tag, Textarea, announce, useSessionLedger } from "@/components/ui";
 import { get, post, useApi } from "@/lib/api";
@@ -27,6 +27,7 @@ export default function Review() {
   const due = useApi<ReviewDue>("review/due", { within_hours: 72 });
   const plan = useApi<{ retention?: { checks?: number; calibration?: { n?: number; brier?: number; ece?: number; buckets?: { label?: string; predicted?: number; observed?: number; n?: number }[] } } }>("plan");
   const [busy, setBusy] = useState<string | null>(null);
+  const inFlight = useRef(false);
   const [log, setLog] = useState<Record<string, ReviewComplete>>({});
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -43,6 +44,7 @@ export default function Review() {
   const cal = plan.data?.retention?.calibration;
 
   async function checkFor(topic: ReviewDue["due"][number], withNotes = false) {
+    if (!withNotes && busy) return;
     setBusy(`check:${topic.topic_id}`);
     setError(null);
     try {
@@ -65,6 +67,8 @@ export default function Review() {
   }
 
   async function answer(topic: ReviewDue["due"][number], correct: boolean) {
+    if (inFlight.current || busy) return;
+    inFlight.current = true;
     setBusy(topic.topic_id);
     setError(null);
     try {
@@ -87,6 +91,7 @@ export default function Review() {
       if (e?.status === 422) setError("that topic is not in the review set — reload and see what is actually scheduled");
       else setError(e?.shown ?? String(err));
     } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }

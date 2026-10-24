@@ -20,6 +20,7 @@
  * `ADAPT_BASE_URL` overrides the app origin (default http://127.0.0.1:3000, which proxies /api
  * to the API on :8000 — see server.mjs).
  */
+import { existsSync } from "node:fs";
 import { chromium } from "playwright";
 
 const BASE = process.env.ADAPT_BASE_URL ?? "http://127.0.0.1:3000";
@@ -59,7 +60,17 @@ async function answer(page, kind) {
 async function main() {
   let browser;
   try {
-    browser = await chromium.launch();
+    const executablePath = [
+      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE,
+      process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+      process.env.PW_CHROMIUM,
+      "/opt/pw-browsers/chromium",
+      "/tmp/chromium",
+    ].find((p) => p && existsSync(p));
+    browser = await chromium.launch({
+      ...(executablePath ? { executablePath } : {}),
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
+    });
   } catch (err) {
     console.error(
       `\nCannot start Chromium: ${err.message}\n\n` +
@@ -79,14 +90,12 @@ async function main() {
 
   try {
     // A guest account: the shortest honest path to a placement session.
-    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-    await page.evaluate(() => sessionStorage.setItem("adapt:seen-opening", "1"));
-    await page.reload({ waitUntil: "domcontentloaded" });
-
-    const guest = page.getByRole("button", { name: /continue as a guest|guest/i }).first();
-    if (await guest.count()) await guest.click();
-    await page.waitForURL(/diagnose|learn|onboarding/, { timeout: 30_000 }).catch(() => {});
-    await page.goto(`${BASE}/diagnose`, { waitUntil: "domcontentloaded" });
+    await page.addInitScript(() => sessionStorage.setItem("adapt:seen-opening", "1"));
+    await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: /Save choice and continue/i }).click();
+    await page.getByRole("button", { name: /Continue as guest|continue as a guest/i }).first().click();
+    await page.locator("[data-account-gate]").waitFor({ state: "detached", timeout: 15_000 });
+    await page.goto(`${BASE}/diagnose`, { waitUntil: "networkidle" });
 
     // No overlay may sit in front of a question. This is the whole point of the script.
     await page.waitForSelector('[role="radio"], input[placeholder^="e.g."], textarea', { timeout: 30_000 });
@@ -103,12 +112,10 @@ async function main() {
       const what = await answer(page, kind);
       const submit = page.getByRole("button", { name: /^Check it$/i }).first();
       ok(`question ${i} (${kind}): pressing the answer unlocks the submit control`, await submit.isEnabled(), what);
+      const attemptDone = page.waitForResponse((res) => /\/api\/v1\/attempts$/.test(res.url()), { timeout: 15_000 }).catch(() => null);
       await submit.click();
-      await page.waitForFunction(
-        (n) => /Next/.test(document.body.innerText),
-        posted.length,
-        { timeout: 15_000 },
-      ).catch(() => {});
+      await attemptDone;
+      await page.waitForTimeout(150);
       // The receipt counts as recorded evidence: it is built from the server's own marking.
       const receipt = await page.locator("body").innerText();
       ok(

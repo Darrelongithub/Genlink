@@ -50,9 +50,8 @@ from .routes import (
     system,
     tutor,
 )
-from .routes import (
-    tests as tests_routes,
-)
+from .routes import credits as credits_routes
+from .routes import tests as tests_routes
 from .ws import router as ws_router
 
 log = logging.getLogger("adapt.api")
@@ -76,6 +75,10 @@ async def lifespan(app: FastAPI):
 
     with svcs.db.session() as s:
         seeded = sessions_service.ensure_curriculum(s)
+    # Plan configuration is seeded from a file, once per deployment: a slug that already
+    # exists is never overwritten, so an operator's edited commercial terms survive a
+    # restart. Nothing here creates an institution, a wallet or a balance.
+    plan_seed = svcs.credits.seeded_plans()
     # The interactive engine's built-in scenes, seeded by content id so a restart neither
     # duplicates them nor churns the ids that LessonRun rows point at.
     from ..services import lessons as lessons_service
@@ -115,6 +118,8 @@ async def lifespan(app: FastAPI):
         )
     if check["checked"]:
         log.info("startup: key check ok (%s encrypted value(s) across %s column(s) read)", check["checked"], check["columns"])
+    if plan_seed.get("created"):
+        log.info("startup: credit plans seeded from config: %s", ", ".join(plan_seed["created"]))
     log.info(
         "startup: db=%s encrypted=%s llm=%s curriculum=%s items, scenes=%s (%s new)",
         st.db_file,
@@ -199,10 +204,31 @@ def create_app() -> FastAPI:
         # stateless, model-free route other apps call to plug Adapt in as an
         # engine. Self-contained module; see docs/INTEGRATION.md.
         integration.router,
+        # Adapt Credits: the learner's own view, and the operator admin plane.
+        credits_routes.router,
+        credits_routes.admin,
         system.router,
         ws_router,
     ):
         app.include_router(r)
+
+    from ..credits.service import CreditError
+
+    @app.exception_handler(CreditError)
+    async def _credit_error(request: Request, exc: CreditError) -> JSONResponse:
+        """A credit refusal is a typed answer, not a 500.
+
+        ``CreditsExhausted`` carries a ``standard_mode`` payload naming the reads that stay
+        open, so a client that only knows how to show an error still shows the learner a
+        way to keep working.
+        """
+        log.info(
+            "credit refusal on %s: %s (status %s)",
+            request.url.path,
+            exc.code,
+            exc.status_code,
+        )
+        return JSONResponse(status_code=exc.status_code, content=exc.detail())
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
