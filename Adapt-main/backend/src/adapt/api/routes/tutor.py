@@ -16,7 +16,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..deps import db_session, llm_guard, rate, require_csrf, shared_bank_write, student_from_request
+from ..deps import (
+    db_session,
+    idempotency_key,
+    llm_guard,
+    rate,
+    require_csrf,
+    shared_bank_write,
+    student_from_request,
+)
 from ...security import secrecy
 from ...security.middleware import BodySizeGuard
 from ...assessment import bank
@@ -93,22 +101,38 @@ class ResourceBody(BaseModel):
 @router.post("/tutor/message")
 async def explain(
     body: ExplainBody,
+    request: Request,
     s: Session = Depends(db_session),
     student: Student = Depends(rate("llm")),
     _guard: None = Depends(llm_guard),
+    retry_key: str | None = Depends(idempotency_key),
 ) -> dict[str, Any]:
     svcs = current()
     history = [(h.get("role", "student"), h.get("text", "")) for h in body.history if isinstance(h, dict)]
-    reply = await svcs.ai2.explain(
-        student.id,
-        body.question,
-        topic_id=body.topic_id,
-        session_id=body.session_id,
-        history=history,
-        want_spoken=body.spoken,
-        # which question the learner is looking at, so the reply talks about that one
-        item_id=body.item_id,
-    )
+    # Metered *around* the call, not before it: the reservation is taken first so two
+    # simultaneous requests cannot both read "1 credit left", and it is refunded if the
+    # answer came from the learner's own material rather than from a model. An answer the
+    # provider never produced is not an adapted action and must not be charged for.
+    with svcs.credits.charge(
+        student_id=student.id,
+        action="explain",
+        idempotency_key=retry_key,
+        request_id=getattr(request.state, "request_id", None),
+    ) as credit_ticket:
+        reply = await svcs.ai2.explain(
+            student.id,
+            body.question,
+            topic_id=body.topic_id,
+            session_id=body.session_id,
+            history=history,
+            want_spoken=body.spoken,
+            # which question the learner is looking at, so the reply talks about that one
+            item_id=body.item_id,
+        )
+        if reply.provider != "gemini":
+            credit_ticket.not_billable(
+                "the answer came from your own material, not from a model, so no credit was spent"
+            )
     if body.session_id:
         # The metric is only real if the server records what the server showed: four
         # of AI 1's pattern detectors read ``explanation_opened`` and nothing else
@@ -128,6 +152,7 @@ async def explain(
     body = secrecy.public_payload(reply.as_dict(), served_locally=reply.provider != "gemini")
     return {
         **body,
+        "credits": credit_ticket.as_dict(),
         "privacy": {
             "sent_to_model": bool(reply.llm.get("prompt_chars")),
             "redacted_fields": int(reply.llm.get("redacted_fields") or 0),
@@ -296,11 +321,41 @@ def worked_example_opened(
 @router.post("/practice")
 async def practice(
     body: PracticeBody,
+    request: Request,
     s: Session = Depends(db_session),
     student: Student = Depends(rate("mutation")),
+    retry_key: str | None = Depends(idempotency_key),
 ) -> dict[str, Any]:
-    items = await current().ai2.generate_practice(student.id, topic_id=body.topic_id, count=body.count, note=body.note or "")
-    return {"items": items}
+    """Practice questions. Metered only when the model actually wrote one.
+
+    The bank, a parametric re-draw and a *stored* generated item all cost nothing: they
+    are existing material, and charging a credit for re-showing a question the learner
+    already paid for once would be charging twice for one action. ``generated_by`` with
+    ``stored: false`` is the only combination that means "a model wrote this, now".
+    """
+    svcs = current()
+    with svcs.credits.charge(
+        student_id=student.id,
+        action="generate_check",
+        idempotency_key=retry_key,
+        request_id=getattr(request.state, "request_id", None),
+    ) as credit_ticket:
+        items = await svcs.ai2.generate_practice(
+            student.id, topic_id=body.topic_id, count=body.count, note=body.note or ""
+        )
+        fresh = [
+            item
+            for item in items
+            if isinstance(item.get("meta"), dict)
+            and item["meta"].get("generated_by")
+            and not item["meta"].get("stored")
+        ]
+        if not fresh:
+            credit_ticket.not_billable(
+                "the questions came from existing material rather than a new model-written set, "
+                "so no credit was spent"
+            )
+    return {"items": items, "credits": credit_ticket.as_dict()}
 
 
 #: What kind of source each upstream search looks for, in learner-safe words. The service's own

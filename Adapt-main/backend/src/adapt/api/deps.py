@@ -18,6 +18,7 @@ is refused for any non-loopback peer, and it never applies in tunnel mode.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request, Response
@@ -27,7 +28,7 @@ from ..config import Settings, get_settings
 from ..db.engine import get_db
 from ..db.models import Student
 from ..security import auth
-from ..security.middleware import MUTATING, client_ip
+from ..security.middleware import MUTATING, audit_event, client_ip
 from ..services import AppServices, current
 
 log = logging.getLogger("adapt.api.deps")
@@ -109,10 +110,24 @@ def require_csrf(request: Request, student: Student = Depends(student_from_reque
     """
     row = getattr(request.state, "auth_session", None)
     if row is not None and request.method in MUTATING:
-        provided = request.headers.get("x-csrf-token") or request.query_params.get("csrf")
+        provided = request.headers.get("x-csrf-token")
+        if not provided and _beacon_path(request):
+            # One exception, and it is a real constraint rather than a convenience:
+            # ``navigator.sendBeacon`` cannot set a request header, so the event flush on
+            # page-hide has nowhere to put a header. It is allowed to carry the token in
+            # the query string *only* on the telemetry append route. Everywhere else the
+            # header is required, because a token in a URL is a token in an access log and
+            # in a ``Referer`` -- and a CSRF token that leaks is not a CSRF token.
+            provided = request.query_params.get("csrf")
         if not auth.check_csrf(row, provided):
             raise HTTPException(status_code=403, detail="csrf token missing or wrong")
     return student
+
+
+def _beacon_path(request: Request) -> bool:
+    """The two telemetry append routes, which are the only ones a browser beacons to."""
+    path = request.url.path.rstrip("/")
+    return path.endswith("/events")
 
 
 def rate(scope: str):
@@ -132,8 +147,15 @@ def rate(scope: str):
     return _dep
 
 
-def issue_login(response: Response, s: Session, student: Student, *, request: Request | None = None) -> dict[str, Any]:
-    issued = auth.create_session(s, student.id, ip=(client_ip(request) if request is not None else None), user_agent=(request.headers.get("user-agent") if request is not None else None))
+def issue_login(
+    response: Response, s: Session, student: Student, *, request: Request | None = None
+) -> dict[str, Any]:
+    issued = auth.create_session(
+        s,
+        student.id,
+        ip=(client_ip(request) if request is not None else None),
+        user_agent=(request.headers.get("user-agent") if request is not None else None),
+    )
     st = get_settings()
     response.set_cookie(
         st.cookie_name,
@@ -195,7 +217,10 @@ def shared_bank_write(request: Request) -> None:
     if not auth.check_demo_passphrase(request.headers.get("x-adapt-demo-passphrase")):
         raise HTTPException(
             status_code=403,
-            detail={"error": "demo_passphrase_required", "next": "send X-ADAPT-Demo-Passphrase: <the phrase the operator set>"},
+            detail={
+                "error": "demo_passphrase_required",
+                "next": "send X-ADAPT-Demo-Passphrase: <the phrase the operator set>",
+            },
         )
 
 
@@ -221,13 +246,153 @@ def llm_guard(request: Request) -> None:
         )
 
 
+# --------------------------------------------------------------------------- #
+# operator authority
+# --------------------------------------------------------------------------- #
+
+#: ``Student.role`` values that carry platform authority. Nothing writes this column from
+#: a request body, which is what makes it an authority rather than a claim: the two ways
+#: to be an operator are (a) this column, set by the CLI/an operator, or (b) an operator
+#: token in the environment, which no learner can read.
+OPERATOR_ROLES = frozenset({"operator", "admin"})
+
+
+def _operator_token(request: Request) -> str | None:
+    header = request.headers.get("x-adapt-operator-token")
+    if header:
+        return header.strip() or None
+    return _bearer(request)
+
+
+def _csrf_for_cookie_auth(request: Request) -> None:
+    """A cookie-authenticated mutation still needs the CSRF token.
+
+    An operator token sent as a Bearer header is not a cookie, so it cannot be replayed by
+    a third-party page; a browser session can, which is why the rule follows the *method
+    of authentication* rather than the route.
+    """
+    if request.method not in MUTATING:
+        return
+    if _bearer(request) is not None:
+        # The credential travelled in a header the browser had to be told to send, so a
+        # third-party page cannot produce this request. Note the rule is about the
+        # *credential used for this request*, not about whether a cookie also happens to
+        # be present: an operator script that keeps a learner cookie in its cookie jar
+        # while sending a bearer token must not be forced to fetch a CSRF token too.
+        return
+    row = getattr(request.state, "auth_session", None)
+    if row is None:
+        return
+    if not auth.check_csrf(row, request.headers.get("x-csrf-token")):
+        raise HTTPException(status_code=403, detail="csrf token missing or wrong")
+
+
+@dataclass(frozen=True)
+class Actor:
+    """Who is acting. Either a platform operator token, or a signed-in learner with a role.
+
+    An operator token is a *complete* credential: it identifies the operator without a
+    ``students`` row, which is what allows a deployment to run its admin plane from a
+    script with no browser, no cookie and no learner account at all. That is also why this
+    is not simply ``student_from_request`` plus a role check -- it used to be, and an
+    operator script then failed with "not signed in".
+    """
+
+    id: str
+    role: str
+    student: Student | None = None
+    via: str = "role"
+
+
+def require_operator(request: Request, s: Session = Depends(db_session)) -> Actor:
+    """Platform authority: an operator token from the environment, or an operator role.
+
+    Before this dependency existed, ``Student.role`` was written by the CLI and read by
+    nobody: the shared-state mutations were reachable by any signed-in learner in
+    ``mode=local``, with the only defence being a tunnel-mode check. Role is now
+    load-bearing on this plane, and the check is deliberately an OR: a deployment with an
+    operator token does not also need to hand out database roles, and a deployment with
+    roles does not have to export a second secret.
+    """
+    import hmac
+    import os
+
+    expected = os.environ.get("ADAPT_OPERATOR_TOKEN") or ""
+    provided = _operator_token(request)
+    if expected and provided and hmac.compare_digest(expected, provided):
+        # A header credential cannot be replayed by a third-party page, so no CSRF check.
+        return Actor(id="operator:token", role="operator", via="token")
+
+    row = auth.lookup_session(s, _cookie_token(request, get_settings()))
+    if row is not None:
+        student = s.get(Student, row.student_id)
+        if (
+            student is not None
+            and student.deleted_at is None
+            and str(student.role or "") in OPERATOR_ROLES
+        ):
+            request.state.auth_session = row
+            _csrf_for_cookie_auth(request)
+            return Actor(id=student.id, role=str(student.role), student=student, via="role")
+
+    denied_id = row.student_id if row is not None else None
+    audit_event(
+        request,
+        action="operator_denied",
+        outcome="denied",
+        actor=denied_id,
+        detail={"path": request.url.path},
+    )
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "error": "operator_required",
+            "message": "this call changes shared or institutional state; it needs operator authority",
+            "next": (
+                "send the value of ADAPT_OPERATOR_TOKEN as a bearer token, or sign in as an "
+                "account whose role is operator"
+            ),
+        },
+    )
+
+
+def idempotency_key(request: Request) -> str | None:
+    """The client's retry key, bounded. Absent is allowed; blank after trimming is not a key."""
+    raw = request.headers.get("idempotency-key")
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_idempotency_key",
+                "message": "Idempotency-Key was sent empty",
+                "next": "omit the header, or send a stable value of at most 120 characters",
+            },
+        )
+    if len(value) > 120:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_idempotency_key",
+                "message": "Idempotency-Key is longer than 120 characters",
+            },
+        )
+    return value
+
+
 __all__ = [
+    "OPERATOR_ROLES",
+    "Actor",
     "db_session",
+    "idempotency_key",
     "shared_bank_write",
     "issue_login",
     "llm_guard",
     "rate",
     "require_csrf",
+    "require_operator",
     "services",
     "settings",
     "student_from_request",

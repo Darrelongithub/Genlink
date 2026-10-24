@@ -21,6 +21,7 @@ from typing import Any, Callable, Iterator
 from sqlalchemy.orm import Session
 
 from ..baseline import Baseline
+from ..credits.service import Credits
 from ..state import LearnerState, Orchestrator
 from ..ai.ai1 import LearningIntelligence
 from ..ai.ai2 import EducationalIntelligence
@@ -56,6 +57,9 @@ class AppServices:
     limiter: Any
     #: The subject round (phase 3). Optional so a partially built container still works.
     subjects: Any = None
+    #: Adapt Credit metering (institutions, wallets, the append-only ledger). Optional for
+    #: the same reason ``subjects`` is: a partially built container still serves lessons.
+    credits: Any = None
     _reply_fn: Callable[..., Any] | None = field(default=None, repr=False)
 
     # -- sessions ---------------------------------------------------------- #
@@ -291,6 +295,9 @@ def build(
     subjects = Subjects(
         database.sessionmaker, state=state, settings=settings, llm=getattr(ai2, "llm", None)
     )
+    # Credit metering shares the session *factory* (never a session) for the reason in
+    # ``credits/service.py``: a debit must commit before the rest of the request writes.
+    credits = Credits(database.sessionmaker, settings=settings)
     return AppServices(
         settings=settings,
         db=database,
@@ -301,6 +308,7 @@ def build(
         ai2=ai2,
         ai3=ai3,
         subjects=subjects,
+        credits=credits,
         resources=resources,
         limiter=limiter,
     )

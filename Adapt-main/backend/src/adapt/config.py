@@ -148,6 +148,15 @@ class Settings(BaseSettings):
     argon2_time_cost: int = 3
     argon2_memory_kib: int = 64 * 1024
 
+    # -- institutions and Adapt Credits ----------------------------------
+    # Where plan configuration is read from. ``None`` means the shipped example under
+    # ``backend/config/``: metering that works on a fresh clone, with no prices in it.
+    # Plan *content* is configuration; this module never contains a credit price.
+    credit_plans_path: Path | None = None
+    # Operator kill switch. Turning metering off does not delete a ledger or a balance --
+    # it stops new debits, which is the state to be in while investigating a dispute.
+    credits_metering: bool = True
+
     # -- Gemini (AI 1 + AI 2) -------------------------------------------
     gemini_api_key: str | None = None
     # Model *names* live here and nowhere else. Which task gets which class is decided in

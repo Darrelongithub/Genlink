@@ -141,7 +141,12 @@ def authenticate(s: Session, *, password: str, email: str | None = None, usernam
         # Forgotten means forgotten: handing a deleted learner a fresh session would
         # put their history back in circulation while every read path says "gone".
         return None
-    if student is None or not auth.verify_password(password, student.password_hash):
+    if student is None:
+        # Same work as a real verification: see ``auth.dummy_password_verify``. Without
+        # this, "no such learner" answered measurably faster than "wrong password".
+        auth.dummy_password_verify(password)
+        return None
+    if not auth.verify_password(password, student.password_hash):
         return None
     student.last_active_at = utcnow()
     s.commit()

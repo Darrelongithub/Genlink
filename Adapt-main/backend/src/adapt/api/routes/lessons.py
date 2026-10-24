@@ -27,7 +27,7 @@ from ...services import current
 from ...services import lessons as L
 from ...db.models import Student
 from ...security import secrecy
-from ..deps import db_session, rate, student_from_request
+from ..deps import db_session, idempotency_key, rate, student_from_request
 
 router = APIRouter(prefix="/api/v1/lessons", tags=["lessons"])
 
@@ -199,6 +199,7 @@ async def author_lesson(
     request: Request,
     student: Student = Depends(rate("lesson_author")),
     s: Session = Depends(db_session),
+    retry_key: str | None = Depends(idempotency_key),
 ) -> dict[str, Any]:
     """Ask AI 2 for a scene about something. It returns a *validated* spec or the reasons.
 
@@ -207,7 +208,21 @@ async def author_lesson(
     exists to prevent.
     """
     svcs = current()
-    out = await svcs.ai2.author_scene(request=body.request, kind=body.kind, student_id=student.id)
+    # A personalised lesson is the most expensive action in the plan, so it is metered
+    # around the authoring call and refunded when the answer was a built-in scene: the
+    # learner got a lesson, but the institution did not buy a generated one.
+    with svcs.credits.charge(
+        student_id=student.id,
+        action="personalised_lesson",
+        idempotency_key=retry_key,
+        request_id=getattr(request.state, "request_id", None),
+    ) as credit_ticket:
+        out = await svcs.ai2.author_scene(request=body.request, kind=body.kind, student_id=student.id)
+        if out.get("source") != "llm":
+            credit_ticket.not_billable(
+                "this lesson came from the built-in catalogue rather than a written-for-you "
+                "scene, so no credit was spent"
+            )
     if out.get("ok") and body.store and out.get("draft"):
         scene = L.store_spec(s, out["draft"], origin="ai2", student_id=student.id)
         out["stored"] = L.scene_card(s, scene, student_id=student.id)
@@ -222,6 +237,7 @@ async def author_lesson(
     elif out.get("ok"):
         out["stored"] = None
         out["next"] = "send store=true to keep it as a lesson you can reopen"
+    out["credits"] = credit_ticket.as_dict()
     return out
 
 

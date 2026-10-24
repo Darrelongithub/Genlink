@@ -1350,3 +1350,10 @@ from ..content.skeleton import cache as _skeleton_cache  # noqa: E402,F401
 # beside their features and registered the same way for the same reason.
 from ..ai.monitor import models as _monitor_models  # noqa: E402,F401
 from ..curriculum import models as _curriculum_models  # noqa: E402,F401
+
+# The institution / plan / wallet / ledger tables (revision R10). Imported here for the
+# same mechanical reason as every block above: ``create_all`` builds whatever is on
+# ``Base.metadata`` when it runs, and ``alembic check`` compares the database against
+# exactly that. Registering them only in the credits service would have left a
+# ``create_all`` database silently without the ledger.
+from ..credits import models as _credit_models  # noqa: E402,F401
