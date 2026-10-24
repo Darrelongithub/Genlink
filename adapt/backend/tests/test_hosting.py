@@ -462,3 +462,69 @@ def test_readiness_does_not_treat_http_500_as_ready(monkeypatch):
     monkeypatch.setattr(hosting.time, "monotonic", lambda: next(times))
     monkeypatch.setattr(hosting.time, "sleep", lambda *args: None)
     assert not hosting.HostSession().wait_http("http://local/", timeout=1)
+
+
+# --------------------------------------------------------------------------- #
+# joining by name: the `.local` address and the machine's other interfaces
+# --------------------------------------------------------------------------- #
+
+
+def test_mdns_name_is_the_exact_local_name_of_this_machine():
+    """Apple devices remember a machine as `<hostname>.local`; that exact name is what hosting trusts.
+
+    It is derived from our own hostname and validated to one DNS label, so a hostname that is
+    not a plain label produces *no* trusted name rather than a strange one.
+    """
+    assert hosting.mdns_name("Teachers-MacBook") == "teachers-macbook.local"
+    assert hosting.mdns_name("fedora.local") == "fedora.local"
+    assert hosting.mdns_name("odd name!") is None
+    assert hosting.mdns_name("..") is None
+    # No argument means "this machine": whatever it answers, it is one exact `.local` label.
+    own = hosting.mdns_name()
+    assert own is None or own.endswith(".local")
+
+
+def test_room_hosts_trusts_every_local_address_and_the_local_name(monkeypatch):
+    """One advertised address, several trusted arrivals.
+
+    A dual-homed host (wifi + ethernet/hotspot) is reachable at more than the one address the
+    banner prints, and the room finds all of them. Each entry is still an exact host: private
+    and link-local addresses of this machine plus its `.local` name — never loopback, never a
+    routable extra picked up from name resolution, never a wildcard.
+    """
+    monkeypatch.setattr(hosting, "mdns_name", lambda hostname=None: "classroom.local")
+    hosts = hosting.room_hosts(LAN_IP, [LAN_IP, "10.0.0.9", "169.254.4.4", "127.0.0.1", "8.8.8.8"])
+    assert hosts == [LAN_IP, "10.0.0.9", "169.254.4.4", "classroom.local"]
+
+
+def test_the_api_env_allows_each_room_host_and_its_origin(monkeypatch):
+    """Joining by name has to survive both checks a first write meets.
+
+    The Host allowlist gets the name (direct API arrivals), and `ADAPT_ALLOWED_ORIGINS` gets
+    `http://name.local:<web-port>` — otherwise a browser that arrived by name had its very
+    first POST (creating its guest session) refused by the origin check while the page itself
+    loaded fine, which read as "iPhones can't join".
+    """
+    env = hosting.build_api_env(
+        {},
+        lan_ip=LAN_IP,
+        web_port=3000,
+        api_port=8000,
+        extra_room_hosts=[LAN_IP, "classroom.local"],
+    )
+    hosts = env["ADAPT_EXTRA_ALLOWED_HOSTS"].split(",")
+    assert "classroom.local" in hosts and LAN_IP in hosts
+    origins = env["ADAPT_ALLOWED_ORIGINS"].split(",")
+    assert f"http://{LAN_IP}:3000" in origins
+    assert "http://classroom.local:3000" in origins
+
+
+def test_an_ipv6_host_header_is_parsed_not_refused_out_of_hand(settings):
+    """`[::1]:8000` split on `:` is `"["`, which matched nothing — every IPv6 arrival was
+    "untrusted" whatever the allowlist said, and Apple devices prefer IPv6."""
+    from adapt.security.middleware import _host_only, host_allowed
+
+    assert _host_only("[::1]:8000") == "::1"
+    assert _host_only("[fe80::1%en0]:3000") == "fe80::1%en0"
+    assert host_allowed("[::1]:8000", settings) is True
+    assert host_allowed("MyMac.Local:3000", settings) is False  # still exact-host or nothing

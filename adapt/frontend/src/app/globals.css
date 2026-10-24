@@ -1274,6 +1274,7 @@ kbd {
 /* Emphasis is brand blue (see styles/tokens.css `.strong`). */
 strong, b, .font-semibold { color: var(--ink); font-weight: 650; }
 .access-screen {
+  min-height: 100vh;
   min-height: 100dvh;
   display: grid;
   place-content: center;

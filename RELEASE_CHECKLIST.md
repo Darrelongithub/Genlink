@@ -36,17 +36,19 @@ CI equivalent: `.github/workflows/release-gate.yml` (jobs `static-contract`,
 lockfile, sets no AI credentials, reports audits without `--force`, and uploads
 `release/evidence/*.json`.
 
-Expected on this branch (after the third merge with `main` at `1b3add9`): backend
-1645 passed / 2 skipped for `Adapt-main/backend` (one earlier pre-third-merge run had a flaky
-async-job failure, isolated 5/5 and full rerun green — F-18); the mirrored `adapt/backend` pool
-bound passes its isolated check; frontend lint + unit suites (`lib`/`engine`/`server`/`env`/
+Expected on this branch (after the fourth merge with `main` at `bca7d15`): backend
+**1645 passed / 2 skipped** for `Adapt-main/backend` in 388.38 s (one earlier pre-third-merge
+run had a flaky async-job failure, isolated 5/5 and full reruns green — F-18); the mirrored
+`adapt/backend` bounded pool passes its isolated property check (main PR #7's `12/24/30`
+values, total capacity 36); frontend lint + unit suites (`lib`/`engine`/`server`/`env`/
 `dev`) + build pass; reference caller 17/17; stress 10 scenarios / 31 checks / 0 failures
-(135.26 req/s loopback after production middleware); migration 4/4 with head `R10`; E2E 9/9
-including the exhausted-credit 402 case; secret scan 1350 tracked files / 0 high; host scan
-187 Adapt + 177 Genlink browser files / 0 loopback calls; diff-aware lint 23 changed files /
-63 inherited findings / 0 on added lines; **Adapt-frontend npm audit 0, root Genlink npm 18
-high + 9 moderate, pip 4 advisories**; browser E2E is `BLOCKED` for all four suites in the
-sandbox.
+(**97.57 req/s** loopback on this busy sandbox — not a capacity guarantee); migration 4/4
+with head `R10`; E2E 9/9 including the exhausted-credit 402 case; secret scan 1352 tracked
+files / 0 high; host scan 187 Adapt + 179 Genlink browser files / 0 loopback calls;
+diff-aware lint 24 changed files / 79 inherited findings / 0 on added lines; **Adapt-frontend
+npm audit 0, root Genlink npm 18 high + 9 moderate, pip 4 advisories**; browser E2E is
+`BLOCKED` for all four suites in the sandbox. CI run `40067319614` at `8a021ab` was fully
+green before the fourth merge; the post-fourth-merge run must be green before merge.
 
 ## 1. Demo Ready — conditional YES
 

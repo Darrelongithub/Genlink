@@ -23,7 +23,13 @@
   <meta name="twitter:description" content="Transform your life with courses in spiritual wealth, financial literacy, ICT skills, and online income generation. Empower your generation to secure lasting prosperity.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Non-blocking: a stylesheet <link> here made first paint wait on Google
+       Fonts, which on a school/offline-LAN connection could stall the page
+       for seconds in Safari before anything rendered. The font now loads in
+       parallel (display=swap paints the fallback first) and the page never
+       waits on the internet to appear. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet"></noscript>
 </head>
 
   <body>

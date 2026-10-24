@@ -1,3 +1,4 @@
+import { safeLocalGet, safeLocalSet } from "@/lib/safeStorage";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,9 +24,9 @@ export default function TutorButton({ route, pageContext }: Props) {
   const hintKey = `lg-hint:${user?.id ?? "anon"}:${route.route_name}`;
   useEffect(() => {
     const text = HINTS[route.route_name];
-    setHint(text && !localStorage.getItem(hintKey) ? text : null);
+    setHint(text && !safeLocalGet(hintKey) ? text : null);
   }, [hintKey, route.route_name]);
-  const dismissHint = () => { localStorage.setItem(hintKey, "1"); setHint(null); };
+  const dismissHint = () => { safeLocalSet(hintKey, "1"); setHint(null); };
 
   useEffect(() => {
     document.body.classList.toggle("light-guide-open", open);

@@ -25,8 +25,14 @@ const nextConfig = {
   // by IP gets its HTML and its CSS and has its `/_next/*` chunks refused — which renders a
   // *complete-looking* screen whose buttons do nothing, because React never hydrated. The
   // probe drives the app that way, and so does anyone else who types an address.
+  // `*.local` / `*.lan`: iPhones and Macs reach a room machine by its
+  // Bonjour/mDNS name ("mymachine.local") at least as often as by its IP.
+  // Without the suffix, dev mode served them HTML but refused the JS chunks
+  // (see the 127.0.0.1 note above) -- a complete-looking page whose buttons
+  // did nothing, on Apple devices only. `adapt host` also passes the exact
+  // detected name via ADAPT_DEV_ORIGIN; this covers opening by any local name.
   allowedDevOrigins: [
-    ...new Set([".e2b.app", "*.e2b.app", ".trycloudflare.com", "*.trycloudflare.com", "localhost", "127.0.0.1", "[::1]", "::1", ...extra]),
+    ...new Set([".e2b.app", "*.e2b.app", ".trycloudflare.com", "*.trycloudflare.com", "localhost", "127.0.0.1", "[::1]", "::1", "*.local", "*.lan", ...extra]),
   ],
 };
 export default nextConfig;

@@ -12,7 +12,8 @@
     "host": "npm --prefix adapt/frontend run host",
     "adapt:host": "npm --prefix adapt/frontend run host",
     "adapt:dev": "npm --prefix adapt/frontend run dev",
-    "adapt:build": "npm --prefix adapt/frontend run build"
+    "adapt:build": "npm --prefix adapt/frontend run build",
+    "host:genlink": "vite build && vite preview --port 8080 --strictPort"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

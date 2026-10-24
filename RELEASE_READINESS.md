@@ -3,14 +3,14 @@
 Branch `arena/3315ff42-genlink`, originally based on `d998955e883934bffe606f4cbb2a4c9b63d68a27`,
 then merged with `main` at `aad6946b2198e4a08ce84f84777cd412ef5a9263`, again at
 `8851869` (PR #4: backend institution credits, operator authority and cross-site session
-protection), and a third time at `1b3add9` (PRs #5/#6: production hosting, WCAG 2.2 AA
-frontend, four browser suites, dependency patches and a rebuilt `/engine` console). See the
-Layout note in `SYSTEM_ARCHITECTURE.md`. Everything below was executed on this branch after
-the third merge. No AI credential was configured or used. All load
-numbers are **single-machine loopback measurements**, not capacity guarantees.
-Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/` (ignored by Git).
-Evidence commit: `9aba09afe77714f7c7300f5a1c381325102265fb` (third merge of `origin/main` at
-`1b3add9` into the release branch). Final documentation commit is reported in the task/PR.
+protection), a third time at `1b3add9` (PRs #5/#6: production hosting, WCAG 2.2 AA
+frontend, four browser suites, dependency patches and a rebuilt `/engine` console), and a
+fourth time at `bca7d15` (PR #7: room joining, page-switch/overload collapse and root Genlink
++ top-level `adapt/` hardening). See the Layout note in `SYSTEM_ARCHITECTURE.md`. Everything
+below was re-executed on this branch after the fourth merge. No AI credential was configured
+or used. All load numbers are **single-machine loopback measurements**, not capacity
+guarantees. Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/`
+(ignored by Git). Evidence commit is reported below after the final merge commit.
 
 ## Decisions
 
@@ -18,7 +18,7 @@ Evidence commit: `9aba09afe77714f7c7300f5a1c381325102265fb` (third merge of `ori
 | --- | --- | --- |
 | **Demo Ready** | **YES — conditional** | A **local/offline, clearly labelled prototype demo** with scratch learner data only. The 3-minute HTTP demo walker, the rebuilt `/engine` prototype (now carrying its own strong "example / not live billing" labels), the real backend exhausted-credit case and a clean Adapt-frontend dependency audit all pass. Do **not** use real learner data or claim live integration: Genlink is still not wired (F-02), the console is not connected to the backend ledger (F-03), and the root Genlink lockfile still has 18 high / 9 moderate advisories (F-16). |
 | **Pilot Ready** | **NO** | Requires the shipped Genlink caller, a real consent/data-sharing agreement, a written pilot protocol and dataset, a verified browser E2E run (4 suites attempted, all currently BLOCKED), wiring or explicitly scoping the engine console against the real credit ledger, an operator/institution onboarding process, and remediation of the root Genlink lockfile (F-16) plus setuptools (F-04). |
-| **Production Ready** | **NO** | All pilot blockers plus F-04/F-16 dependency remediation, load testing beyond one machine (the post-merge loopback number dropped to 135 req/s), institution/tenant scoping for the integration route, monitoring/rollback, secret-handling cleanup and reduction of the inherited lint/type debt. |
+| **Production Ready** | **NO** | All pilot blockers plus F-04/F-16 dependency remediation, load testing beyond one machine (the latest post-merge loopback number was 97.57 req/s on this busy sandbox), institution/tenant scoping for the integration route, monitoring/rollback, secret-handling cleanup and reduction of the inherited lint/type debt. |
 
 The three decisions are separate on purpose: a demo that is honest about being a
 prototype is shippable today; a pilot that touches real learners is not.
@@ -39,7 +39,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | F-10 | S2 | `scripts/demo.mjs` crashed at the end of an otherwise successful run reading `methods.labels.unit`; `/api/v1/methods/report` no longer returns a `labels` object. | e2e `--demo-script` check | **FIXED.** Optional-chained fallback to the report's own `note`; walker exits 0. |
 | F-11 | S2 | Reference-caller retry-storm test asserted an exact count of handler hits (24). Under a 12-thread burst the fake `ThreadingHTTPServer` can refuse a connection before `do_POST`, making the exact count flaky. | `integration/test_reference_client.py` | **FIXED.** Now asserts the real invariant: every result used exactly 2 attempts, handler hits ≤ 24 and ≥ 12. 5 consecutive reruns passed. |
 | F-12 | S2 | `ADAPT_RATE_LIMIT_MULTIPLIER` below 0.05 is silently clamped; the first stress run expected 0.01 to produce ~10 429s and saw 1. `Retry-After` is sent lowercase, so a case-exact header check missed it. | stress scenario `rate_limit_responses` | **FIXED in harness.** Uses 0.05 and case-insensitive header lookup; 40 requests → 11×200, 29×429, `retry-after: 10`. |
-| F-13 | S3 | Inherited code-quality debt: **5,108** Ruff findings and **217** mypy errors in the backend baseline. | `release/lint_changed.py`, CI baseline step | **OPEN — reported, not hidden.** CI fails only for findings on lines this branch adds: 19 changed Python files, 22 inherited findings in those files, **0 on added lines**. |
+| F-13 | S3 | Inherited code-quality debt: **5,108** Ruff findings and **217** mypy errors in the backend baseline. | `release/lint_changed.py`, CI baseline step | **OPEN — reported, not hidden.** CI fails only for findings on lines this branch adds: after the fourth merge, 24 changed Python files, 79 inherited findings in those files, **0 on added lines**. |
 | F-14 | S3 | `/api/v1/status` is a signed-in route and its `llm` key is removed by the privacy boundary; the first stress run wrongly treated that as "no key evidence". | stress scenario `backend_startup_and_no_ai_credential` | **FIXED in harness.** Authenticates, then checks redaction + published `lessons.state = simple mode`. |
 | F-15 | S3 | No live model, voice audio, real phone, real tunnel or Numbas-live verification was possible/attempted here. | `RELEASE_CHECKLIST.md` | **OPEN — explicitly unverified**, not simulated as live usage. |
 | F-16 | S1 | Root Genlink `package-lock.json` audit reports **27 vulnerabilities**: 18 high, 9 moderate, 0 critical (transitive `react-router`, `postcss`, `rollup`, `js-yaml`, `lodash`, `minimatch`, etc.). This lockfile was only added on `main` and was not covered by the earlier single-frontend audit. | `release/evidence/dependency-audit.json::npm_genlink_root` | **OPEN — report only.** No `--force`/unpinned upgrade was applied. Must be triaged before distributing the extracted Genlink app. |
@@ -72,20 +72,20 @@ All commands run from `/home/user/Genlink` unless stated. Python is the reposito
 
 | Gate | Command | Outcome |
 | --- | --- | --- |
-| Reproducible install | `python3 -m venv .venv && .venv/bin/python -m pip install -e "./Adapt-main/backend[dev]"`; `cd Adapt-main/frontend && npm ci --no-audit --no-fund` | exit 0; FastAPI 0.162.0, pytest 9.1.1, SQLAlchemy 2.1.6; 93 npm packages |
+| Reproducible install | `python3 -m venv .venv && .venv/bin/python -m pip install -e "./Adapt-main/backend[dev]"`; `cd Adapt-main/frontend && npm ci --no-audit --no-fund` | exit 0; FastAPI 0.162.0, pytest 9.1.1, SQLAlchemy 2.1.6; 92 npm packages on the post-fourth-merge reinstall |
 | Frontend lint/type/route contract | `cd Adapt-main/frontend && npm run lint` | exit 0; 146 backend routes vs 138 frontend calls, tsc clean |
 | Frontend unit tests | `npm run test:lib && npm run test:engine && npm run test:server && npm run test:env && npm run test:dev` | 61/15/2/2 + dev suite pass, exit 0 |
 | Frontend production build | `npm run build` | exit 0; 22 static pages generated, `.next/BUILD_ID` present |
-| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 401.72 s, exit 0 on the final ANSI-fix tree. Earlier after the third merge: 1645 passed / 2 skipped in 238.78 s; clean-venv CI-like run exposed F-20 (1 failed / 1644 passed), fixed; fresh clone + venv run 1645 passed / 2 skipped in 236.11 s; CI exposed F-21 (ANSI-coloured help), fixed. One pre-third-merge run had 1 flaky async-job failure (F-18); isolated 5/5 and rerun green. |
+| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 388.38 s, exit 0 on the post-fourth-merge tree. Earlier: 1645/2 in 401.72 s after the ANSI fix; 1645/2 in 238.78 s after the third merge; clean-venv CI-like run exposed F-20 (1 failed / 1644 passed), fixed; fresh clone + venv run 1645/2 in 236.11 s; CI exposed F-21 (ANSI-coloured help), fixed. One pre-third-merge run had 1 flaky async-job failure (F-18); isolated 5/5 and reruns green. |
 | Credit + contract + concurrency targeted | `pytest -q tests/test_session_cookie_commit.py tests/test_credits_and_tenancy.py tests/test_integration_release_contract.py` | 55 passed in 3.86 s |
-| Reference caller | `python3 -m unittest discover -s integration -p 'test_*.py'` | **17/17**; measured 64 concurrent caller adaptations in 591 ms (fake server, in-process) |
-| Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json` | PASS; 23 changed Python files, 63 inherited Ruff findings in those files, 0 on added lines |
-| Second backend layout | `.venv/bin/python release/check_second_layout.py --src adapt/backend/src` | PASS; `QueuePool(size=20, max_overflow=20, timeout=5, pre_ping=True)` in an isolated process |
-| Secret scan | `.venv/bin/python release/secret_scan.py --out release/evidence/secret-scan.json` | PASS; 1350 tracked files + 0 archive members; 0 high; 5 informational |
-| Browser host scan | `.venv/bin/python release/host_scan.py --out release/evidence/host-scan.json` | PASS; 187 Adapt + 177 Genlink browser files, 0 loopback calls, 2 informational allowlist regexes |
+| Reference caller | `python3 -m unittest discover -s integration -p 'test_*.py'` | **17/17**; measured 64 concurrent caller adaptations in 455 ms (fake server, in-process) on the post-fourth-merge rerun |
+| Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json` | PASS; 24 changed Python files, 79 inherited Ruff findings in those files, 0 on added lines |
+| Second backend layout | `.venv/bin/python release/check_second_layout.py --src adapt/backend/src` | PASS; `QueuePool(size=12, max_overflow=24, timeout=30, pre_ping=False)`, total capacity 36, in an isolated process (main PR #7's values) |
+| Secret scan | `.venv/bin/python release/secret_scan.py --out release/evidence/secret-scan.json` | PASS; 1352 tracked files + 0 archive members; 0 high; 5 informational |
+| Browser host scan | `.venv/bin/python release/host_scan.py --out release/evidence/host-scan.json` | PASS; 187 Adapt + 179 Genlink browser files, 0 loopback calls, 2 informational allowlist regexes |
 | Stress/failure harness | `.venv/bin/python release/stress_check.py --include-provider-outage --out release/evidence/stress-2026-10-23.json` | **PASS**; 10 scenarios, 31 checks, 0 failures, 1 diagnostic FINDING |
 | Migration smoke | `.venv/bin/python release/migration_smoke.py --out release/evidence/migration-smoke.json` | PASS 4/4; legacy Alembic `0002 → R10 (head R10)`; fresh and migrated DBs both boot and accept a learner |
-| E2E smoke + demo + web + credits | `.venv/bin/python release/e2e_smoke.py --web --demo-script --out release/evidence/e2e-smoke.json` | **PASS**; 9 checks, 0 failed; 26 HTTP steps; `scripts/demo.mjs` exit 0; `/engine` 200 with honesty labels |
+| E2E smoke + demo + web + credits | `.venv/bin/python release/e2e_smoke.py --web --demo-script --out release/evidence/e2e-smoke.json` | **PASS**; 9 checks, 0 failed; 25 HTTP steps; `scripts/demo.mjs` exit 0; `/engine` 200 with honesty labels |
 | Dependency audit | `npm audit --json` (Adapt frontend); `npm audit --json --package-lock-only` (root); `pip-audit --format json`; `.venv/bin/python release/audit_summary.py --npm ... --npm-root ... --pip ...` | report only; **Adapt npm 0 vulnerabilities** (F-01 fixed on main), root Genlink npm 18 high/9 moderate (F-16), pip 4 unique advisories (F-04); **no dependency was changed by this branch** |
 | Browser E2E | `bash release/browser_e2e.sh` | **BLOCKED** in this sandbox (Chromium apt font packages unresolvable). Four suites are attempted; CI records `BLOCKED`; a real test failure still fails. |
 | CI workflow | `.github/workflows/release-gate.yml` | YAML parsed; 3 jobs (`static-contract`, `backend-tests`, `release-smoke`); audits both lockfiles; browser wrapper runs 4 suites when Chromium is available |
@@ -94,15 +94,15 @@ All commands run from `/home/user/Genlink` unless stated. Python is the reposito
 
 | Scenario | Measured result | Gate |
 | --- | --- | --- |
-| 20 learners × 5 requests | 100×200, wall 739.34 ms, **135.26 req/s**, p50 133.54 ms, p95 160.05 ms, max 164.86 ms, 0 schema failures. Lower than the pre-production-middleware 199.30 req/s; recorded, not capacity-adjusted | PASS |
-| 50 duplicate submissions | wall 266.87 ms, p50 64.02 ms, one distinct plan, 50 distinct request ids | PASS |
-| Large valid / oversize | 115,323 B → 200 in 156.73 ms, 414 blocks, schema true; 8,388,609 B → raw-socket 413, urllib transport 0; health 200 after | PASS (F-07 recorded) |
-| 16 concurrent `/api/v1/explain`, no key | wall 226.68 ms, 12×200 + 4×429, health 200 after | PASS |
+| 20 learners × 5 requests | 100×200, wall 1,024.92 ms, **97.57 req/s**, p50 181.13 ms, p95 248.74 ms, max 272.03 ms, 0 schema failures. Lower again than the previous 135.26 req/s on this busy sandbox; recorded, not capacity-adjusted | PASS |
+| 50 duplicate submissions | wall 389.02 ms, p50 106.06 ms, one distinct plan, 50 distinct request ids | PASS |
+| Large valid / oversize | 115,323 B → 200 in 317.59 ms, 414 blocks, schema true; 8,388,609 B → raw-socket 413, urllib transport 0; health 200 after | PASS (F-07 recorded) |
+| 16 concurrent `/api/v1/explain`, no key | wall 485.37 ms, 12×200 + 4×429, p50 387.02 ms, health 200 after | PASS |
 | Retry storm + credit capability | 3 attempts, `standard_content`, `adapted=false`; OpenAPI 200 with **147 paths** and credit paths `/api/v1/credits/me`, `/api/v1/credits/actions`, `/api/v1/admin/institutions/{institution_id}/credits` | PASS |
 | Restart + stale session | `/me` 200 after restart, forced stale `/me` 401, stateless integration 200 before/after/stale | PASS |
-| DB locked/busy | 2 s exclusive hold; stateless 200 in 5.08 ms; stateful write 200 in 1,719.63 ms; after release 200 in 9.91 ms | PASS |
+| DB locked/busy | 2 s exclusive hold; stateless 200 in 7.32 ms; stateful write 200 in 1,671.18 ms; after release 200 in 19.75 ms | PASS |
 | Rate limit | multiplier 0.05, 40 requests → 11×200 + 29×429, `retry-after: 10` observed 5× | PASS |
-| Provider-outage diagnostic | 16 calls, providers enabled → 12×200 + 4×429 in 189.75 ms, health 200 | FINDING (report-only) |
+| Provider-outage diagnostic | 16 calls, providers enabled → 12×200 + 4×429 in 289.42 ms, health 200 | FINDING (report-only) |
 
 ### E2E journey details (fresh DB, scratch learner)
 
@@ -164,33 +164,30 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
     rollback were not exercised; only a synthetic `0002 → R10` migration was proven. `main`
     PR #6 added runbooks/systemd/nginx assets and backend packaging tests, but those tests
     prove files/builds, not a live deployment.
-13. Post-merge loopback throughput fell from 199.30 to 135.26 req/s (p50 96 → 134 ms) after
-    the production middleware/security work. This is one sandbox measurement, not a capacity
-    guarantee; size the pilot/production topology from its own load test.
+13. Loopback throughput on this shared sandbox has moved with load: 199.30 → 135.26 →
+    **97.57 req/s** (p50 96 → 134 → 181 ms) across the post-merge reruns. These are three
+    single-run measurements, not capacity guarantees; size the pilot/production topology from
+    its own controlled load test.
 14. F-19 was a CI harness defect (missing `release-artifacts` directory), not a backend
-    regression. The fresh workflow run after the fix must be green before treating CI as
-    verified.
-15. F-20 was a flaky test, not a product regression. It is fixed, but the final CI run must be
-    green before the gate is called reliable.
-16. F-21 was a colour-formatting assumption in CI-only help text. It is fixed; the final CI run
-    must still be green before the gate is called reliable.
+    regression. Fixed and covered by a green CI run.
+15. F-20 was a flaky test, not a product regression. Fixed and covered by a green CI run.
+16. F-21 was a colour-formatting assumption in CI-only help text. Fixed; CI run
+    `40067319614` at `8a021ab` was fully green (all three jobs). After the fourth `main`
+    merge the gate must be re-run once more before the branch is merged.
 
-## Conflict report for the three `main` merges
+## Conflict report for the four `main` merges
 
 | Merge | Conflict | Resolution | Verification |
 | --- | --- | --- | --- |
 | `aad6946` (Genlink extracted, top-level `adapt/` added) | `.gitignore` add/add | Combined main's Node/Genlink ignores with the release gate's `.venv/`, cache, `release-artifacts/`, `*.key` and `.env.local` ignores. | `git diff --check` clean; secret scan then covered the extracted trees. |
 | `8851869` (backend credits/operator/security, PR #4) | `Adapt-main/docs/EFFICIENCY.md` add/add | Regenerated from `Adapt-main/scripts/write_efficiency_doc.py` (93 lines, 0 conflict markers), keeping the branch's generator as the source of truth. All other main changes — R10 migration, credit service/routes, operator boundary, cross-site guard — were accepted as staged. | `pytest -q tests/test_ai_efficiency.py` 27/27; full suite 1617 passed / 2 skipped; merge commit `d812f79`. |
 | `1b3add9` (production hosting, WCAG frontend, dependency patches, PRs #5/#6) | `Adapt-main/frontend/src/app/engine/page.tsx` content conflict | Took **main's rebuilt console** (`git checkout --theirs`): it already carries the sample/non-live labels the release gate requires, plus a full operator presentation layer. All other production/packaging/hosting files auto-merged; the `issue_login` `s.commit()` survived the auto-merge of `deps.py`. | frontend lint + 6 unit scripts + build exit 0; `release/e2e_smoke.py --web` engine-label check PASS; full suite 1645 passed / 2 skipped; Adapt npm audit 0 vulnerabilities; merge commit `9aba09a`. |
+| `bca7d15` (PR #7 room joining, page-switch/overload collapse, root Genlink + top-level `adapt/` hardening) | `adapt/backend/src/adapt/db/engine.py` content conflict: release branch had `pool_size=20, max_overflow=20, pool_timeout=5, pre_ping=True`; main chose `_POOL_KWARGS = {12, 24, 30}` | Took **main's version** and relaxed `release/check_second_layout.py` to assert the invariant (QueuePool, total capacity ≥ 20, finite timeout) instead of our exact numbers. Main's `adapt/backend` hosting + realtime tests pass 44/44. | `release/check_second_layout.py` PASS (`size=12, max_overflow=24, timeout=30, total_capacity=36`); secret/host/lint scans re-run PASS; root Genlink browser files now 179; merge commit to follow. |
 
-No other file conflicted in the third merge. The deliberate release-owned edits that remain on
-top of all three merges are the `s.commit()` in `issue_login` (both layouts), the new session
+No other file conflicted in the fourth merge. The deliberate release-owned edits that remain on
+top of all four merges are the `s.commit()` in `issue_login` (both layouts), the new session
 regression test, the credit E2E/stress harness, the two-lockfile audit, the four-suite browser
-wrapper and the refreshed docs/evidence.
-
-No other file conflicted. The only deliberate release-owned edits on top of the merge are the
-`s.commit()` in `issue_login` (both layouts), the new regression test, the credit E2E/stress
-harness, the two-lockfile audit and the refreshed docs/evidence.
+wrapper, the property-based second-layout pool check and the refreshed docs/evidence.
 
 ## Likely conflicts with the other three parallel branches
 

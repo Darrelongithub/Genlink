@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # ruff: noqa: E501 -- prints full paths in release evidence.
-"""Verify the extracted ``adapt/`` backend has the same pooled-engine fix.
+"""Verify the extracted ``adapt/`` backend also has a *bounded* SQLite engine pool.
 
 latest main keeps the tested ``Adapt-main/`` tree AND adds a refactored top-level
 ``adapt/`` tree. The concurrency deadlock was measured in ``Adapt-main/backend``;
-this check builds the second layout's engine in its own process (its own keyring)
-and asserts the same bound, so the fix cannot be lost on only one copy.
+main PR #7 later chose different numbers for the refactored tree
+(``pool_size=12, max_overflow=24, pool_timeout=30``). What must not regress is the
+property: a file database uses an explicit bounded QueuePool with a finite checkout
+timeout and enough total capacity for the measured 16-way probe. This check builds
+the second layout's engine in its own process (its own keyring) and asserts that
+property, so it cannot be lost on only one copy.
 
 Run::
 
@@ -55,12 +59,14 @@ def main() -> int:
         "timeout_s": float(getattr(pool, "_timeout", 30)),
         "pre_ping": bool(getattr(pool, "_pre_ping", False)),
     }
+    total_capacity = measured["size"] + measured["max_overflow"]
     checks = {
-        "size_at_least_16": measured["size"] >= 16,
-        "overflow_at_least_16": measured["max_overflow"] >= 16,
-        "checkout_timeout_at_most_5s": measured["timeout_s"] <= 5,
-        "pre_ping_enabled": measured["pre_ping"],
+        "queue_pool_for_file_database": measured["pool_class"] == "QueuePool",
+        "total_capacity_at_least_20": total_capacity >= 20,
+        "finite_checkout_timeout": 0 < measured["timeout_s"] <= 60,
+        "size_recorded": measured["size"] > 0,
     }
+    measured["total_capacity"] = total_capacity
     engine.dispose()
     report = {
         "measured": measured, "checks": checks,

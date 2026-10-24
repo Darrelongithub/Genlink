@@ -81,11 +81,23 @@ def get_keyring() -> keymod.Keyring:
     return _KEYRING
 
 
+# A hosted room is a few dozen learners writing through one process. SQLite
+# serialises writers, so the pool must have enough connections for the
+# request threads serving them (SQLAlchemy's file default is 5 + 10 overflow,
+# which a class answering at once exhausts -- the overflow requests then wait
+# on the *pool*, not the database, and time out as 500s), and a writer that
+# finds the database busy must wait for the queue in front of it rather than
+# failing at 5s. 15s of busy-wait under WAL is still far inside the client's
+# own 25s request timeout.
+_POOL_KWARGS = {"pool_size": 12, "max_overflow": 24, "pool_timeout": 30}
+BUSY_TIMEOUT_MS = 15000
+
+
 def _sqlite_pragmas(shared: bool) -> Callable[[object, object], None]:
     def _apply(dbapi_conn, _record) -> None:
         cur = dbapi_conn.cursor()
         cur.execute("PRAGMA foreign_keys = ON")
-        cur.execute("PRAGMA busy_timeout = 5000")
+        cur.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
         cur.execute("PRAGMA synchronous = NORMAL")
         cur.execute("PRAGMA journal_mode = WAL" if shared else "PRAGMA journal_mode = MEMORY")
         cur.close()
@@ -161,24 +173,13 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
             mode=mode,
         )
 
-    # Release gate 2026-10-23 (see release/evidence/stress-2026-10-23.json): with the
-    # default QueuePool of 5 connections + 10 overflow, ~15 simultaneous learner
-    # requests exhausted the pool. The requests waiting for a checkout blocked while
-    # the single-worker event loop was waiting on those same requests, so even
-    # /healthz stopped answering. A bounded explicit pool keeps the cap -- it just
-    # fails fast instead of deadlocking. Memory databases use SingletonThreadPool,
-    # which does not accept these arguments, hence the is_file guard.
-    _pool = (
-        {"pool_size": 20, "max_overflow": 20, "pool_timeout": 5, "pool_pre_ping": True}
-        if is_file else {}
-    )
     if sqlcipher is not None and is_file:
         engine = create_engine(
             f"sqlite:///{db_file}",
             module=sqlcipher,
             future=True,
             connect_args={"check_same_thread": False},
-            **_pool,
+            **_POOL_KWARGS,
         )
         key_hex = keyring.subkey("sqlcipher").hex()
         memory_kib = max(128, settings.sqlcipher_memory // 1024)
@@ -192,7 +193,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
             cur.execute(f"PRAGMA cipher_memory_capacity = {memory_kib}")
             cur.execute("PRAGMA cipher_plaintext_header_size = 0")
             cur.execute("PRAGMA foreign_keys = ON")
-            cur.execute("PRAGMA busy_timeout = 5000")
+            cur.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
             cur.execute("PRAGMA journal_mode = WAL")
             cur.execute("PRAGMA synchronous = NORMAL")
             cur.close()
@@ -216,7 +217,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
         f"sqlite:///{db_file}",
         future=True,
         connect_args={"check_same_thread": False} if is_file else {},
-        **_pool,
+        **(_POOL_KWARGS if is_file else {}),
     )
     event.listen(engine, "connect", _sqlite_pragmas(is_file))
 

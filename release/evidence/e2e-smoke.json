@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T03:48:03Z",
+  "generated_at": "2026-10-24T05:56:09Z",
   "python": "3.11.2",
   "ai_credentials_used": false,
   "database": "fresh scratch directory",
@@ -9,7 +9,7 @@
       "method": "POST",
       "path": "/api/v1/students",
       "status": 200,
-      "elapsed_ms": 250.48,
+      "elapsed_ms": 133.74,
       "expected": [
         200
       ],
@@ -21,7 +21,7 @@
       "method": "POST",
       "path": "/api/v1/logout",
       "status": 200,
-      "elapsed_ms": 6.28,
+      "elapsed_ms": 8.25,
       "expected": [
         200
       ],
@@ -33,7 +33,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 401,
-      "elapsed_ms": 1.89,
+      "elapsed_ms": 2.61,
       "expected": [
         401
       ],
@@ -45,7 +45,7 @@
       "method": "POST",
       "path": "/api/v1/login",
       "status": 200,
-      "elapsed_ms": 239.82,
+      "elapsed_ms": 106.4,
       "expected": [
         200
       ],
@@ -57,7 +57,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 4.4,
+      "elapsed_ms": 5.2,
       "expected": [
         200
       ],
@@ -69,7 +69,7 @@
       "method": "POST",
       "path": "/api/v1/me/onboarding",
       "status": 200,
-      "elapsed_ms": 10.18,
+      "elapsed_ms": 6.56,
       "expected": [
         200
       ],
@@ -81,7 +81,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 3.64,
+      "elapsed_ms": 4.99,
       "expected": [
         200
       ],
@@ -93,7 +93,7 @@
       "method": "POST",
       "path": "/api/v1/baseline",
       "status": 200,
-      "elapsed_ms": 22.47,
+      "elapsed_ms": 17.54,
       "expected": [
         200
       ],
@@ -105,7 +105,7 @@
       "method": "GET",
       "path": "/api/v1/baseline/snapshot",
       "status": 200,
-      "elapsed_ms": 31.12,
+      "elapsed_ms": 20.67,
       "expected": [
         200
       ],
@@ -117,7 +117,7 @@
       "method": "POST",
       "path": "/api/v1/lesson-plan",
       "status": 200,
-      "elapsed_ms": 42.46,
+      "elapsed_ms": 25.88,
       "expected": [
         200
       ],
@@ -129,7 +129,7 @@
       "method": "POST",
       "path": "/api/v1/sessions",
       "status": 200,
-      "elapsed_ms": 16.96,
+      "elapsed_ms": 21.87,
       "expected": [
         200
       ],
@@ -141,7 +141,7 @@
       "method": "GET",
       "path": "/api/v1/practice?count=2",
       "status": 200,
-      "elapsed_ms": 44.41,
+      "elapsed_ms": 54.61,
       "expected": [
         200
       ],
@@ -153,7 +153,7 @@
       "method": "POST",
       "path": "/api/v1/attempts",
       "status": 200,
-      "elapsed_ms": 56.31,
+      "elapsed_ms": 66.16,
       "expected": [
         200
       ],
@@ -163,9 +163,9 @@
     {
       "name": "lesson_concepts_for_the_topic",
       "method": "GET",
-      "path": "/api/v1/lesson/concepts?topic=top_72a28e8b7c4e4dd39540",
+      "path": "/api/v1/lesson/concepts?topic=top_52d71208bea24312aa26",
       "status": 200,
-      "elapsed_ms": 20.27,
+      "elapsed_ms": 24.34,
       "expected": [
         200,
         422,
@@ -179,7 +179,7 @@
       "method": "POST",
       "path": "/api/v1/lesson/reteach",
       "status": 200,
-      "elapsed_ms": 22.34,
+      "elapsed_ms": 35.76,
       "expected": [
         200
       ],
@@ -191,7 +191,7 @@
       "method": "POST",
       "path": "/api/v1/explain",
       "status": 200,
-      "elapsed_ms": 18.24,
+      "elapsed_ms": 34.55,
       "expected": [
         200,
         429
@@ -204,7 +204,7 @@
       "method": "GET",
       "path": "/api/v1/adaptations/pending",
       "status": 200,
-      "elapsed_ms": 4.13,
+      "elapsed_ms": 7.6,
       "expected": [
         200
       ],
@@ -226,7 +226,7 @@
       "method": "GET",
       "path": "/api/v1/methods/report",
       "status": 200,
-      "elapsed_ms": 6.99,
+      "elapsed_ms": 9.9,
       "expected": [
         200
       ],
@@ -238,7 +238,7 @@
       "method": "GET",
       "path": "/api/v1/journey",
       "status": 200,
-      "elapsed_ms": 21.71,
+      "elapsed_ms": 29.95,
       "expected": [
         200
       ],
@@ -250,7 +250,7 @@
       "method": "GET",
       "path": "/api/v1/me/export",
       "status": 200,
-      "elapsed_ms": 48.84,
+      "elapsed_ms": 60.92,
       "expected": [
         200
       ],
@@ -262,7 +262,7 @@
       "method": "DELETE",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 5.32,
+      "elapsed_ms": 8.75,
       "expected": [
         200
       ],
@@ -274,7 +274,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 401,
-      "elapsed_ms": 1.99,
+      "elapsed_ms": 3.11,
       "expected": [
         401
       ],
@@ -286,7 +286,7 @@
       "method": "POST",
       "path": "/api/v1/integration/adapt",
       "status": 200,
-      "elapsed_ms": 5.9,
+      "elapsed_ms": 12.58,
       "expected": [
         200
       ],
@@ -298,7 +298,7 @@
       "method": "POST",
       "path": "/api/v1/resources/search",
       "status": 401,
-      "elapsed_ms": 2.91,
+      "elapsed_ms": 6.45,
       "expected": [
         200,
         401,
@@ -312,7 +312,7 @@
     {
       "name": "exhausted_adapt_credits_returns_402_and_standard_stays_open",
       "ok": true,
-      "detail": "{\"learner_created\": 200, \"actions_endpoint\": 200, \"priced_actions\": 4, \"plan_created\": 201, \"institution_created\": 201, \"wallet_initialised\": 200, \"membership_created\": 201, \"institution_id\": \"ins_9b5da61bcab24e4d9522\", \"generation_status\": 402, \"generation_ms\": 23.8, \"error\": \"credits_exhausted\", \""
+      "detail": "{\"learner_created\": 200, \"actions_endpoint\": 200, \"priced_actions\": 4, \"plan_created\": 201, \"institution_created\": 201, \"wallet_initialised\": 200, \"membership_created\": 201, \"institution_id\": \"ins_02e7547e66924cfb983b\", \"generation_status\": 402, \"generation_ms\": 15.56, \"error\": \"credits_exhausted\", "
     },
     {
       "name": "a_session_cookie_is_usable_on_the_immediately_following_request",
@@ -351,12 +351,12 @@
     {
       "name": "engine_console_renders_and_labels_its_numbers_as_samples",
       "ok": true,
-      "detail": "{\"status\": 200, \"elapsed_ms\": 6.43, \"html_bytes\": 31960, \"contains_sample_label\": true, \"contains_no_live_connection_label\": true}"
+      "detail": "{\"status\": 200, \"elapsed_ms\": 15.04, \"html_bytes\": 31960, \"contains_sample_label\": true, \"contains_no_live_connection_label\": true}"
     }
   ],
   "notes": [],
   "learner_journey": {
-    "student_id": "stu_feaa159392df4b60abec",
+    "student_id": "stu_713941013b7448d68f9b",
     "consent_at_signup": false,
     "consent_after_opt_in": true,
     "me_after_logout_status": 401,
@@ -368,7 +368,7 @@
     "wrong_answer_status": 200,
     "wrong_answer_correct_field": false,
     "practice_item_id": "itm_integer_ops_00",
-    "topic_id": "top_72a28e8b7c4e4dd39540",
+    "topic_id": "top_52d71208bea24312aa26",
     "concept_status": 200,
     "reteach_status": 200,
     "reteach_blocks": 3,
@@ -391,9 +391,9 @@
       "institution_created": 201,
       "wallet_initialised": 200,
       "membership_created": 201,
-      "institution_id": "ins_9b5da61bcab24e4d9522",
+      "institution_id": "ins_02e7547e66924cfb983b",
       "generation_status": 402,
-      "generation_ms": 23.8,
+      "generation_ms": 15.56,
       "error": "credits_exhausted",
       "mode": "standard",
       "fallback_mode": "standard",
@@ -426,121 +426,121 @@
       {
         "iteration": 0,
         "signup": 200,
-        "signup_ms": 208.74,
+        "signup_ms": 147.52,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 118.39,
+        "login_ms": 158.49,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 1,
         "signup": 200,
-        "signup_ms": 175.67,
+        "signup_ms": 144.78,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 229.66,
+        "login_ms": 187.06,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 2,
         "signup": 200,
-        "signup_ms": 135.54,
+        "signup_ms": 153.1,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 152.42,
+        "login_ms": 154.0,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 3,
         "signup": 200,
-        "signup_ms": 237.26,
+        "signup_ms": 152.12,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 157.84,
+        "login_ms": 156.33,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 4,
         "signup": 200,
-        "signup_ms": 215.88,
+        "signup_ms": 128.12,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 214.53,
+        "login_ms": 101.16,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 5,
         "signup": 200,
-        "signup_ms": 243.79,
+        "signup_ms": 114.15,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 163.73,
+        "login_ms": 107.33,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 6,
         "signup": 200,
-        "signup_ms": 130.39,
+        "signup_ms": 145.57,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 205.99,
+        "login_ms": 127.29,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 7,
         "signup": 200,
-        "signup_ms": 112.99,
+        "signup_ms": 123.83,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 139.51,
+        "login_ms": 140.91,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 8,
         "signup": 200,
-        "signup_ms": 186.35,
+        "signup_ms": 111.44,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 133.29,
+        "login_ms": 99.12,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 9,
         "signup": 200,
-        "signup_ms": 128.26,
+        "signup_ms": 150.33,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 145.97,
+        "login_ms": 151.24,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 10,
         "signup": 200,
-        "signup_ms": 130.0,
+        "signup_ms": 145.35,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 104.88,
+        "login_ms": 130.6,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 11,
         "signup": 200,
-        "signup_ms": 78.46,
+        "signup_ms": 131.82,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 80.12,
+        "login_ms": 130.21,
         "me_immediately_after_login": 200
       }
     ]
   },
   "demo_script": {
     "exit_code": 0,
-    "stdout_tail": "move works on the next two.\n\u001b[32mno contract violations found\u001b[0m\n\n{\n \"steps\": [\n  {\n   \"step\": \"health\"\n  },\n  {\n   \"step\": \"register\",\n   \"student_id\": \"stu_08805fa6f7dd453db1fc\",\n   \"csrf_issued\": true\n  },\n  {\n   \"step\": \"onboarding\",\n   \"ignored_keys\": [\n    \"learning_style\"\n   ],\n   \"consent\": {\n    \"analytics\": true,\n    \"share_summary_with_ai\": false\n   }\n  },\n  {\n   \"step\": \"diagnostic\",\n   \"items\": 8,\n   \"correct\": 4,\n   \"topics\": 8\n  },\n  {\n   \"step\": \"analyze\",\n   \"traces\": 8,\n   \"hypotheses\": 1,\n   \"proposals\": 1\n  },\n  {\n   \"step\": \"help\",\n   \"hint_level\": 1,\n   \"example_steps\": 2,\n   \"grounded\": false,\n   \"sources\": 1\n  },\n  {\n   \"step\": \"methods\",\n   \"scored\": 1,\n   \"pilot\": 0,\n   \"rows\": 1\n  },\n  {\n   \"step\": \"prose_concept\",\n   \"code\": \"history_ww1\",\n   \"versions\": [\n    \"text\",\n    \"visual\",\n    \"worked_example\"\n   ],\n   \"text_steps\": 5,\n   \"pair\": 2,\n   \"unverified\": 0\n  },\n  {\n   \"step\": \"journey\",\n   \"nodes\": 15,\n   \"due_reviews\": 8\n  },\n  {\n   \"step\": \"privacy\",\n   \"event_types\": 27,\n   \"forbidden_keys\": 48\n  }\n ],\n \"warnings\": []\n}\n\nOpen the app against this API and sign in as demo+uzdpc@example.invalid / demo-passphrase-2026 to see the same data in the UI.\n",
+    "stdout_tail": "move works on the next two.\n\u001b[32mno contract violations found\u001b[0m\n\n{\n \"steps\": [\n  {\n   \"step\": \"health\"\n  },\n  {\n   \"step\": \"register\",\n   \"student_id\": \"stu_80b76038d03440fdb034\",\n   \"csrf_issued\": true\n  },\n  {\n   \"step\": \"onboarding\",\n   \"ignored_keys\": [\n    \"learning_style\"\n   ],\n   \"consent\": {\n    \"analytics\": true,\n    \"share_summary_with_ai\": false\n   }\n  },\n  {\n   \"step\": \"diagnostic\",\n   \"items\": 8,\n   \"correct\": 4,\n   \"topics\": 8\n  },\n  {\n   \"step\": \"analyze\",\n   \"traces\": 8,\n   \"hypotheses\": 1,\n   \"proposals\": 1\n  },\n  {\n   \"step\": \"help\",\n   \"hint_level\": 1,\n   \"example_steps\": 2,\n   \"grounded\": false,\n   \"sources\": 1\n  },\n  {\n   \"step\": \"methods\",\n   \"scored\": 1,\n   \"pilot\": 0,\n   \"rows\": 1\n  },\n  {\n   \"step\": \"prose_concept\",\n   \"code\": \"history_ww1\",\n   \"versions\": [\n    \"text\",\n    \"visual\",\n    \"worked_example\"\n   ],\n   \"text_steps\": 5,\n   \"pair\": 2,\n   \"unverified\": 0\n  },\n  {\n   \"step\": \"journey\",\n   \"nodes\": 15,\n   \"due_reviews\": 8\n  },\n  {\n   \"step\": \"privacy\",\n   \"event_types\": 27,\n   \"forbidden_keys\": 48\n  }\n ],\n \"warnings\": []\n}\n\nOpen the app against this API and sign in as demo+zk3k1@example.invalid / demo-passphrase-2026 to see the same data in the UI.\n",
     "stderr_tail": ""
   },
   "engine_console": {
     "status": 200,
-    "elapsed_ms": 6.43,
+    "elapsed_ms": 15.04,
     "html_bytes": 31960,
     "contains_sample_label": true,
     "contains_no_live_connection_label": true

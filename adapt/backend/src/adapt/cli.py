@@ -968,16 +968,21 @@ def host_cmd(
         api_note = f"port {st.port} was busy, so the API is on {api_port} for this session (your other server is untouched)"
 
     lan_ip, considered = H.detect_lan_ip(ip)
+    # Every exact name/address this machine answers to locally (other
+    # interfaces + the `.local` name Apple devices use), so joining by any of
+    # them works. Still exact hosts only -- see hosting.room_hosts.
+    hosts_for_room = H.room_hosts(lan_ip, considered)
     multiplier = H.raised_multiplier(st.rate_limit_multiplier, rate_limit_multiplier or H.ROOM_RATE_LIMIT_MULTIPLIER)
 
     # Merged, never replaced: whatever .env already allows stays allowed, and this is the only
-    # place the LAN address enters the API's trust set -- as an exact host.
+    # place the LAN addresses enter the API's trust set -- as exact hosts.
     api_env = H.build_api_env(
         os.environ,
         lan_ip=lan_ip,
         web_port=web_port,
         api_port=api_port,
         extra_hosts=st.extra_allowed_hosts,
+        extra_room_hosts=hosts_for_room,
         origins=st.allowed_origins,
         data_dir=str(data_dir) if data_dir else None,
         configured_multiplier=st.rate_limit_multiplier,
@@ -985,6 +990,7 @@ def host_cmd(
     )
     web_env = H.build_web_env(
         os.environ, api_port=api_port, web_port=web_port, production=not dev, lan_ip=lan_ip,
+        extra_origins=hosts_for_room,
     )
 
     if dev and not frontend.installed:
@@ -1015,8 +1021,11 @@ def host_cmd(
     )
 
     session = H.HostSession(echo=typer.echo)
-    if lan_ip:
-        typer.echo(f"[host] trusting exactly this host at the API: {lan_ip} (no wildcard, no subnet)")
+    if hosts_for_room:
+        typer.echo(
+            f"[host] trusting exactly these hosts at the API: {', '.join(hosts_for_room)} "
+            "(no wildcard, no subnet)"
+        )
     # A terminal Ctrl-C raises KeyboardInterrupt on its own; SIGTERM does not, and a process
     # manager (or `kill`) that stops the presenter would otherwise leave the API and the web
     # server running -- on ports the next run then refuses. Same shutdown path for both.

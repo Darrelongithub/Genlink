@@ -4,6 +4,7 @@
     "Adapt-main/backend/src/adapt/api/deps.py",
     "Adapt-main/backend/src/adapt/db/engine.py",
     "Adapt-main/backend/tests/test_content_engine.py",
+    "Adapt-main/backend/tests/test_hosting.py",
     "Adapt-main/backend/tests/test_integration_release_contract.py",
     "Adapt-main/backend/tests/test_release_concurrency_pool.py",
     "Adapt-main/backend/tests/test_session_cookie_commit.py",
@@ -46,6 +47,13 @@
       "ruff_findings_in_file": 32,
       "ruff_findings_on_added_lines": 0,
       "added_lines": 14
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_hosting.py",
+      "untracked": false,
+      "ruff_findings_in_file": 16,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 15
     },
     {
       "path": "Adapt-main/backend/tests/test_integration_release_contract.py",
@@ -190,7 +198,7 @@
   ],
   "compile_errors": [],
   "diff_findings": [],
-  "baseline_findings": 63,
+  "baseline_findings": 79,
   "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
   "outcome": "PASS"
 }

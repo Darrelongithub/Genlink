@@ -5,33 +5,39 @@ The single most important fact: **Genlink is not connected to Adapt.** The contr
 proven; the caller is a test-only reference implementation. Any diagram that shows a
 live arrow between the two products is a proposal, not the current system.
 
-**Layout note (three merges with main, 2026-10-23/24):** while this gate was running,
+**Layout note (four merges with main, 2026-10-23/24):** while this gate was running,
 `main` advanced from `d998955` to `aad6946`, then to `8851869` (PR #4), then to `1b3add9`
-(PRs #5/#6). The first advance deleted both ZIP archives, extracted Genlink into the
-repository root (`src/`, `supabase/`, `drizzle/`, `index.html`, `package.json`) and added a
-refactored top-level `adapt/` tree. The second added real backend institution credits, a
-wallet/ledger, operator authority and cross-site session/mutation protection. The third
-added production hosting assets/runbooks, backend packaging tests, a WCAG 2.2 AA frontend
-pass, four browser-suite scripts, `next` 15.5.28 with `postcss`/`undici` overrides, and a
-substantially rebuilt `/engine` presentation console that already carries strong
-"example / not live billing / no live institution connected" labelling.
+(PRs #5/#6), then to `bca7d15` (PR #7). The first advance deleted both ZIP archives,
+extracted Genlink into the repository root (`src/`, `supabase/`, `drizzle/`, `index.html`,
+`package.json`) and added a refactored top-level `adapt/` tree. The second added real backend
+institution credits, a wallet/ledger, operator authority and cross-site session/mutation
+protection. The third added production hosting assets/runbooks, backend packaging tests, a
+WCAG 2.2 AA frontend pass, four browser-suite scripts, `next` 15.5.28 with
+`postcss`/`undici` overrides, and a substantially rebuilt `/engine` presentation console that
+already carries strong "example / not live billing / no live institution connected" labelling.
+The fourth hardened room joining, page-switch crashes/lag and overload collapse in the
+top-level `adapt/` tree and root Genlink app; it also chose a different bounded SQLite pool
+for `adapt/backend` (`pool_size=12, max_overflow=24, pool_timeout=30`).
 
-This branch merged all three advances. It resolved `.gitignore` and the generated
+This branch merged all four advances. It resolved `.gitignore` and the generated
 `docs/EFFICIENCY.md` add/add conflicts, took main's rebuilt `/engine` page on the third
-merge (its labels already satisfy the release gate's honesty check), applied the same
-measured pool fix to `adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift
-in `adapt/scripts/demo.mjs`, extended the host scan to the extracted trees, and added the
-measured exhausted-credit scenario plus the post-login session-commit fix to both backend
-layouts. The HTTP/stress evidence below was re-measured against `Adapt-main/backend` +
-`Adapt-main/frontend` after the third merge; `release/check_second_layout.py` separately
-proves the second backend carries the same pool bound.
+merge (its labels already satisfy the release gate's honesty check), and on the fourth merge
+accepted main's different-but-still-bounded pool for `adapt/backend/src/adapt/db/engine.py`
+while relaxing `release/check_second_layout.py` to assert the property (bounded QueuePool,
+total capacity ≥ 20, finite timeout) rather than our exact numbers. It also fixed the same
+demo-script drift in `adapt/scripts/demo.mjs`, extended the host scan to the extracted trees,
+and added the measured exhausted-credit scenario plus the post-login session-commit fix to
+both backend layouts. The HTTP/stress evidence below was re-measured against
+`Adapt-main/backend` + `Adapt-main/frontend` after the fourth merge;
+`release/check_second_layout.py` separately proves the second backend still carries a bounded
+pool.
 
 ## 1. Ownership and physical layout
 
 | Area | Where it lives | Owner in this release | State |
 | --- | --- | --- | --- |
-| Adapt backend | `Adapt-main/backend/src/adapt/` (tested here) and top-level `adapt/backend/src/adapt/` (refactored copy added on main) | parallel backend agent | both carry the bounded SQLite pool fix |
-| Adapt frontend | `Adapt-main/frontend/` (Next.js 15.5.27) | parallel frontend agent | checked out, builds to 22 static pages |
+| Adapt backend | `Adapt-main/backend/src/adapt/` (tested here) and top-level `adapt/backend/src/adapt/` (refactored copy added on main) | parallel backend agent | both carry a bounded SQLite pool; the refactored tree uses main PR #7's `12/24/30` values |
+| Adapt frontend | `Adapt-main/frontend/` (Next.js 15.5.28 after PR #5) | parallel frontend agent | checked out, builds to 22 static pages |
 | Adapt scripts/docs | `Adapt-main/scripts/`, `Adapt-main/docs/` | parallel agents, release gate for verification | most README-linked docs are **not written**; see README → Documentation status |
 | Genlink | root `src/`, `supabase/`, `drizzle/` (201 files under `src/`); originally `genink-school-of-the-elites-main (1).zip`, now deleted on main | product owner | extracted on main; archive inspected in memory before deletion, nothing printed |
 | Cross-system contract | `integration/contract/`, `integration/reference_client.py`, `integration/test_reference_client.py` | release engineering | frozen schemas, fixtures, 17/17 caller tests |

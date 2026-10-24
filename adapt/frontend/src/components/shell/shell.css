@@ -16,6 +16,7 @@
 .app-frame {
   display: flex;
   align-items: stretch;
+  min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
 }
@@ -25,6 +26,7 @@
   position: sticky;
   top: 0;
   align-self: flex-start;
+  height: 100vh;
   height: 100dvh;
   width: var(--sidebar-w);
   flex: none;
@@ -113,6 +115,7 @@
   min-height: var(--topbar-h);
   padding: var(--s1) var(--gutter);
   background: color-mix(in srgb, var(--bg) 88%, white);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
@@ -226,6 +229,7 @@
     position: fixed;
     top: 0;
     left: 0;
+    height: 100vh;
     height: 100dvh;
     transform: translateX(-100%);
     transition: transform 0.2s var(--ease);
@@ -264,6 +268,7 @@
 /* ---------- Access screens (sign in / consent / welcome): flower bottom-left ---------- */
 .access-shell {
   position: relative;
+  min-height: 100vh;
   min-height: 100dvh;
 }
 .access-flower {

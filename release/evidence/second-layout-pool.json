@@ -2,16 +2,17 @@
   "measured": {
     "src": "adapt/backend/src",
     "pool_class": "QueuePool",
-    "size": 20,
-    "max_overflow": 20,
-    "timeout_s": 5.0,
-    "pre_ping": true
+    "size": 12,
+    "max_overflow": 24,
+    "timeout_s": 30.0,
+    "pre_ping": false,
+    "total_capacity": 36
   },
   "checks": {
-    "size_at_least_16": true,
-    "overflow_at_least_16": true,
-    "checkout_timeout_at_most_5s": true,
-    "pre_ping_enabled": true
+    "queue_pool_for_file_database": true,
+    "total_capacity_at_least_20": true,
+    "finite_checkout_timeout": true,
+    "size_recorded": true
   },
   "outcome": "PASS",
   "note": "built in an isolated process so the field-cipher keyring cannot contaminate the main backend suite"

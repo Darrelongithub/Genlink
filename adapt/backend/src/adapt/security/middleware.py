@@ -77,20 +77,56 @@ CSP_NO_INLINE = (
 TESTING_HOSTS = {"testserver", "testclient"}
 
 
+def _host_only(host: str | None) -> str:
+    """The hostname part of a Host/Origin value, lowercase, with no port.
+
+    The bracket form matters: an IPv6 literal arrives as ``[fe80::1]:3000``, and
+    splitting that on ``:`` yields ``"["`` -- which can never match anything, so
+    every IPv6 arrival (which Apple devices prefer) was refused as an
+    "untrusted host" no matter what the allowlist said. Parse the brackets
+    first; only then is ``:port`` safe to strip.
+    """
+    if not host:
+        return ""
+    h = host.split("://")[-1].split("/")[0].strip().lower()
+    if h.startswith("["):
+        end = h.find("]")
+        return h[1:end] if end != -1 else h.strip("[]")
+    return h.split(":")[0].rstrip(".")
+
+
 def host_allowed(host: str | None, settings: Settings) -> bool:
     if not host:
         return False
-    h = host.split("://")[-1].split(":")[0].strip().lower().rstrip(".")
+    h = _host_only(host)
     if h in LOCAL_HOSTS or h in settings.origins:
         return True
     if settings.mode == "local" and h in TESTING_HOSTS:
         return True
-    origin_host = {o.split("://")[-1].split(":")[0].split("/")[0] for o in settings.origins}
+    origin_host = {_host_only(o) for o in settings.origins}
     if h in origin_host:
         return True
-    if h in set(settings.extra_allowed_hosts):
+    if h in {_host_only(extra) for extra in settings.extra_allowed_hosts}:
         return True
     return any(p.match(h) for p in HOST_PATTERNS)
+
+
+def _session_bucket_key(request: Request, settings: Settings) -> str | None:
+    """A stable per-learner bucket key derived from the session cookie, or None.
+
+    Behind the room's one web proxy (and behind any shared NAT) every learner
+    arrives from the *same* IP, so an IP-keyed bucket is not a per-person
+    ceiling -- it is the whole class sharing one budget, and a full room
+    drains it by simply being a full room. The session cookie is the identity
+    the browser already presents on every request; hashing it keeps the raw
+    token out of the limiter's tables and logs. Requests with no cookie (the
+    sign-in and guest-creation surface, which is the part an abuser can reach)
+    keep the IP key exactly as before.
+    """
+    token = request.cookies.get(settings.cookie_name)
+    if not token:
+        return None
+    return "session:" + hashlib.sha256(token.encode()).hexdigest()
 
 
 class SecurityHeadersMiddleware:
@@ -180,7 +216,11 @@ class LimitsMiddleware(BaseHTTPMiddleware):
                 status_code=413,
             )
         ip = client_ip(request, settings=self.settings)
-        ok, retry = self.limiter.allow("ip", ip)
+        # Signed-in requests spend a per-learner bucket, not the shared
+        # connection's: through the room proxy the whole class is one IP, and
+        # keying by it made thirty learners share one person's ceiling.
+        # Anonymous requests still key by IP -- that is the flood surface.
+        ok, retry = self.limiter.allow("ip", _session_bucket_key(request, self.settings) or ip)
         if not ok:
             wait = round(retry, 2)
             # The per-scope refusals in `deps.py` answer 429 with a structured detail, and
@@ -216,11 +256,14 @@ class LimitsMiddleware(BaseHTTPMiddleware):
         # "/quotas" report a bucket count that had nothing to do with the buckets refusing).
         if request.method in MUTATING and self.is_realtime(request.url.path):
             key = f"rt:{ip}"
-            if self.settings.demo_mode:
-                # The LAN proxy makes every phone appear to be the same IP.
-                token = request.cookies.get(self.settings.cookie_name)
-                if token:
-                    key = "rt:session:" + hashlib.sha256(token.encode()).hexdigest()
+            # The LAN proxy makes every phone appear to be the same IP, in every
+            # hosted mode -- not only the pitch demo. Gating this on demo_mode
+            # left a normally-hosted room with ONE in-flight allowance (and one
+            # burst window) for the entire class: five learners answering at
+            # once read as one runaway client, and everyone else got 429s.
+            session_key = _session_bucket_key(request, self.settings)
+            if session_key:
+                key = f"rt:{session_key}"
             allowed, reason, wait = realtime_guard(self.settings).begin(key)
             if not allowed:
                 broker = "already in flight" if reason == "in_flight" else "arrived too fast"

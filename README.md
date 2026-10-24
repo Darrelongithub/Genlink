@@ -125,3 +125,10 @@ npm run host                 # ADAPT at http://<this-machine>:3000
 Run `npm run dev` in another terminal for Genlink at port 8080. Both apps bind to all interfaces
 for a trusted LAN demo. Set `VITE_ADAPT_URL` in `.env.local` when ADAPT lives at a different origin.
 See [`docs/INTEGRATION.md`](docs/INTEGRATION.md) for the boundary and future hand-off contract.
+
+**Hosting a whole class:** use the production hosts, not the dev servers — the dev servers
+compile pages on demand, so the first students to open each screen pay for everybody's wait.
+Run `npm run host` for ADAPT (builds once, then serves) and `npm run host:genlink` for Genlink
+(build + preview on port 8080). Students can join by the printed IP address **or** by the host
+machine's name (`http://<machine-name>.local:<port>`, which is how iPhones/Macs usually find
+it); both apps accept either.

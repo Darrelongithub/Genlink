@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T03:48:03Z",
+  "generated_at": "2026-10-24T05:54:37Z",
   "python": "3.11.2",
   "ai_credentials_used": false,
   "checks": [
@@ -27,25 +27,25 @@
   "runs": [
     {
       "label": "fresh",
-      "data_dir": "/tmp/adapt-migration-hihd4zwb/fresh",
+      "data_dir": "/tmp/adapt-migration-6i35t2li/fresh",
       "healthz_status": 200,
-      "healthz_ms": 2.51,
+      "healthz_ms": 3.86,
       "learner_create_status": 200,
-      "learner_create_ms": 12.39,
+      "learner_create_ms": 17.5,
       "me_status": 200,
-      "learner_id": "stu_9c2df38dc7434c82b328",
+      "learner_id": "stu_99510fd246c74b429191",
       "server_log_tail": "",
       "alembic_revision_after_boot": "R10"
     },
     {
       "label": "existing",
-      "data_dir": "/tmp/adapt-migration-hihd4zwb/existing",
+      "data_dir": "/tmp/adapt-migration-6i35t2li/existing",
       "healthz_status": 200,
-      "healthz_ms": 5.44,
+      "healthz_ms": 3.72,
       "learner_create_status": 200,
-      "learner_create_ms": 25.38,
+      "learner_create_ms": 16.53,
       "me_status": 200,
-      "learner_id": "stu_e5e1436d8f764985bcd8",
+      "learner_id": "stu_0b5f560e2667454fae61",
       "server_log_tail": "",
       "alembic_revision_after_boot": "R10"
     }
