@@ -5,20 +5,33 @@ The single most important fact: **Genlink is not connected to Adapt.** The contr
 proven; the caller is a test-only reference implementation. Any diagram that shows a
 live arrow between the two products is a proposal, not the current system.
 
+**Layout note (merge with main, 2026-10-23):** while this gate was running, `main` advanced
+from `d998955` to `aad6946`. It deleted both ZIP archives, extracted Genlink into the
+repository root (`src/`, `supabase/`, `drizzle/`, `index.html`, `package.json`) and added a
+refactored top-level `adapt/` tree, while leaving `Adapt-main/` **unchanged**. This branch
+merged that main, resolved the `.gitignore` add/add conflict, applied the same measured pool
+fix to `adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift in
+`adapt/scripts/demo.mjs`, and extended the host scan to the extracted trees. The HTTP/stress
+evidence below was measured against `Adapt-main/backend` + `Adapt-main/frontend`, which main
+did not modify; `release/check_second_layout.py` separately proves the second backend carries
+the same pool bound.
+
 ## 1. Ownership and physical layout
 
 | Area | Where it lives | Owner in this release | State |
 | --- | --- | --- | --- |
-| Adapt backend | `Adapt-main/backend/src/adapt/` (FastAPI, SQLAlchemy, Alembic) | parallel backend agent | checked out, 488 tracked files, running and tested |
+| Adapt backend | `Adapt-main/backend/src/adapt/` (tested here) and top-level `adapt/backend/src/adapt/` (refactored copy added on main) | parallel backend agent | both carry the bounded SQLite pool fix |
 | Adapt frontend | `Adapt-main/frontend/` (Next.js 15.5.27) | parallel frontend agent | checked out, builds to 22 static pages |
 | Adapt scripts/docs | `Adapt-main/scripts/`, `Adapt-main/docs/` | parallel agents, release gate for verification | most README-linked docs are **not written**; see README → Documentation status |
-| Genlink | `genink-school-of-the-elites-main (1).zip` (269 files: Vite/React/Supabase) | product owner; **not extracted into the tree** | archive only; inspected in memory, nothing duplicated or printed |
+| Genlink | root `src/`, `supabase/`, `drizzle/` (201 files under `src/`); originally `genink-school-of-the-elites-main (1).zip`, now deleted on main | product owner | extracted on main; archive inspected in memory before deletion, nothing printed |
 | Cross-system contract | `integration/contract/`, `integration/reference_client.py`, `integration/test_reference_client.py` | release engineering | frozen schemas, fixtures, 17/17 caller tests |
 | Release gate | `release/`, `.github/workflows/release-gate.yml`, root `*.md` | release engineering | measured evidence in `release/evidence/` |
 
-`Adapt-main (3).zip` was compared against the checkout: all 484 file entries already
-exist in `Adapt-main/`. It was **not** extracted. The Genlink archive was read with
-`zipfile` in memory; its `.env` was audited by key name only, never by value.
+`Adapt-main (3).zip` was compared against the checkout before main deleted it: all 484 file
+entries already existed in `Adapt-main/`. It was **not** extracted. The Genlink archive was
+read with `zipfile` in memory; its `.env` was audited by key name only, never by value.
+After the merge both archives are gone from the working tree, so the secret scan now covers
+1313 tracked source files and 0 archive members.
 
 ## 2. Runtime topology that actually runs
 
@@ -41,8 +54,8 @@ Genlink browser (archive only)
         ❌ no HTTP client for Adapt; no shared auth, no shared database
 ```
 
-`release/host_scan.py` scanned **92 Adapt browser files and 174 archived Genlink
-browser files**: 0 network calls or base-URL assignments to `localhost`, `127.0.0.1`,
+`release/host_scan.py` now scans **183 Adapt browser files (both trees) and 177 Genlink
+browser files (root `src/` + `index.html`)**: 0 network calls or base-URL assignments to `localhost`, `127.0.0.1`,
 `0.0.0.0` or `::1`. Two informational loopback strings remain in Genlink's
 `src/integrations/supabase/previewAuthStorage.ts` (lines 63 and 69): they are origin
 allowlist regexes, not requests. `Adapt-main/scripts/check-contract.mjs` independently

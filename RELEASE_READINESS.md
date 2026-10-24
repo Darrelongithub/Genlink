@@ -1,6 +1,8 @@
 # Release readiness — 2026-10-23
 
-Branch `arena/3315ff42-genlink`, based on `d998955e883934bffe606f4cbb2a4c9b63d68a27`.
+Branch `arena/3315ff42-genlink`, originally based on `d998955e883934bffe606f4cbb2a4c9b63d68a27`,
+then merged with `main` at `aad6946b2198e4a08ce84f84777cd412ef5a9263` (see Layout note in
+`SYSTEM_ARCHITECTURE.md`).
 Everything below was executed on this branch. No AI credential was configured or used.
 All load numbers are **single-machine loopback measurements**, not capacity guarantees.
 Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/` (ignored by Git).
@@ -27,7 +29,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | F-05 | S1 | Browser E2E could not run in this sandbox: `npx playwright install chromium` failed with `ECONNRESET` to `cdn.playwright.dev` (outbound host not allowlisted). | `release/browser_e2e.sh`, CI job step | **BLOCKED, not passed.** CI records `BLOCKED`; a real browser failure still fails the script. |
 | F-06 | S1 | One early release-gate run saw `401` twice immediately after a `200` login, then `200` on the next read. A suspected commit/response race was **not** reproducible: 72 immediate-use checks with the unmodified backend produced 0 failures. No speculative backend change was kept. | `release/e2e_smoke.py::run_login_cookie_immediate_use`, `release/evidence/e2e-smoke.json` | **OPEN — monitor.** 12 checks now run in every gate; 0 failures on the final run. |
 | F-07 | S1 | An 8,388,609-byte body is refused by the server, but a client that sends the whole body before reading the response (urllib) sees a connection reset (transport status 0), not the 413. A raw socket that announces the size and sends 1 KB reads `HTTP/1.1 413`. Server stays healthy. | stress scenario `large_but_valid_payloads` | **OPEN — caller guidance.** Callers should cap bodies client-side / use `Expect: 100-continue`; the guard itself works. |
-| F-08 | S1 | The Genlink archive ships a `.env` containing `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`. The publishable key is browser-public by design, and no service-role key or private key was found — but shipping any environment file inside a distributable archive is a bad default. | `release/evidence/secret-scan.json` (key names + fingerprints only, **no values**) | **OPEN — remove before distribution.** Values were never printed. |
+| F-08 | S1 | The Genlink archive **did** ship a `.env` with `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL` (browser-public by design; no service-role/private key found). Main has since **deleted that archive** and extracted the source; the tracked `.env.example` now contains only a placeholder. | `release/evidence/secret-scan.json` (key names + fingerprints only, **no values**) | **MITIGATED by the merge.** Still verify that no future distributable ZIP re-adds a real `.env`, and rotate the publishable key if the old archive already circulated. |
 | F-09 | S2 | 9 README-linked documents under `Adapt-main/docs/` do not exist (`DEMO`, `PILOT`, `AUDIT`, `UNVERIFIED`, `BUGS`, `ENGINE`, `INTEGRATION`, `EVIDENCE`, `VOICE`, `ACCESSIBILITY`). | README → Documentation status | **Mitigated.** README now carries an explicit status table instead of implying the docs exist. `EFFICIENCY.md` was generated from code so its test passes. |
 | F-10 | S2 | `scripts/demo.mjs` crashed at the end of an otherwise successful run reading `methods.labels.unit`; `/api/v1/methods/report` no longer returns a `labels` object. | e2e `--demo-script` check | **FIXED.** Optional-chained fallback to the report's own `note`; walker exits 0. |
 | F-11 | S2 | Reference-caller retry-storm test asserted an exact count of handler hits (24). Under a 12-thread burst the fake `ThreadingHTTPServer` can refuse a connection before `do_POST`, making the exact count flaky. | `integration/test_reference_client.py` | **FIXED.** Now asserts the real invariant: every result used exactly 2 attempts, handler hits ≤ 24 and ≥ 12. 5 consecutive reruns passed. |
@@ -61,9 +63,10 @@ All commands run from `/home/user/Genlink` unless stated. Python is the reposito
 | New integration contract suite | `pytest -q tests/test_integration_release_contract.py tests/test_ai_efficiency.py` | 48 passed in 4.27 s |
 | Pool regression only | `pytest -q tests/test_release_concurrency_pool.py tests/test_integration_release_contract.py` | 23 passed in 2.92 s |
 | Reference caller | `python3 -m unittest discover -s integration -p 'test_*.py'` | **17/17** in 8.263 s, exit 0; 5 consecutive reruns green; measured 64 concurrent caller adaptations in 438 ms (fake server, in-process) |
-| Diff-aware lint | `.venv/bin/python release/lint_changed.py --working-tree` | PASS; 17 changed Python files, 11 inherited Ruff findings, 0 on added lines |
-| Secret scan | `.venv/bin/python release/secret_scan.py` | PASS; 467 tracked files + 707 archive text members; 0 high; 5 informational (4 test canaries, 1 browser-public key in archive `.env`) |
-| Browser host scan | `.venv/bin/python release/host_scan.py` | PASS; 92 Adapt + 174 archived Genlink browser files, 0 loopback calls |
+| Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main` | PASS; 18 changed Python files, 22 inherited Ruff findings, 0 on added lines |
+| Second backend layout | `.venv/bin/python release/check_second_layout.py --src adapt/backend/src` | PASS; `QueuePool(size=20, max_overflow=20, timeout=5, pre_ping=True)` in an isolated process |
+| Secret scan | `.venv/bin/python release/secret_scan.py` | PASS after the merge; 1313 tracked files + 0 archive members; 0 high; 5 informational (4 test canaries, 1 `.env.example` placeholder) |
+| Browser host scan | `.venv/bin/python release/host_scan.py` | PASS; 183 Adapt (both trees) + 177 Genlink browser files, 0 loopback calls |
 | Stress/failure harness | `.venv/bin/python release/stress_check.py --include-provider-outage --out release/evidence/stress-2026-10-23.json` | **PASS**; 10 scenarios, 31 checks, 0 failures, 1 diagnostic FINDING, exit 0 |
 | Migration smoke | `.venv/bin/python release/migration_smoke.py` | PASS 4/4; legacy Alembic `0002 → R9 (head)`; fresh and migrated DBs both boot and accept a learner |
 | E2E smoke + demo + web | `.venv/bin/python release/e2e_smoke.py --web --demo-script` | **PASS**; 8 checks, 0 failed; 24 HTTP steps; `scripts/demo.mjs` exit 0; `/engine` 200 with honesty labels |
@@ -112,7 +115,8 @@ post-login cookie-use checks: 0 failures.
 ## Unresolved blockers / not verified
 
 1. F-01 critical/high npm advisories — patch `next` (non-major fix available) and re-run the
-   build + audit before any public exposure.
+   build + audit before any public exposure. Note main added a root-level Genlink
+   `package.json`; audit that lockfile too before distributing the extracted app.
 2. F-02 ship a real Genlink caller (or explicitly scope the release to Adapt-only).
 3. F-03 decide whether credits are a product feature; if yes, add a server-side ledger,
    debit path, institution scoping and an exhausted-credit test. If no, keep the console as a
@@ -123,8 +127,8 @@ post-login cookie-use checks: 0 failures.
 6. F-06 repeat the immediate post-login check under real network latency; keep monitoring if
    it reappears.
 7. F-07 document client-side body caps for integration callers.
-8. F-08 remove the `.env` from the distributable Genlink archive; rotate the publishable key
-   if the archive has already circulated.
+8. F-08 the archive was removed on main; verify no future distributable ZIP re-adds a real
+   `.env`, and rotate the publishable key if the old archive already circulated.
 9. F-15 live model quality, voice audio, real-phone/landscape layout, real tunnel, Numbas
    live server remain unverified. `scripts/live_model_check.py` deliberately needs a key and
    is **not** a CI step.
@@ -138,13 +142,15 @@ the changes minimal and re-run the gate after merging:
 
 | File | Why it may conflict | What this branch did |
 | --- | --- | --- |
-| `Adapt-main/backend/src/adapt/db/engine.py` | backend/infrastructure agent owns DB setup | 12-line additive pool configuration + comment in `create_db_engine`; no API change |
+| `Adapt-main/backend/src/adapt/db/engine.py` **and `adapt/backend/src/adapt/db/engine.py`** | backend/infrastructure agent owns DB setup | identical 12-line additive pool configuration + comment in both `create_db_engine` copies; no API change |
 | `Adapt-main/frontend/src/app/engine/page.tsx` | frontend agent owns the console UI | copy/labels only; one button disabled; no layout or CSS change |
-| `Adapt-main/scripts/demo.mjs` | demo/release script may be edited by backend or demo owner | 4-line optional-chaining fallback for the absent `labels` object |
+| `Adapt-main/scripts/demo.mjs` **and `adapt/scripts/demo.mjs`** | demo/release script may be edited by backend or demo owner | identical 4-line optional-chaining fallback for the absent `labels` object in both copies |
 | `Adapt-main/README.md` | documentation owner | engine-console honesty paragraph, Documentation status table, integration "not wired" note, dead-link redirection |
 | `Adapt-main/backend/pyproject.toml` / frontend `package.json` | dependency owners | **not changed**; vulnerabilities reported, not force-upgraded |
 | `Adapt-main/backend/src/adapt/api/routes/integration.py` | backend contract owner | **not changed**; contract is proven by tests around it |
-| `.github/workflows/release-gate.yml`, `release/`, `integration/`, root `*.md`, `.gitignore` | new release-owned files | expect no conflict, but the workflow references the agents' build/test commands |
+| `.gitignore` | **actual add/add conflict already resolved in the merge commit** | combined main's Node/Genlink ignores with the release gate's `.venv/`, cache and artifact ignores |
+| `.github/workflows/release-gate.yml`, `release/`, `integration/`, root `*.md` | new release-owned files | no conflict on this merge, but the workflow references the agents' build/test commands |
+| `src/`, `supabase/`, `drizzle/`, `adapt/` | added on main by the other agents while this gate ran | not modified by this branch except the two mirrored fixes above; scans now cover them |
 
 If the pool fix is replaced by a different concurrency fix from the backend agent, keep
 `backend/tests/test_release_concurrency_pool.py` and the live stress scenario — they are

@@ -14,9 +14,10 @@ python3 -m venv .venv
 (cd Adapt-main/frontend && npm ci --no-audit --no-fund && npm run lint \
   && npm run test:lib && npm run test:engine && npm run test:server && npm run test:env \
   && npm run build)
-.venv/bin/python release/lint_changed.py --working-tree
+.venv/bin/python release/lint_changed.py --base origin/main
 .venv/bin/python release/secret_scan.py
 .venv/bin/python release/host_scan.py
+.venv/bin/python release/check_second_layout.py --src adapt/backend/src
 python3 -m unittest discover -s integration -p 'test_*.py'
 (cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q)
 .venv/bin/python release/stress_check.py --include-provider-outage
@@ -33,10 +34,13 @@ CI equivalent: `.github/workflows/release-gate.yml` (jobs `static-contract`,
 lockfile, sets no AI credentials, reports audits without `--force`, and uploads
 `release/evidence/*.json`.
 
-Expected on this branch: backend 1583 passed / 2 skipped; frontend lint + 80 unit tests +
-build pass; reference caller 17/17; stress 10 scenarios / 31 checks / 0 failures;
-migration 4/4; E2E 8/8; secret and host scans pass; **dependency audit reports findings**;
-browser E2E is `BLOCKED` in the sandbox.
+Expected on this branch (after merging main): backend 1583 passed / 2 skipped for
+`Adapt-main/backend`; the mirrored `adapt/backend` pool bound passes its isolated check;
+frontend lint + 80 unit tests + build pass; reference caller 17/17; stress 10 scenarios /
+31 checks / 0 failures; migration 4/4; E2E 8/8; secret scan 1313 tracked files / 0 high;
+host scan 183 Adapt + 177 Genlink browser files / 0 loopback calls; diff-aware lint 0
+findings on added lines; **dependency audit reports findings**; browser E2E is `BLOCKED`
+in the sandbox.
 
 ## 1. Demo Ready — conditional YES
 
@@ -66,8 +70,9 @@ data, or any claim that credits/Genlink integration are live.
 
 A pilot means real learners. Do not start one until every box is ticked.
 
-- [ ] Close F-01: patch the critical/high npm advisories; re-run `npm audit`, build and
-      the gate. Record the new JSON.
+- [ ] Close F-01: patch the critical/high npm advisories in **both** lockfiles
+      (`Adapt-main/frontend/package-lock.json` and the root Genlink `package-lock.json`);
+      re-run `npm audit`, both builds and the gate. Record the new JSON.
 - [ ] Close F-02: ship the Genlink caller against `POST /api/v1/integration/adapt`, using
       `integration/reference_client.py` as the behaviour spec. Add its own tests; keep the
       loopback guard for deployed browser code.
@@ -80,8 +85,9 @@ A pilot means real learners. Do not start one until every box is ticked.
 - [ ] Close F-06: repeat the 12× immediate post-login check under realistic latency; if a
       401 reappears, capture server logs and fix the auth/session path with a regression test.
 - [ ] Close F-07: document/enforce client-side request caps for integration callers.
-- [ ] Close F-08: remove `.env` from the Genlink archive; rotate the publishable key if it
-      has circulated; re-run the secret scan.
+- [ ] Close F-08: main deleted the Genlink archive; confirm no distributable ZIP re-adds a
+      real `.env`, rotate the publishable key if the old archive circulated, and re-run the
+      secret scan.
 - [ ] Write the pilot protocol that `docs/PILOT.md` currently points to: who the learners
       are, consent text, what data leaves which system, retention/delete process, and the
       exact "pilot data" label used in the UI.

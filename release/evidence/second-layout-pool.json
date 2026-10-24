@@ -1,0 +1,18 @@
+{
+  "measured": {
+    "src": "adapt/backend/src",
+    "pool_class": "QueuePool",
+    "size": 20,
+    "max_overflow": 20,
+    "timeout_s": 5.0,
+    "pre_ping": true
+  },
+  "checks": {
+    "size_at_least_16": true,
+    "overflow_at_least_16": true,
+    "checkout_timeout_at_most_5s": true,
+    "pre_ping_enabled": true
+  },
+  "outcome": "PASS",
+  "note": "built in an isolated process so the field-cipher keyring cannot contaminate the main backend suite"
+}
