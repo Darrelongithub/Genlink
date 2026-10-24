@@ -47,6 +47,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | F-18 | S2 | One full-suite run failed `test_typed_topic_flows_from_prepare_through_all_three_lesson_moments`: an async lesson-upgrade job reported `state=fallback` instead of `ready`. The same test passed 5/5 in isolation and the next full-suite rerun passed 1617/1617. Cause not proven; credit enforcement and the new session commit both touch the shared test services. | `release-artifacts/backend-pytest-final.log` vs `backend-pytest-final-rerun.log` | **FLAKY — observed once, not hidden.** Full gate rerun is green; keep the test and watch for recurrence under load. |
 | F-19 | S2 | First CI run after the third merge failed the `Backend pytest` job with exit 1, but the log upload reported `No files were found with the provided path: release-artifacts/backend-pytest.log`. Cause: the backend job piped pytest through `tee` into a directory it had not created, so `set -o pipefail` turned the missing parent directory into a job failure — **not a backend test failure**. | GH Actions run `40060477554`, job `120772677039` annotations | **FIXED in workflow.** `mkdir -p ../../release-artifacts` added before the suite; the rerun produced the log artifact. |
 | F-20 | S2 | A clean-venv CI-like run exposed a genuinely flaky assertion in `tests/test_content_engine.py::TestContentRoute::test_two_learners_do_not_share_an_answer_key_by_position`: it demanded two independent 4-option shuffles differ, which fails ~1/24 of the time. This is why the second CI backend job still failed after F-19 was fixed. | `/tmp/ci-clean-pytest.log` (clean venv, 1 failed / 1644 passed); 5 isolated reruns after fix green | **FIXED in test.** Sample 8 learners and assert >1 distinct order (collision probability (1/24)^7) while the option set stays identical. |
+| F-21 | S2 | GitHub Actions forces ANSI colour on Rich/Typer help even when stdout is a pipe, so `test_hosting.py` assertions on `--port` / `--tunnel` inside `adapt host --help` failed in CI while passing locally. The command output was correct; the substring search was not colour-safe. | GH Actions run `40063307920` annotations | **FIXED in test.** Strip CSI sequences before asserting; 25/25 hosting tests pass with and without `FORCE_COLOR=1`. |
 
 ### Fixed during this gate (with regression tests)
 
@@ -62,6 +63,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | Critical/high Adapt-frontend npm advisories (F-01) | `main` PR #5 upgraded `next` to 15.5.28 and pinned `postcss`/`undici` overrides; this branch re-audited after merging | `release/evidence/dependency-audit.json` now reports 0 Adapt-frontend vulnerabilities |
 | CI backend job failed on a missing log directory (F-19) | `.github/workflows/release-gate.yml`: `mkdir -p ../../release-artifacts` before `pytest \| tee` | fresh CI run after the fix; the suite itself already passes 1645/2 locally |
 | Flaky two-learner shuffle assertion (F-20) | `tests/test_content_engine.py`: sample 8 learners, assert >1 distinct permutation instead of requiring 2 to differ | 5 isolated reruns green; clean-venv full-suite rerun recorded below |
+| Colour-sensitive CLI help assertions (F-21) | `tests/test_hosting.py`: `_plain()` strips ANSI CSI codes before checking `--port` / `--tunnel` / `already in use` | 25/25 hosting tests pass with `FORCE_COLOR=1` and without |
 
 ## Test matrix — exact commands and outcomes
 
@@ -74,10 +76,10 @@ All commands run from `/home/user/Genlink` unless stated. Python is the reposito
 | Frontend lint/type/route contract | `cd Adapt-main/frontend && npm run lint` | exit 0; 146 backend routes vs 138 frontend calls, tsc clean |
 | Frontend unit tests | `npm run test:lib && npm run test:engine && npm run test:server && npm run test:env && npm run test:dev` | 61/15/2/2 + dev suite pass, exit 0 |
 | Frontend production build | `npm run build` | exit 0; 22 static pages generated, `.next/BUILD_ID` present |
-| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 238.78 s, exit 0 after the third merge. A separate clean-venv CI-like run (`/tmp/ci-venv`, no `ADAPT_*` env) exposed F-20 (1 failed / 1644 passed); after the fix the clean-venv rerun was **1645 passed, 2 skipped** in 231.30 s. One earlier pre-third-merge run had 1 flaky async-job failure (F-18); isolated test passed 5/5 and the rerun was fully green. |
+| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 401.72 s, exit 0 on the final ANSI-fix tree. Earlier after the third merge: 1645 passed / 2 skipped in 238.78 s; clean-venv CI-like run exposed F-20 (1 failed / 1644 passed), fixed; fresh clone + venv run 1645 passed / 2 skipped in 236.11 s; CI exposed F-21 (ANSI-coloured help), fixed. One pre-third-merge run had 1 flaky async-job failure (F-18); isolated 5/5 and rerun green. |
 | Credit + contract + concurrency targeted | `pytest -q tests/test_session_cookie_commit.py tests/test_credits_and_tenancy.py tests/test_integration_release_contract.py` | 55 passed in 3.86 s |
 | Reference caller | `python3 -m unittest discover -s integration -p 'test_*.py'` | **17/17**; measured 64 concurrent caller adaptations in 591 ms (fake server, in-process) |
-| Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json` | PASS; 22 changed Python files, 31 inherited Ruff findings, 0 on added lines |
+| Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json` | PASS; 23 changed Python files, 63 inherited Ruff findings in those files, 0 on added lines |
 | Second backend layout | `.venv/bin/python release/check_second_layout.py --src adapt/backend/src` | PASS; `QueuePool(size=20, max_overflow=20, timeout=5, pre_ping=True)` in an isolated process |
 | Secret scan | `.venv/bin/python release/secret_scan.py --out release/evidence/secret-scan.json` | PASS; 1350 tracked files + 0 archive members; 0 high; 5 informational |
 | Browser host scan | `.venv/bin/python release/host_scan.py --out release/evidence/host-scan.json` | PASS; 187 Adapt + 177 Genlink browser files, 0 loopback calls, 2 informational allowlist regexes |
@@ -170,6 +172,8 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
     verified.
 15. F-20 was a flaky test, not a product regression. It is fixed, but the final CI run must be
     green before the gate is called reliable.
+16. F-21 was a colour-formatting assumption in CI-only help text. It is fixed; the final CI run
+    must still be green before the gate is called reliable.
 
 ## Conflict report for the three `main` merges
 

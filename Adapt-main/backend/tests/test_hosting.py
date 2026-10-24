@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -32,6 +33,15 @@ from adapt import hosting
 
 LAN_IP = "192.168.1.50"
 NEIGHBOUR_IP = "192.168.1.51"
+
+# GitHub Actions forces colour on Rich/Typer even when stdout is a pipe, so option names in
+# `--help` can arrive as `--\x1b[1mport`. Strip CSI sequences before asserting on copy; the
+# command itself is unchanged.
+_ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _plain(text: str) -> str:
+    return _ANSI.sub("", text)
 
 
 def hosted_env(monkeypatch, settings, *, lan_ip: str = LAN_IP, web_port: int = 3000, extra_hosts=(), origins=()):
@@ -307,9 +317,10 @@ def test_a_child_that_never_prints_a_url_times_out_instead_of_hanging():
 def test_adapt_host_exists_with_the_flags_this_documented():
     result = CliRunner().invoke(hosting_cli(), ["host", "--help"])
     assert result.exit_code == 0, result.output
+    help_text = _plain(result.output)
     for flag in ("--port", "--data-dir", "--tunnel", "--rate-limit-multiplier", "--ip"):
-        assert flag in result.output, f"{flag} is not in `adapt host --help`"
-    assert "allowlist" in result.output
+        assert flag in help_text, f"{flag} is not in `adapt host --help`"
+    assert "allowlist" in help_text
 
 
 def test_adapt_host_runs_from_a_module_invocation_too():
@@ -331,7 +342,7 @@ def test_adapt_host_runs_from_a_module_invocation_too():
         timeout=120,
     )
     assert out.returncode == 0, out.stderr[-400:]
-    assert "--tunnel" in out.stdout
+    assert "--tunnel" in _plain(out.stdout)
 
 
 def test_adapt_host_refuses_a_port_that_is_already_serving():
@@ -343,7 +354,7 @@ def test_adapt_host_refuses_a_port_that_is_already_serving():
     try:
         result = CliRunner().invoke(hosting_cli(), ["host", "--port", str(port)])
         assert result.exit_code == 2, result.output
-        assert "already in use" in result.output
+        assert "already in use" in _plain(result.output)
     finally:
         taken.close()
 
