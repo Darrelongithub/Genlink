@@ -7,6 +7,7 @@
     "Adapt-main/backend/tests/test_hosting.py",
     "Adapt-main/backend/tests/test_integration_release_contract.py",
     "Adapt-main/backend/tests/test_release_concurrency_pool.py",
+    "Adapt-main/backend/tests/test_round2_g_integration.py",
     "Adapt-main/backend/tests/test_session_cookie_commit.py",
     "Adapt-main/scripts/write_efficiency_doc.py",
     "adapt/backend/src/adapt/api/deps.py",
@@ -67,6 +68,13 @@
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
       "added_lines": 46
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_round2_g_integration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 28
     },
     {
       "path": "Adapt-main/backend/tests/test_session_cookie_commit.py",
@@ -190,7 +198,7 @@
   ],
   "compile_errors": [],
   "diff_findings": [],
-  "baseline_findings": 68,
+  "baseline_findings": 69,
   "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
   "outcome": "PASS"
 }
