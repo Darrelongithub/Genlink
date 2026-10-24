@@ -150,7 +150,7 @@ def main() -> int:
         print(f"  FAIL {item['path']}:{item['line']} {item['kind']}")
     for item in notes[:8]:
         print(f"  note {item['path']}:{item['line']} {item['kind']}")
-    print(f"wrote {out.relative_to(ROOT)} — {report['outcome']}")
+    print(f"wrote {args.out} — {report['outcome']}")
     return 1 if violations else 0
 
 

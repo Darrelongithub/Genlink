@@ -702,7 +702,7 @@ def uvicorn_command(settings, *, host: str, port: int) -> list[str]:
     Deliberately no ``--ws wsproto``: that flag was copied from ``adapt serve`` and crashes on
     a clean install, because ``uvicorn[standard]`` does not bring ``wsproto`` with it.
     """
-    return [
+    command = [
         sys.executable,
         "-m",
         "uvicorn",
@@ -713,6 +713,12 @@ def uvicorn_command(settings, *, host: str, port: int) -> list[str]:
         # Preserve the socket peer for adapt.security.middleware.client_ip; otherwise
         # Uvicorn trusts localhost forwarding headers before our allowlist runs.
         "--no-proxy-headers",
+        "--timeout-keep-alive",
+        str(getattr(settings, "keepalive_timeout_s", 5)),
+        "--timeout-graceful-shutdown",
+        str(getattr(settings, "graceful_shutdown_timeout_s", 30)),
+        "--limit-concurrency",
+        str(getattr(settings, "max_concurrent_requests", 100)),
         "--host",
         host,
         "--port",
@@ -720,6 +726,16 @@ def uvicorn_command(settings, *, host: str, port: int) -> list[str]:
         "--log-level",
         str(getattr(settings, "log_level", "INFO")).lower(),
     ]
+    if getattr(settings, "tls_certfile", None):
+        command.extend(
+            [
+                "--ssl-certfile",
+                str(settings.tls_certfile),
+                "--ssl-keyfile",
+                str(settings.tls_keyfile),
+            ]
+        )
+    return command
 
 
 __all__ = [

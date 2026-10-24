@@ -19,10 +19,12 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import json
+import logging
 import re
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from urllib.parse import urlsplit
 
 from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -76,21 +78,50 @@ CSP_NO_INLINE = (
 # is no network exposure to defend, so it is gated on local mode (see doctor/init).
 TESTING_HOSTS = {"testserver", "testclient"}
 
+log = logging.getLogger("adapt.http")
+
+
+def _host_name(host: str | None) -> str | None:
+    if not host or any(char.isspace() for char in host):
+        return None
+    try:
+        parsed = urlsplit(f"//{host}")
+        hostname = parsed.hostname
+        _ = parsed.port
+    except ValueError:
+        return None
+    if (
+        not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    return hostname.lower().rstrip(".")
+
 
 def host_allowed(host: str | None, settings: Settings) -> bool:
-    if not host:
+    h = _host_name(host)
+    if not h:
         return False
-    h = host.split("://")[-1].split(":")[0].strip().lower().rstrip(".")
-    if h in LOCAL_HOSTS or h in settings.origins:
+    if h in LOCAL_HOSTS:
         return True
-    if settings.mode == "local" and h in TESTING_HOSTS:
+    if settings.mode in {"local", "test"} and h in TESTING_HOSTS:
         return True
-    origin_host = {o.split("://")[-1].split(":")[0].split("/")[0] for o in settings.origins}
-    if h in origin_host:
+    origin_hosts = {
+        (urlsplit(o).hostname or "").lower().rstrip(".") for o in settings.origins
+    }
+    if h in origin_hosts:
         return True
-    if h in set(settings.extra_allowed_hosts):
+    if h in {_host_name(value) for value in settings.extra_allowed_hosts}:
         return True
-    return any(p.match(h) for p in HOST_PATTERNS)
+    # Quick-tunnel and preview patterns belong to the demo launchers. Production
+    # accepts only its explicit origins/hosts, never every customer of a tunnel provider.
+    if settings.mode == "production":
+        return False
+    return any(p.fullmatch(h) for p in HOST_PATTERNS)
 
 
 class SecurityHeadersMiddleware:
@@ -110,6 +141,13 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
 
+        state = scope.get("state")
+        if not isinstance(state, dict):
+            state = {}
+            scope["state"] = state
+        request_id = state.setdefault("request_id", uuid.uuid4().hex)
+        started = time.monotonic()
+
         async def with_security_headers(message):
             if message.get("type") == "http.response.start":
                 headers = list(message.get("headers", []))
@@ -124,11 +162,29 @@ class SecurityHeadersMiddleware:
                 )
                 response_headers["Content-Security-Policy"] = CSP_NO_INLINE
                 response_headers["Cache-Control"] = "no-store"
-                request_id = (scope.get("state") or {}).get("request_id")
-                response_headers["X-Request-Id"] = request_id or uuid.uuid4().hex[:12]
+                response_headers["X-Request-Id"] = request_id
                 if self.settings.require_https:
-                    response_headers["Strict-Transport-Security"] = "max-age=300; includeSubDomains"
+                    max_age = 31536000 if self.settings.mode == "production" else 300
+                    response_headers["Strict-Transport-Security"] = (
+                        f"max-age={max_age}; includeSubDomains"
+                    )
                 message = {**message, "headers": response_headers.raw}
+                if getattr(self.settings, "request_log_enabled", True):
+                    status = int(message.get("status", 500))
+                    # Successful container probes are intentionally quiet. All other
+                    # responses emit one JSON event with a route template, never a raw
+                    # URL, query string, IP address, cookie or learner payload.
+                    if scope.get("path") not in {"/healthz", "/readyz"} or status >= 500:
+                        route = scope.get("route")
+                        event = {
+                            "event": "http_request",
+                            "request_id": request_id,
+                            "method": scope.get("method", ""),
+                            "route": getattr(route, "path", None) or "unmatched",
+                            "status": status,
+                            "duration_ms": int((time.monotonic() - started) * 1000),
+                        }
+                        log.info("%s", json.dumps(event, separators=(",", ":")))
             await send(message)
 
         await self.app(scope, receive, with_security_headers)
@@ -150,10 +206,10 @@ class TrustedHostMiddleware(BaseHTTPMiddleware):
                 },
                 status_code=400,
             )
-        if self.settings.require_https and request.url.scheme == "http":
-            fwd = request.headers.get("x-forwarded-proto", "")
-            if fwd and fwd.split(",")[0].strip() != "https":
-                return JSONResponse({"detail": "https required"}, status_code=403)
+        if self.settings.require_https and not is_secure_request(
+            request, settings=self.settings
+        ):
+            return JSONResponse({"detail": "https required"}, status_code=403)
         return await call_next(request)
 
 
@@ -172,7 +228,8 @@ class LimitsMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        request.state.request_id = uuid.uuid4().hex[:12]
+        if not getattr(request.state, "request_id", None):
+            request.state.request_id = uuid.uuid4().hex
         length = request.headers.get("content-length")
         if length and length.isdigit() and int(length) > self.settings.max_body_bytes:
             return JSONResponse(
@@ -284,12 +341,44 @@ def _ip_text(value: object) -> str:
         return text
 
 
+def _trusted_networks(settings: Settings) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    networks = []
+    for value in settings.trusted_proxies:
+        try:
+            networks.append(ipaddress.ip_network(str(value).strip(), strict=False))
+        except ValueError:
+            continue
+    return networks
+
+
+def _is_trusted_address(value: str, networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network]) -> bool:
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return any(address in network for network in networks)
+
+
+def is_secure_request(request: Request, *, settings: Settings | None = None) -> bool:
+    """TLS may be direct or reported by a trusted proxy, never spoofed by a client."""
+    if request.url.scheme == "https":
+        return True
+    st = settings or get_settings()
+    peer = _ip_text(request.client.host if request.client else "unknown")
+    if not _is_trusted_address(peer, _trusted_networks(st)):
+        return False
+    values = [part.strip().lower() for part in request.headers.get("x-forwarded-proto", "").split(",") if part.strip()]
+    # The nearest proxy's observation is rightmost. An injected leftmost ``https``
+    # therefore cannot override a proxy that appended ``http``.
+    return bool(values) and all(value in {"http", "https"} for value in values) and values[-1] == "https"
+
+
 def client_ip(request: Request, *, settings: Settings | None = None) -> str:
     """Direct peer by default; forwarded addresses only across a trusted proxy chain."""
     peer = _ip_text(request.client.host if request.client else "unknown")
     st = settings or get_settings()
-    trusted = {_ip_text(value) for value in st.trusted_proxies}
-    if peer not in trusted:
+    trusted = _trusted_networks(st)
+    if not _is_trusted_address(peer, trusted):
         return peer
     forwarded = request.headers.get("x-forwarded-for", "")
     chain = []
@@ -301,9 +390,9 @@ def client_ip(request: Request, *, settings: Settings | None = None) -> str:
     # A proxy appends the address it observed. Walk back through trusted proxies so a
     # caller-supplied leftmost value cannot become the identity used by auth buckets.
     for address in reversed(chain):
-        if address not in trusted:
+        if not _is_trusted_address(address, trusted):
             return address
-    return chain[0] if chain else peer
+    return peer
 
 
 def origin_ok(request: Request, settings: Settings) -> bool:
@@ -311,18 +400,31 @@ def origin_ok(request: Request, settings: Settings) -> bool:
     origin = request.headers.get("origin")
     if not origin:
         return True  # non-browser clients (curl, tests, native) send no Origin
-    allowed = (
-        {o.rstrip("/") for o in settings.origins}
-        | {f"https://{h}" for h in settings.extra_allowed_hosts}
-        | {f"http://{h}" for h in settings.extra_allowed_hosts}
-    )
     origin = origin.rstrip("/")
-    if origin in allowed:
+    if origin in {o.rstrip("/") for o in settings.origins}:
         return True
-    # Same-origin requests (the Next proxy) forward the tunnel origin; accept any
-    # origin whose host we already accept as a Host.
-    host = origin.split("://")[-1]
-    return host_allowed(host, settings)
+    try:
+        parsed = urlsplit(origin)
+        _ = parsed.port
+    except ValueError:
+        return False
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+    ):
+        return False
+    # Dynamically issued tunnel/preview origins cannot be listed ahead of time.
+    # That exception is for demo/local modes only; production requires an exact origin.
+    if settings.mode == "production":
+        return False
+    if settings.mode == "tunnel" and parsed.scheme != "https":
+        return False
+    return host_allowed(parsed.netloc, settings)
 
 
 def json_preview(body: bytes, limit: int = 400) -> str:

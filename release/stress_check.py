@@ -670,7 +670,7 @@ def main() -> int:
         out = ROOT / args.out
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(RESULTS, indent=2) + "\n")
-        print(f"HARNESS ERROR: {exc}\nwrote {out.relative_to(ROOT)}", file=sys.stderr)
+        print(f"HARNESS ERROR: {exc}\nwrote {args.out}", file=sys.stderr)
         return 2
     finally:
         server.stop()
@@ -694,7 +694,7 @@ def main() -> int:
         "outcome": "PASS" if not failures else "FAIL",
     }
     out.write_text(json.dumps(RESULTS, indent=2) + "\n")
-    print(f"\nwrote {out.relative_to(ROOT)} — {RESULTS['summary']}")
+    print(f"\nwrote {args.out} — {RESULTS['summary']}")
     return 1 if failures else 0
 
 

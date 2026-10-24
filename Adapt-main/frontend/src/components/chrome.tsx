@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { AccountGate } from "./account-gate";
 import { SessionProvider, useSession } from "./ui";
-import { get, isMock, logout, type Me } from "@/lib/api";
+import { get, isMock, logout, UNAUTHORIZED_EVENT, type Me } from "@/lib/api";
 import type { Health, Status } from "@/lib/types";
 import { Icon, routeIcon } from "./icons";
 import { IconTile } from "./ui";
@@ -57,16 +57,24 @@ const navTone: Record<string, "blue" | "sand" | "mint" | "peach" | "think"> = {
 
 /** Red bar, every screen, whenever the data on it is not real. */
 export function MockBanner() {
+  const pathname = usePathname();
   const [mock, setMock] = useState(false);
-  useEffect(() => setMock(isMock()), []);
+  useEffect(() => {
+    setMock(isMock());
+  }, [pathname]);
   if (!mock) return null;
   return (
-    <div className="border-b border-[var(--bad)]/50 bg-[var(--bad)]/15 py-2 px-4 text-center" style={{ fontSize: "var(--t-small)", color: "var(--bad)" }}>
+    <aside
+      role="region"
+      aria-label="Sample data preview notice"
+      className="border-b border-[var(--bad)]/50 bg-[var(--bad)]/15 py-2 px-4 text-center"
+      style={{ fontSize: "var(--t-small)", color: "var(--bad)" }}
+    >
       <strong>Example data.</strong> This preview uses sample information and does not change your saved data.{" "}
-      <Link className="link-inline" href="/?mock=off">
+      <a className="link-inline" href="/?mock=off">
         Exit the preview
-      </Link>
-    </div>
+      </a>
+    </aside>
   );
 }
 
@@ -169,7 +177,7 @@ export function Chrome({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-column">
-        <div className="topbar">
+        <header className="topbar">
           <div className="topbar-section">
             <button
               ref={burgerRef}
@@ -188,7 +196,7 @@ export function Chrome({ children }: { children: ReactNode }) {
             <VoiceControl />
             <Who />
           </div>
-        </div>
+        </header>
 
         <MockBanner />
         <VoiceGreeting />
@@ -276,7 +284,12 @@ function VoiceControl() {
   const { enabled, setEnabled, listening, speaking } = useVoice();
   const { me } = useSession();
   useEffect(() => {
-    if (me?.voice_enabled && typeof window !== "undefined" && window.localStorage.getItem("adapt:voice-enabled") === null) setEnabled(true);
+    if (!me?.voice_enabled || typeof window === "undefined") return;
+    try {
+      if (window.localStorage.getItem("adapt:voice-enabled") === null) setEnabled(true);
+    } catch {
+      /* storage unavailable */
+    }
   }, [me?.voice_enabled, setEnabled]);
   return (
     <button type="button" className={`voice-switch${enabled ? " on" : ""}`} aria-pressed={enabled} onClick={() => setEnabled(!enabled)} title={enabled ? "Turn voice off" : "Turn voice on"}>
@@ -344,6 +357,7 @@ function Who() {
 export function SessionGate({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expired, setExpired] = useState(false);
   // `unknown` is not an error to show, it is a *state*: the server has not said this browser
   // is anybody or nobody. Conflating the two is how a rate limit becomes a lost session.
   const [unknown, setUnknown] = useState<string | null>(null);
@@ -359,6 +373,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
       const refused = r.status === 401 || r.status === 403;
       if (r.data) {
         setMe(r.data);
+        setExpired(false);
         setUnknown(null);
         attempt.current = 0;
         setLoading(false);
@@ -382,9 +397,19 @@ export function SessionGate({ children }: { children: ReactNode }) {
   refreshRef.current = refresh;
   useEffect(() => {
     refresh();
+    function onUnauthorized() {
+      generation.current += 1;
+      if (retry.current) clearTimeout(retry.current);
+      setMe(null);
+      setUnknown(null);
+      setExpired(true);
+      setLoading(false);
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => {
       generation.current += 1;
       if (retry.current) clearTimeout(retry.current);
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     };
   }, [refresh]);
 
@@ -393,6 +418,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
     if (retry.current) clearTimeout(retry.current);
     attempt.current = 0;
     setMe(profile as Me);
+    setExpired(false);
     setUnknown(null);
     setLoading(false);
   }, []);
@@ -406,18 +432,19 @@ export function SessionGate({ children }: { children: ReactNode }) {
       establish,
       signOut: async () => {
         await logout();
+        setExpired(false);
         refresh();
       },
     }),
     [me, loading, unknown, refresh, establish],
   );
   return <SessionProvider value={value}>
-    {me ? children : !loading && !unknown ? <AccountGate /> : (
-      <div className="access-screen"><section id="main-content" className="access-card" aria-busy={loading}>
+    {me ? children : !loading && !unknown ? (expired ? <AccountGate sessionExpired /> : <AccountGate />) : (
+      <main className="access-screen"><section id="main-content" className="access-card" aria-busy={loading}>
         <h1 className="access-title">Welcome to <b>ADAPT</b>.</h1>
-        <p className="mt-3" role="status">{unknown ? "Your session could not be checked. Please retry; you do not need another account." : "Checking your session…"}</p>
+        <p className="mt-3" role="status">{unknown ? "Your session could not be checked — check your connection and retry; you do not need another account." : "Checking your session…"}</p>
         {unknown ? <button className="btn btn-ctl btn-primary mt-4" onClick={refresh}>Retry session check</button> : null}
-      </section></div>
+      </section></main>
     )}
   </SessionProvider>;
 }

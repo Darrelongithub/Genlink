@@ -1,7 +1,7 @@
 """Schema bootstrap and data seeding, from the command line.
 
 The same startup migration path handles both new and existing databases (see
-``adapt/db/models.py`` and the alembic revisions under ``backend/migrations/versions``,
+``adapt/db/models.py`` and the packaged Alembic revisions under ``adapt/migrations/versions``,
 which are the data model -- there is no separate prose copy to fall out of date).
 Seeding is idempotent by design -- a reseed updates the
 bank in place rather than churning ids, because attempt history points at item ids

@@ -197,8 +197,9 @@ of it.
 
 ### Pricing configuration
 
-Plan terms live in `backend/config/credit_plans.example.json` and are seeded **once**
-(a slug that already exists is never overwritten, so an operator's edited terms survive a
+Plan terms live in `backend/src/adapt/credits/data/credit_plans.example.json` (also packaged
+in the wheel) and are seeded **once** (a slug that already exists is never overwritten, so an
+operator's edited terms survive a
 restart). The shipped file has **no currency and no price** — the columns are nullable and
 the example leaves them empty, because typing someone's commercial terms for them is how a
 codebase starts asserting a price it cannot back up. KSh amounts exist nowhere in

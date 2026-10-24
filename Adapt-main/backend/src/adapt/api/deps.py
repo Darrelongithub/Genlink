@@ -264,7 +264,7 @@ def shared_bank_write(request: Request) -> None:
     gates guest creation -- or the door stays shut and says so.
     """
     st = get_settings()
-    if st.mode != "tunnel":
+    if st.mode not in {"tunnel", "production"}:
         return
     from ..security import auth
 

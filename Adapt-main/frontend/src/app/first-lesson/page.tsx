@@ -384,7 +384,7 @@ function FirstLesson() {
             value={topicDraft}
             onChange={(event) => setTopicDraft(event.target.value)}
             placeholder="for example: photosynthesis"
-            className="min-w-0 flex-1 rounded-[2px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-[2px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-base"
           />
           <button
             type="button"

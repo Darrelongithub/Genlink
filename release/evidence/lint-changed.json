@@ -1,10 +1,13 @@
 {
   "base": "origin/main",
   "changed_python_files": [
+    "Adapt-main/backend/src/adapt/api/deps.py",
     "Adapt-main/backend/src/adapt/db/engine.py",
     "Adapt-main/backend/tests/test_integration_release_contract.py",
     "Adapt-main/backend/tests/test_release_concurrency_pool.py",
+    "Adapt-main/backend/tests/test_session_cookie_commit.py",
     "Adapt-main/scripts/write_efficiency_doc.py",
+    "adapt/backend/src/adapt/api/deps.py",
     "adapt/backend/src/adapt/db/engine.py",
     "integration/__init__.py",
     "integration/contract/__init__.py",
@@ -22,6 +25,13 @@
     "release/stress_check.py"
   ],
   "files": [
+    {
+      "path": "Adapt-main/backend/src/adapt/api/deps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 7
+    },
     {
       "path": "Adapt-main/backend/src/adapt/db/engine.py",
       "untracked": false,
@@ -44,11 +54,25 @@
       "added_lines": 46
     },
     {
+      "path": "Adapt-main/backend/tests/test_session_cookie_commit.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 50
+    },
+    {
       "path": "Adapt-main/scripts/write_efficiency_doc.py",
       "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
       "added_lines": 102
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/deps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 4
     },
     {
       "path": "adapt/backend/src/adapt/db/engine.py",
@@ -104,7 +128,7 @@
       "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 127
+      "added_lines": 131
     },
     {
       "path": "release/check_second_layout.py",
@@ -118,7 +142,7 @@
       "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 447
+      "added_lines": 562
     },
     {
       "path": "release/host_scan.py",
@@ -153,12 +177,12 @@
       "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 693
+      "added_lines": 702
     }
   ],
   "compile_errors": [],
   "diff_findings": [],
-  "baseline_findings": 22,
+  "baseline_findings": 31,
   "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
   "outcome": "PASS"
 }

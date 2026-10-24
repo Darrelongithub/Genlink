@@ -152,7 +152,7 @@ def main() -> int:
         print(f"  FAIL {item['path']}:{item['line']} {item['code']} {item['message']}")
     for error in report["compile_errors"]:
         print(f"  FAIL compile: {error}")
-    print(f"wrote {out.relative_to(ROOT)} — {report['outcome']}")
+    print(f"wrote {args.out} — {report['outcome']}")
     return 1 if failed else 0
 
 

@@ -91,8 +91,9 @@ jobs:
           npm run test:engine
           npm run test:server
           npm run test:env
+          npm run test:dev
 
-      - name: Secret scan (tracked files and both ZIP archives, values never printed)
+      - name: Secret scan (tracked files; ZIP archives removed on main, values never printed)
         run: python release/secret_scan.py --out release/evidence/secret-scan.json
 
       - name: Browser host scan (browser code must not call localhost)

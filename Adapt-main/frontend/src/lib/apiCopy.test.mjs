@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { apiErrorSentence, PACING_CODES } from "./apiCopy.ts";
+import { apiErrorSentence, PACING_CODES, statusFallbackSentence } from "./apiCopy.ts";
 
 test("prose beats the machine code", () => {
   const shown = apiErrorSentence(503, "boom", {
@@ -48,4 +48,13 @@ test("an unstructured error keeps its own message, and never comes back empty", 
   assert.equal(apiErrorSentence(403, "nope", "csrf token missing or wrong"), "csrf token missing or wrong");
   assert.equal(apiErrorSentence(500, "", undefined), "request failed (500)");
   assert.equal(apiErrorSentence(500, "boom", { weird: true }).slice(0, 12), '{"weird":tru');
+});
+
+test("HTML proxy error pages and bare HTTP statuses fall back to plain learner prose", () => {
+  const html502 = "<!DOCTYPE html><html><body>502 Bad Gateway</body></html>";
+  const shown = apiErrorSentence(502, statusFallbackSentence(502), html502);
+  assert.doesNotMatch(shown, /<!DOCTYPE/i);
+  assert.doesNotMatch(shown, /\b(GET|POST) \//);
+  assert.match(shown, /temporarily unavailable/i);
+  assert.match(statusFallbackSentence(401), /session has ended/i);
 });

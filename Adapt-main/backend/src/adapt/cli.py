@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -111,9 +112,9 @@ def purge_student(
         raise typer.Exit(code=2)
     from sqlalchemy import select
 
-    from .db.engine import get_db
     from .ai.monitor.models import LearnerCheckIn
     from .curriculum.models import ApprovedGuideline, ScanCacheEntry
+    from .db.engine import get_db
     from .db.models import (
         ActiveAdaptation,
         AdaptationProposal,
@@ -168,6 +169,147 @@ def purge_student(
         deleted["students"] = 1
         s.commit()
     _echo({"purged": student_id, "rows_deleted": deleted})
+
+
+def _check_backup_database(db) -> dict[str, Any]:
+    """Check structure and integrity without exposing driver errors or key material."""
+    from sqlalchemy import inspect, text
+
+    tables = set(inspect(db.engine).get_table_names())
+    if not {"students", "alembic_version"}.issubset(tables):
+        raise RuntimeError("not an initialised Adapt database (students and Alembic revision required)")
+    with db.engine.connect() as connection:
+        rows = list(connection.execute(text("PRAGMA integrity_check")).scalars())
+        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
+    if rows != ["ok"]:
+        raise RuntimeError("database integrity check failed; the backup was not changed")
+    return {
+        "revision": str(revision),
+        "file_encrypted": bool(db.file_encrypted()),
+        "integrity": "ok",
+    }
+
+
+def _vacuum_into(db, target: Path) -> None:
+    """Write a consistent SQLite/SQLCipher copy, preserving the source encryption."""
+    if target.exists():
+        raise RuntimeError(f"refusing to overwrite existing backup: {target}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # VACUUM INTO creates the destination. Set a restrictive umask before it does,
+    # rather than leaving a window between creation and a later chmod.
+    previous = os.umask(0o077)
+    try:
+        with db.engine.connect() as connection:
+            connection.exec_driver_sql("VACUUM INTO ?", (str(target),))
+    finally:
+        os.umask(previous)
+    target.chmod(0o600)
+
+
+def _create_database_backup(st, source: Path, target: Path) -> dict[str, Any]:
+    from .db.engine import Database
+
+    if not source.is_file() or source.stat().st_size == 0:
+        raise RuntimeError(f"database does not exist or is empty: {source}")
+    if source.resolve() == target.resolve():
+        raise RuntimeError("backup path must differ from the live database")
+    db = Database(st, db_file=source)
+    try:
+        _check_backup_database(db)
+        _vacuum_into(db, target)
+    finally:
+        db.dispose()
+    check = Database(st, db_file=target)
+    try:
+        report = _check_backup_database(check)
+        report.update(path=str(target), bytes=target.stat().st_size)
+        return report
+    finally:
+        check.dispose()
+
+
+@db_app.command("backup")
+def backup_cmd(
+    out: Path = typer.Option(..., "--out", help="new backup path; an existing file is never overwritten"),
+) -> None:
+    """Create and verify a consistent database backup (the key is backed up separately)."""
+
+    st = _settings()
+    try:
+        report = _create_database_backup(st, Path(st.db_file), out.expanduser().absolute())
+    except Exception as exc:
+        typer.secho(f"backup failed: {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    _echo({"backup": report, "note": "store the matching encryption key separately; without it encrypted rows cannot be restored"})
+
+
+@db_app.command("restore")
+def restore_cmd(
+    source: Path = typer.Option(..., "--from", help="verified backup to restore"),
+    confirm: bool = typer.Option(False, "--confirm", help="required; stop the API and web services first"),
+) -> None:
+    """Restore offline, retaining a safety backup of the current database."""
+    from .db.engine import Database
+
+    if not confirm:
+        typer.secho("refusing without --confirm; stop adapt-api and adapt-web before restoring", err=True)
+        raise typer.Exit(code=2)
+    st = _settings()
+    source = source.expanduser().absolute()
+    destination = Path(st.db_file).absolute()
+    if source.resolve() == destination.resolve():
+        typer.secho("restore failed: source and live database are the same path", err=True)
+        raise typer.Exit(code=1)
+    check = None
+    safety = None
+    try:
+        # Opening through the application's own driver checks both the storage
+        # policy and the key. Never fall back to plain sqlite3 for a SQLCipher file.
+        candidate = Database(st, db_file=source)
+        try:
+            _check_backup_database(candidate)
+        finally:
+            candidate.dispose()
+
+        if destination.is_file() and destination.stat().st_size:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            safety = destination.with_name(f"{destination.stem}.pre-restore-{stamp}{destination.suffix}")
+            _create_database_backup(st, destination, safety)
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary = destination.with_name(f".{destination.name}.restore-{os.getpid()}-{time.time_ns()}")
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            with source.open("rb") as src, os.fdopen(fd, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+                dst.flush()
+                os.fsync(dst.fileno())
+            os.replace(temporary, destination)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+        # A WAL from the old inode must never be replayed into the replacement.
+        # The safety VACUUM above includes all committed data from that old database.
+        for suffix in ("-wal", "-shm"):
+            Path(str(destination) + suffix).unlink(missing_ok=True)
+
+        restored = Database(st)
+        try:
+            check = _check_backup_database(restored)
+        finally:
+            restored.dispose()
+    except Exception as exc:
+        typer.secho(f"restore failed: {type(exc).__name__}: {exc}", err=True)
+        raise typer.Exit(code=1) from None
+    _echo(
+        {
+            "restored": str(destination),
+            "integrity": "ok",
+            "revision": check["revision"] if check else None,
+            "safety_backup": str(safety) if safety else None,
+            "note": "keep the services stopped until the matching key and configuration are confirmed",
+        }
+    )
 
 
 @db_app.command("verify-encryption")
@@ -903,6 +1045,12 @@ def serve(
         port=int(port or st.port),
         reload=reload,
         log_level=str(st.log_level).lower(),
+        access_log=False,  # adapt.http emits JSON without URLs, queries or learner payloads
+        timeout_keep_alive=int(st.keepalive_timeout_s),
+        timeout_graceful_shutdown=int(st.graceful_shutdown_timeout_s),
+        limit_concurrency=int(st.max_concurrent_requests),
+        ssl_certfile=str(st.tls_certfile) if st.tls_certfile else None,
+        ssl_keyfile=str(st.tls_keyfile) if st.tls_keyfile else None,
         # Preserve the socket peer. Uvicorn otherwise trusts forwarding headers from
         # localhost before ADAPT can apply its explicit trusted-proxy allowlist.
         proxy_headers=False,
@@ -1029,7 +1177,7 @@ def host_cmd(
         session.start("api", H.uvicorn_command(st, host=api_host, port=api_port), env=api_env)
         session.start("web", ["node", "server.mjs"], env=web_env, cwd=frontend.directory)
         typer.echo(f"[host] starting the API on {api_host}:{api_port} and the web app on 0.0.0.0:{web_port} ...")
-        api_ready = session.wait_http(f"http://127.0.0.1:{api_port}/healthz", timeout=120)
+        api_ready = session.wait_http(f"http://127.0.0.1:{api_port}/readyz", timeout=120)
         web_ready = api_ready and session.wait_http(f"http://127.0.0.1:{web_port}/", timeout=120)
         dead = session.exited()
         if dead is not None or not (api_ready and web_ready):

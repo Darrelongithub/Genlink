@@ -13,7 +13,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install pip-audit
 (cd Adapt-main/frontend && npm ci --no-audit --no-fund && npm run lint \
   && npm run test:lib && npm run test:engine && npm run test:server && npm run test:env \
-  && npm run build)
+  && npm run test:dev && npm run build)
 .venv/bin/python release/lint_changed.py --base origin/main
 .venv/bin/python release/secret_scan.py
 .venv/bin/python release/host_scan.py
@@ -36,15 +36,17 @@ CI equivalent: `.github/workflows/release-gate.yml` (jobs `static-contract`,
 lockfile, sets no AI credentials, reports audits without `--force`, and uploads
 `release/evidence/*.json`.
 
-Expected on this branch (after merging main at `8851869`): backend 1617 passed / 2 skipped
-for `Adapt-main/backend` (one earlier run had a flaky async-job failure, isolated 5/5 and
-full rerun green — F-18); the mirrored `adapt/backend` pool bound passes its isolated check;
-frontend lint + 80 unit tests + build pass; reference caller 17/17; stress 10 scenarios /
-31 checks / 0 failures; migration 4/4 with head `R10`; E2E 9/9 including the exhausted-credit
-402 case; secret scan 1329 tracked files / 0 high; host scan 183 Adapt + 177 Genlink browser
-files / 0 loopback calls; diff-aware lint 0 findings on added lines; **dependency audit
-reports findings in both lockfiles**; browser E2E is `BLOCKED`
-in the sandbox.
+Expected on this branch (after the third merge with `main` at `1b3add9`): backend
+1645 passed / 2 skipped for `Adapt-main/backend` (one earlier pre-third-merge run had a flaky
+async-job failure, isolated 5/5 and full rerun green — F-18); the mirrored `adapt/backend` pool
+bound passes its isolated check; frontend lint + unit suites (`lib`/`engine`/`server`/`env`/
+`dev`) + build pass; reference caller 17/17; stress 10 scenarios / 31 checks / 0 failures
+(135.26 req/s loopback after production middleware); migration 4/4 with head `R10`; E2E 9/9
+including the exhausted-credit 402 case; secret scan 1350 tracked files / 0 high; host scan
+187 Adapt + 177 Genlink browser files / 0 loopback calls; diff-aware lint 22 changed files /
+31 inherited findings / 0 on added lines; **Adapt-frontend npm audit 0, root Genlink npm 18
+high + 9 moderate, pip 4 advisories**; browser E2E is `BLOCKED` for all four suites in the
+sandbox.
 
 ## 1. Demo Ready — conditional YES
 
@@ -62,7 +64,9 @@ Scope: local/offline presentation, scratch learner data, no public tunnel, no bi
 - [x] Secret scan prints no values; no private key or service-role key found.
 - [ ] **Before the room:** rehearse on the actual laptop/network once; open the printed
       address on a phone and answer one question in portrait and landscape.
-- [ ] **Do not** use `adapt host --tunnel` or any public URL until F-01 is patched.
+- [ ] **Do not** use `adapt host --tunnel`, a public URL or real learner data until F-02,
+      F-03 and F-16 are resolved and the four browser suites pass. F-01's Adapt-frontend
+      advisories are now patched on `main`, but the root Genlink lockfile is not.
 - [ ] Say out loud: "the `/engine` credit numbers are presentation samples stored in this
       browser; Adapt now enforces institutional credits server-side, but this console is not
       connected to that ledger, and Genlink is not connected yet."
@@ -77,8 +81,9 @@ data, or any claim that the console wallet/Genlink integration are live.
 
 A pilot means real learners. Do not start one until every box is ticked.
 
-- [ ] Close F-01: patch the critical/high Adapt-frontend npm advisories; re-run `npm audit`,
-      the frontend build and the gate. Record the new JSON.
+- [x] Close F-01: `main` PR #5 upgraded `next` to 15.5.28 with `postcss`/`undici` overrides;
+      the Adapt-frontend `npm audit` on this branch reports **0 vulnerabilities**. Keep the
+      audit JSON with the pilot evidence.
 - [ ] Close F-02: ship the Genlink caller against `POST /api/v1/integration/adapt`, using
       `integration/reference_client.py` as the behaviour spec. Add its own tests; keep the
       loopback guard for deployed browser code.
@@ -87,8 +92,9 @@ A pilot means real learners. Do not start one until every box is ticked.
       `ADAPT_OPERATOR_TOKEN`, how institutions/wallets are created, and what a learner sees
       when the wallet is empty (backend already returns 402 + standard mode).
 - [ ] Close F-04: pinned, tested `setuptools` upgrade; re-run `pip-audit`.
-- [ ] Close F-05: run `npm run test:e2e:banned` and `npm run test:e2e:demo` in a browser-
-      capable environment; replace `BLOCKED` with a PASS artifact.
+- [ ] Close F-05: run all four browser suites (`test:e2e:banned`, `test:e2e:demo`,
+      `test:e2e:engine`, `test:e2e:readiness`) in a browser-capable environment; replace
+      `BLOCKED` with PASS artifacts.
 - [x] Close F-06: the post-login 401 was reproduced 12/12 after the `main` merge, fixed by
       committing the session row in `issue_login`, and pinned by
       `Adapt-main/backend/tests/test_session_cookie_commit.py`. Final 12× immediate-use loop:
@@ -99,7 +105,8 @@ A pilot means real learners. Do not start one until every box is ticked.
       secret scan.
 - [ ] Close F-16: triage the 18 high / 9 moderate vulnerabilities in the root Genlink
       `package-lock.json`; patch with reviewed, pinned upgrades only (never `--force`), then
-      re-run `npm audit --package-lock-only` and record the JSON.
+      re-run `npm audit --package-lock-only` and record the JSON. This is now the main
+      remaining npm risk, since F-01 is closed.
 - [ ] Close F-17: decide whether the stateless integration route must be institution-scoped
       or debit the wallet. Today it ignores `institution_id`; the credit ledger applies to
       stateful Adapt generation only.
@@ -122,7 +129,8 @@ All Pilot items, plus:
 
 - [ ] Remediate or formally risk-accept every S0/S1 finding in `RELEASE_READINESS.md`.
 - [ ] Load test on the production topology (worker count, reverse proxy, TLS, real DB
-      encryption mode); the current 191 req/s is a single sandbox loopback number.
+      encryption mode); the current 135.26 req/s is a single sandbox loopback number measured
+      after the production middleware merge (down from 199.30 before it).
 - [ ] Prove one institution cannot read another's wallet/ledger data, and decide whether the
       stateless integration route also needs scoping (it still ignores `institution_id`).
 - [ ] Add monitoring, structured log alerts, backup verification and a written rollback
@@ -157,7 +165,7 @@ Production go/no-go: **NO-GO**.
 
 | Role | Name | Date | Decision | Evidence commit |
 | --- | --- | --- | --- | --- |
-| Release engineering | (this gate) | 2026-10-24 | Demo YES (conditional), Pilot NO, Production NO | `d812f79e5c20a84b7c5a3bc1f4a264aaf0a42d4b` + final docs commit in PR |
+| Release engineering | (this gate) | 2026-10-24 | Demo YES (conditional), Pilot NO, Production NO | `FINAL_EVIDENCE_COMMIT_2` + final docs commit in PR |
 | Backend owner | ________ | ____ | ____ | ____ |
 | Frontend owner | ________ | ____ | ____ | ____ |
 | Product / privacy owner | ________ | ____ | ____ | ____ |

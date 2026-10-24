@@ -108,10 +108,13 @@ intelligence layer rather than a separate learner destination. **The numbers on 
 are illustrative sample data, not pilot data and not learner data.** Plan prices, credit
 rules, the `18,420` remaining credits, the `6,580` adapted actions, the `347` active learners
 and the example ledger are editable presentation values held only in that browser. The Adapt
-backend has **no credit balance, debit, limit or institution ledger** today, and the
-"when credits reach zero" fallback is a product proposal, not enforced behaviour. The one
-real part of the flow diagram is the endpoint named on it; **Genlink does not currently call
-it** (see "Plug Adapt into another app" below and `SYSTEM_ARCHITECTURE.md`). The console includes:
+backend **does** now enforce institutional wallets, priced actions and a credit ledger: an
+empty wallet returns `402 credits_exhausted` and names `mode=standard`, while unmetered notes,
+lessons, practice and review stay available. That enforcement is **not connected to this
+console**, which remains a labelled presentation prototype; wiring it to the live ledger is a
+product task. The one real part of the flow diagram is the endpoint named on it; **Genlink does
+not currently call it** (see "Plug Adapt into another app" below and `SYSTEM_ARCHITECTURE.md`).
+The console includes:
 
 - an integration-flow view from Genlink through Adapt to the learner;
 - editable annual Starter, Core and Plus plan examples;
@@ -121,13 +124,20 @@ it** (see "Plug Adapt into another app" below and `SYSTEM_ARCHITECTURE.md`). The
 - an example, auditable credit-usage ledger.
 
 Use **Configure engine** to change the example commercial values. Presentation changes are
-stored only in that browser, not treated as real billing configuration. When credits reach zero,
-the proposed product behaviour is explicit: newly generated adaptation pauses, while existing
-notes, lessons and quizzes remain available in Standard mode.
+stored only in that browser, not treated as real billing configuration. The zero-credit rule
+shown here matches the backend's measured behaviour for stateful generation: newly generated
+adaptation pauses, while existing notes, lessons and quizzes remain available in Standard mode.
+The stateless `POST /api/v1/integration/adapt` endpoint itself does not debit a wallet and
+ignores any `institution_id` sent to it.
 
 ## Run it
 
-One-time setup (Python 3.11+ and Node 20.11+):
+For an Internet-facing single-host deployment, use `PRODUCTION_RUNBOOK.md`; its non-root
+systemd, Nginx/TLS, migration, backup and smoke procedures are different from this demo setup.
+`PRODUCTION_AUDIT.md` records the security findings and exactly what was validated.
+
+One-time setup (Python 3.11+ and a Node version matching `frontend/package.json`; currently
+Node 22.22.2+ in the 22.x line, 24.15+ in the 24.x line, or 26+):
 
 ```bash
 cd ~/Adapt
@@ -309,10 +319,10 @@ has been seen on real glass from inside the sandbox — at rehearsal, walk one q
 ## Plug Adapt into another app (integration endpoint)
 
 Any app on the network can use Adapt as its adaptation engine with **one HTTP call** — no
-WebSocket, no account, no SDK. **Status on 2026-10-23: the Genlink source in this repository
-exists only inside `genink-school-of-the-elites-main (1).zip` and does not call this endpoint.**
-The integration is a proven contract (schemas, fixtures and failure tests under
-`integration/`), not a shipped connection:
+WebSocket, no account, no SDK. **Status on 2026-10-24: `main` deleted the Genlink ZIP and
+extracted its source into the repository root (`src/`, `supabase/`, `drizzle/`); that source
+still does not call this endpoint.** The integration is a proven contract (schemas, fixtures
+and failure tests under `integration/`), not a shipped connection:
 
 ```bash
 curl -X POST "http://<adapt-host>:8000/api/v1/integration/adapt" \

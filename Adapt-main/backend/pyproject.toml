@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -47,6 +47,8 @@ dev = [
   "anyio>=4.6",
   "ruff>=0.9",
   "mypy>=1.14",
+  # The packaging regression builds with --no-build-isolation, offline.
+  "wheel>=0.43",
 ]
 
 [project.scripts]
@@ -54,6 +56,17 @@ adapt = "adapt.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Alembic revisions are runtime deployment assets, not developer-only files.
+# Keep every revision inside the wheel so a clean non-editable install can migrate.
+adapt = [
+  "credits/data/*.json",
+  "curriculum/data/*.json",
+  "migrations/*.py",
+  "migrations/*.mako",
+  "migrations/versions/*.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

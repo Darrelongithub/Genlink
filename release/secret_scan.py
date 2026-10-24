@@ -177,7 +177,7 @@ def main() -> int:
         print(f"  HIGH {item['path']}:{item['line']} {item['kind']} len={item['value_length']} fp={item['sha256_prefix']}")
     for item in info:
         print(f"  INFO {item['path']}:{item['line']} {item['kind']} len={item['value_length']} fp={item['sha256_prefix']}")
-    print(f"wrote {out.relative_to(ROOT)} — {report['outcome']}")
+    print(f"wrote {args.out} — {report['outcome']}")
     return 1 if high else 0
 
 

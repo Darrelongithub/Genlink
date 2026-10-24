@@ -18,6 +18,8 @@
     "test:env": "node --test env.test.mjs",
     "test:e2e:banned": "node tests-e2e/banned-phrases.mjs",
     "test:e2e:demo": "node tests-e2e/demo-flow.mjs",
+    "test:e2e:engine": "node tests-e2e/engine-console.mjs",
+    "test:e2e:readiness": "node tests-e2e/readiness-matrix.mjs",
     "host": "npm run build && node host.mjs",
     "dev:web": "node server.mjs",
     "test:dev": "node --test dev.test.mjs",
@@ -27,7 +29,7 @@
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "next": "15.5.27",
+    "next": "15.5.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -42,6 +44,10 @@
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": ">=20.11.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
+  "overrides": {
+    "postcss": "8.5.29",
+    "undici": "8.12.2"
   }
 }

@@ -152,7 +152,7 @@ function SegmentWalkthrough({ teaching, headline }: { teaching: NonNullable<Teac
           <label className="block t-small font-medium">
             {check.question}
             <input
-              className="mt-1 w-full rounded-[2px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+              className="mt-1 w-full rounded-[2px] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-base focus:border-[var(--accent)] focus:outline-none"
               value={said}
               placeholder="One sentence is enough."
               onChange={(e) => {

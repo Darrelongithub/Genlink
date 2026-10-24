@@ -5,21 +5,26 @@ The single most important fact: **Genlink is not connected to Adapt.** The contr
 proven; the caller is a test-only reference implementation. Any diagram that shows a
 live arrow between the two products is a proposal, not the current system.
 
-**Layout note (merges with main, 2026-10-23/24):** while this gate was running, `main`
-advanced from `d998955` to `aad6946`, then to `8851869` (PR #4). The first advance deleted
-both ZIP archives, extracted Genlink into the repository root (`src/`, `supabase/`,
-`drizzle/`, `index.html`, `package.json`) and added a refactored top-level `adapt/` tree,
-while leaving `Adapt-main/` **unchanged**. The second advance added real backend institution
-credits, a wallet/ledger, operator authority and cross-site session/mutation protection to
-`Adapt-main/backend`. This branch merged both advances: it resolved the `.gitignore` and
-generated `docs/EFFICIENCY.md` add/add conflicts, applied the same measured pool fix to
-`adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift in
-`adapt/scripts/demo.mjs`, extended the host scan to the extracted trees, and added the
+**Layout note (three merges with main, 2026-10-23/24):** while this gate was running,
+`main` advanced from `d998955` to `aad6946`, then to `8851869` (PR #4), then to `1b3add9`
+(PRs #5/#6). The first advance deleted both ZIP archives, extracted Genlink into the
+repository root (`src/`, `supabase/`, `drizzle/`, `index.html`, `package.json`) and added a
+refactored top-level `adapt/` tree. The second added real backend institution credits, a
+wallet/ledger, operator authority and cross-site session/mutation protection. The third
+added production hosting assets/runbooks, backend packaging tests, a WCAG 2.2 AA frontend
+pass, four browser-suite scripts, `next` 15.5.28 with `postcss`/`undici` overrides, and a
+substantially rebuilt `/engine` presentation console that already carries strong
+"example / not live billing / no live institution connected" labelling.
+
+This branch merged all three advances. It resolved `.gitignore` and the generated
+`docs/EFFICIENCY.md` add/add conflicts, took main's rebuilt `/engine` page on the third
+merge (its labels already satisfy the release gate's honesty check), applied the same
+measured pool fix to `adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift
+in `adapt/scripts/demo.mjs`, extended the host scan to the extracted trees, and added the
 measured exhausted-credit scenario plus the post-login session-commit fix to both backend
-layouts. The HTTP/stress evidence below was re-measured against
-`Adapt-main/backend` + `Adapt-main/frontend` after the second merge;
-`release/check_second_layout.py` separately proves the second backend carries the same pool
-bound.
+layouts. The HTTP/stress evidence below was re-measured against `Adapt-main/backend` +
+`Adapt-main/frontend` after the third merge; `release/check_second_layout.py` separately
+proves the second backend carries the same pool bound.
 
 ## 1. Ownership and physical layout
 
@@ -180,37 +185,36 @@ prices, `18,420 credits remaining`, `6,580 adapted actions`, `347 active learner
 example ledger in browser `localStorage`. Those numbers are **not** read from the backend
 wallet and must not be presented as live usage.
 
-Release-gate corrections on this branch:
+The third `main` merge rebuilt this console. Its own labelling now covers the gap the
+release gate had patched earlier, and the gate's `--web` check passes against it:
 
-* top bar: `Prototype · not wired to Genlink`;
-* health rail: `Prototype console · values are samples`;
-* flow label: `contract route exists · Genlink not wired`;
-* a visible `SAMPLE FIGURES FOR PRESENTATION — not live usage, not pilot data, not
-  learner data` line above the stats;
-* `Sample credits remaining`, `Sample adapted actions`, `Sample active learners`;
-* fallback rule pill changed from `ENABLED` to `PROPOSED ONLY`;
-* `Export usage` is disabled and labelled `(prototype)`;
-* footer: sample values stored in this browser only; **the console is not connected to the
-  backend credit ledger**.
+* `No live institution or billing connected` in the operator rail;
+* `Example figures · not live telemetry` above the snapshot;
+* `Credits remaining (sample)`, `Adapted actions (sample)`, `Active learners (sample)`;
+* `Sample rows · not real students` over the illustrative ledger;
+* `Download sample CSV` and `Saved example configuration in this browser (not live billing)`;
+* an explicit `Standard mode fallback` description for the zero-credit case;
+* the whole scenario is framed as an *illustrative presentation configuration*.
 
 `release/e2e_smoke.py --web` fetches the built `/engine` page and asserts the sample and
-no-live-connection labels are present. Wiring the console to the real ledger, defining the
-operator/institution onboarding process, and keeping the sample values clearly separated
-from measured wallet state are product tasks before any pilot billing claim.
+no-live-connection labels are present. Wiring this richer console to the real ledger, defining
+the operator/institution onboarding process, and keeping the sample values clearly separated
+from measured wallet state remain product tasks before any pilot billing claim.
 
 ## 7. Failure and recovery behaviour measured
 
 | Failure | Behaviour | Evidence |
 | --- | --- | --- |
-| Concurrent learners | 20 learners × 5 = 100 stateless requests, all 200, 191.04 req/s, p50 99.42 ms, p95 116.31 ms | `release/evidence/stress-2026-10-23.json` |
-| Duplicate submissions | 50 identical → one plan, 50 distinct response ids | same |
+| Concurrent learners | 20 learners × 5 = 100 stateless requests, all 200, 135.26 req/s, p50 133.54 ms, p95 160.05 ms (after the production middleware merge) | `release/evidence/stress-2026-10-23.json` |
+| Duplicate submissions | 50 identical → one plan, 50 distinct response ids, wall 266.87 ms | same |
 | Interrupted connection mid-response | caller catches `IncompleteRead`, serves labelled standard content | `integration/test_reference_client.py` |
-| Adapt unavailable / model unavailable / retry storm | 3 bounded attempts, stable idempotency key, labelled fallback | same + stress scenario |
+| Adapt unavailable / model unavailable / retry storm | 3 bounded attempts, stable idempotency key, labelled fallback; OpenAPI 147 paths incl. `/api/v1/credits/me`, `/api/v1/credits/actions`, `/api/v1/admin/institutions/{institution_id}/credits` | same + stress scenario |
+| Exhausted Adapt Credits | 402 `credits_exhausted`, `mode=standard`, 5 unmetered routes still 200, learner sees `exhausted=true` | `release/evidence/e2e-smoke.json` |
 | Server restart / stale session | stateful `/me` 401 when forced stale; stateless integration still 200 | stress scenario |
-| DB locked/busy | stateless integration 200 in 7.83 ms during a 2 s exclusive lock; stateful write waits 1.68 s then succeeds | stress scenario |
+| DB locked/busy | stateless integration 200 in 5.08 ms during a 2 s exclusive lock; stateful write waits 1,719.63 ms then succeeds | stress scenario |
 | Rate limit | multiplier clamps at 0.05; 40 requests → 11×200, 29×429 with `retry-after: 10` | stress scenario |
-| Concurrent AI-capable route, no key | 16 calls → 12×200, 4×429 in 226.62 ms; `/healthz` still 200 | stress scenario |
-| Provider outage diagnostic | 16 calls with providers enabled → 12×200, 4×429 in 228.99 ms; API stayed responsive | opt-in stress diagnostic (FINDING, not a pass) |
+| Concurrent AI-capable route, no key | 16 calls → 12×200, 4×429 in 226.68 ms; `/healthz` still 200 | stress scenario |
+| Provider outage diagnostic | 16 calls with providers enabled → 12×200, 4×429 in 189.75 ms; API stayed responsive | opt-in stress diagnostic (FINDING, not a pass) |
 
 ### The concurrency deadlock that was fixed
 

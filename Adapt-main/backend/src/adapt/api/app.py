@@ -22,14 +22,15 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..config import get_settings
-from ..security.ratelimit import build_limiter
 from ..security.middleware import (
     LimitsMiddleware,
     SecurityHeadersMiddleware,
     TrustedHostMiddleware,
 )
+from ..security.ratelimit import build_limiter
 from ..services import attach, build
 from .routes import (
     adaptations,
@@ -38,7 +39,6 @@ from .routes import (
     check_in,
     content,
     content_prepare,
-    credits as credits_routes,
     curriculum,
     evidence,
     integration,
@@ -48,9 +48,10 @@ from .routes import (
     lessons,
     study,
     system,
-    tests as tests_routes,
     tutor,
 )
+from .routes import credits as credits_routes
+from .routes import tests as tests_routes
 from .ws import router as ws_router
 
 log = logging.getLogger("adapt.api")
@@ -149,7 +150,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/api/docs" if st.debug else None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if st.mode != "production" else None,
     )
 
     origins = sorted({st.frontend_origin, *(st.allowed_origins or [])})
@@ -244,6 +245,23 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.exception_handler(SQLAlchemyError)
+    async def _database_unavailable(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+        rid = getattr(request.state, "request_id", None)
+        log.error(
+            "database request failed type=%s request_id=%s",
+            type(exc).__name__,
+            rid,
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "database_unavailable",
+                "request_id": rid,
+                "note": "this learning update could not be saved; retry after the database recovers",
+            },
+        )
+
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         rid = getattr(request.state, "request_id", None)
@@ -286,7 +304,7 @@ def create_app() -> FastAPI:
             "name": "ADAPT",
             "loop": list(loop),
             "how_to_walk_the_loop": loop,
-            "docs": "/api/openapi.json",
+            "docs": app.openapi_url,
             "health": "/api/v1/health",
             "websocket": "/ws/voice",
             "privacy": "/api/v1/privacy",
@@ -294,9 +312,16 @@ def create_app() -> FastAPI:
             "routes": routes,
         }
 
-    @app.get("/healthz")
+    @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict[str, str]:
+        # Liveness only: the process completed startup and its event loop can answer.
         return {"ok": "true"}
+
+    @app.get("/readyz", include_in_schema=False)
+    def readyz() -> JSONResponse:
+        # Readiness includes a rolled-back real write, so unavailable and read-only
+        # databases are removed from service instead of looking healthy on SELECT 1.
+        return system.readiness_response()
 
     return app
 

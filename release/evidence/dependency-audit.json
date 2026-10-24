@@ -7,53 +7,11 @@
       "info": 0,
       "low": 0,
       "moderate": 0,
-      "high": 2,
-      "critical": 1,
-      "total": 3
+      "high": 0,
+      "critical": 0,
+      "total": 0
     },
-    "advisories": [
-      {
-        "package": "next",
-        "severity": "critical",
-        "is_direct": true,
-        "fix_available": {
-          "name": "next",
-          "version": "15.5.28",
-          "isSemVerMajor": false
-        },
-        "via": [
-          "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
-          "Next.js: Denial of Service in App Router using Server Actions",
-          "postcss"
-        ]
-      },
-      {
-        "package": "postcss",
-        "severity": "high",
-        "is_direct": false,
-        "fix_available": {
-          "name": "next",
-          "version": "15.5.28",
-          "isSemVerMajor": false
-        },
-        "via": [
-          "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
-          "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
-          "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
-        ]
-      },
-      {
-        "package": "undici",
-        "severity": "high",
-        "is_direct": false,
-        "fix_available": true,
-        "via": [
-          "undici vulnerable to Denial of Service via unbounded memory in the EventSource parser",
-          "undici vulnerable to Subresource Integrity bypass via non-lowercase algorithm tokens",
-          "undici vulnerable to Denial of Service via unhandled error on excessive content-encodings"
-        ]
-      }
-    ]
+    "advisories": []
   },
   "npm_genlink_root": {
     "state": "OK",
@@ -327,7 +285,7 @@
   "pip": {
     "state": "OK",
     "status": "OK",
-    "scanned_packages": 76,
+    "scanned_packages": 77,
     "affected_packages": 1,
     "advisory_count": 4,
     "advisories": [

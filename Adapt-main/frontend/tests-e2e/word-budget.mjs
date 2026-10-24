@@ -49,7 +49,7 @@ const SCREENS = [
       "Your path",
       "One step at a time. You can pause or skip any step.",
       "What do you want to learn?",
-      "Pick a subject to build your starting checks.",
+      "Pick a subject, then choose what to cover in it.",
       "Opening your path…",
     ],
   },

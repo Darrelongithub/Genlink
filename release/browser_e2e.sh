@@ -99,6 +99,8 @@ run_test() {
 }
 run_test banned-phrases npm run test:e2e:banned
 run_test demo-flow npm run test:e2e:demo
+run_test engine-console npm run test:e2e:engine
+run_test readiness-matrix npm run test:e2e:readiness
 
 kill "$WEB_PID" 2>/dev/null || true
 wait "$WEB_WRAPPER_PID" 2>/dev/null || true

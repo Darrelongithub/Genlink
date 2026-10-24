@@ -1,9 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 /** The dev server must accept the preview origin Arena hands to the browser, or Next
  *  rejects the HMR request with a host check. Add more with ADAPT_DEV_ORIGIN. */
 const extra = (process.env.ADAPT_DEV_ORIGIN ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // The repository also contains unrelated applications and lockfiles. Keep build
+  // traces rooted at Adapt so a monorepo build matches the release archive layout.
+  outputFileTracingRoot: frontendRoot,
   async headers() {
     return [{ source: "/art/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }] }];
   },

@@ -9,7 +9,7 @@ The rule this module exists to enforce is narrow and load-bearing:
   a number to be coerced -- ``1.5`` credits is how a ledger starts rounding, and the
   ledger is exactly the place where a rounding error becomes a dispute.
 
-The shipped example file (``backend/config/credit_plans.example.json``) carries **no
+The shipped example file (``adapt/credits/data/credit_plans.example.json``) carries **no
 prices at all**: ``currency`` and ``list_price_minor`` are absent, which is the honest
 state before an operator has typed their commercial terms. Included credits and action
 costs are there because the demo has to meter something; they are plan data, not truth.
@@ -175,14 +175,14 @@ def load_plan_config(path: Path) -> list[PlanSpec]:
 
 
 def default_config_path() -> Path:
-    """``backend/config/credit_plans.example.json`` resolved from the source tree.
+    """Return the plan example shipped inside both a checkout and an installed wheel.
 
     Deliberately ``example`` in the name: an operator copies it, edits it, and points
     ``ADAPT_CREDIT_PLANS_PATH`` at the copy. Seeding from the example is the documented
-    default so a fresh clone has metering that works out of the box; nothing in the file
-    claims to be a commercial offer.
+    default so a fresh installation has metering that works out of the box; nothing in
+    the file claims to be a commercial offer.
     """
-    return Path(__file__).resolve().parents[3] / "config" / "credit_plans.example.json"
+    return Path(__file__).resolve().parent / "data" / "credit_plans.example.json"
 
 
 __all__ = [

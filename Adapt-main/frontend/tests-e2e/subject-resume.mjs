@@ -86,7 +86,8 @@ try {
   const studentId = await enter("create");
   await openJourney();
   await page.locator('input[aria-label="What do you want to learn?"]').fill("Biology");
-  await page.getByRole("button", { name: /See the starting checks/i }).click();
+  await page.getByRole("button", { name: /Choose what to cover|See the starting checks/i }).click();
+  await page.getByRole("button", { name: /Use this plan/i }).click();
   await page.locator(".tile-btn", { hasText: "Confident" }).first().click();
   await page.locator(".tile-btn", { hasText: "Try it" }).first().click();
   await page.locator(".tile-btn", { hasText: "Exam" }).first().click();

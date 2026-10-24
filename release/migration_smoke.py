@@ -175,7 +175,7 @@ def main() -> int:
         out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         for check in report["checks"]:
             print(f"  {'ok  ' if check['ok'] else 'FAIL'}  {check['name']} — {check.get('detail', '')[:160]}")
-        print(f"wrote {out.relative_to(ROOT)} — {report['outcome']}")
+        print(f"wrote {args.out} — {report['outcome']}")
         shutil.rmtree(tmp, ignore_errors=True)
     return 1 if failed else 0
 

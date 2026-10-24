@@ -248,10 +248,15 @@ export default function Proposals() {
                     </dd>
                   </div>
                   {p.evidence_ids?.length ? (
-                    <p className="part-meta">
-                      built from {p.evidence_ids.length} logged evidence row{p.evidence_ids.length === 1 ? "" : "s"}
-                      {p.hypothesis_ref ? <> · hypothesis {p.hypothesis_ref.status} at {round(p.hypothesis_ref.posterior ?? 0)}</> : null}
-                    </p>
+                    <div className="part">
+                      <dt className="sr-only">Evidence summary</dt>
+                      <dd className="part-body">
+                        <p className="part-meta">
+                          built from {p.evidence_ids.length} logged evidence row{p.evidence_ids.length === 1 ? "" : "s"}
+                          {p.hypothesis_ref ? <> · hypothesis {p.hypothesis_ref.status} at {round(p.hypothesis_ref.posterior ?? 0)}</> : null}
+                        </p>
+                      </dd>
+                    </div>
                   ) : null}
                   {p.citations?.length ? (
                     <div className="part">

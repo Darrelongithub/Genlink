@@ -6,12 +6,11 @@ import type { Metadata } from "next";
  * reason a phone on a slow (or school, or offline-LAN) connection saw an unstyled, slow,
  * "weird" app. Bundled woff2 files are served from this origin with immutable cache headers,
  * so the look is identical and the network is no longer in the critical path. */
-import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/fraunces/wght.css";
 import "@fontsource-variable/fraunces/wght-italic.css";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/inter/wght-italic.css";
 import "@fontsource-variable/jetbrains-mono";
-import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 
 import "./globals.css";
 import "@/styles/tokens.css";
