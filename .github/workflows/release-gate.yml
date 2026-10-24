@@ -149,6 +149,9 @@ jobs:
           if ! python -m pytest -q --tb=short > ../../release-artifacts/backend-pytest.log 2>&1; then
             echo '--- backend suite failure tail ---'
             tail -120 ../../release-artifacts/backend-pytest.log
+            grep -E '^(FAILED|ERROR) ' ../../release-artifacts/backend-pytest.log | head -20 | while IFS= read -r line; do
+              echo "::error::$line"
+            done || true
             exit 1
           fi
           tail -5 ../../release-artifacts/backend-pytest.log
