@@ -98,7 +98,12 @@ notes, lessons and quizzes remain available in Standard mode.
 
 ## Run it
 
-One-time setup (Python 3.11+ and Node 20.11+):
+For an Internet-facing single-host deployment, use `PRODUCTION_RUNBOOK.md`; its non-root
+systemd, Nginx/TLS, migration, backup and smoke procedures are different from this demo setup.
+`PRODUCTION_AUDIT.md` records the security findings and exactly what was validated.
+
+One-time setup (Python 3.11+ and a Node version matching `frontend/package.json`; currently
+Node 22.22.2+ in the 22.x line, 24.15+ in the 24.x line, or 26+):
 
 ```bash
 cd ~/Adapt

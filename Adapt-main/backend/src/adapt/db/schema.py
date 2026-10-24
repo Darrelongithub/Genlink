@@ -21,7 +21,10 @@ log = logging.getLogger("adapt.db.schema")
 
 
 def upgrade_schema(engine: Engine) -> None:
-    migrations = Path(__file__).resolve().parents[3] / "migrations"
+    # Package-relative in both a source checkout and an installed wheel. The old
+    # repository-depth calculation pointed into site-packages' parent and made a
+    # clean, non-editable install unable to find any revisions.
+    migrations = Path(__file__).resolve().parents[1] / "migrations"
     config = Config()  # No fileConfig: preserve the application's logging configuration.
     config.set_main_option("script_location", str(migrations))
     with engine.connect() as connection:

@@ -15,8 +15,10 @@ from pathlib import Path
 
 from alembic import context
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+# Source checkouts put ``src`` two levels above this file; installed wheels put
+# ``site-packages`` there. Both are the correct import root, and no repository path
+# is required when Alembic runs from an installed production package.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from adapt.config import get_settings  # noqa: E402
 from adapt.db.engine import create_db_engine  # noqa: E402

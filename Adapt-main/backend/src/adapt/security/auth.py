@@ -178,7 +178,7 @@ def demo_passphrase_required() -> bool:
     That combination is the one where a guessed URL could otherwise read learner
     data, so guest sessions require the phrase the presenter whispers to judges.
     """
-    return get_settings().mode == "tunnel" and bool(_demo_passphrase())
+    return get_settings().mode in {"tunnel", "production"} and bool(_demo_passphrase())
 
 
 def _demo_passphrase() -> str | None:

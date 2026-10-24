@@ -1,0 +1,46 @@
+[Unit]
+Description=Adapt FastAPI service (single worker, SQLite/SQLCipher)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=adapt
+Group=adapt
+WorkingDirectory=/opt/adapt
+EnvironmentFile=/etc/adapt/api.env
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/opt/adapt/.venv/bin/python -c "from adapt.config import get_settings; get_settings()"
+ExecStart=/opt/adapt/.venv/bin/adapt serve --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=300
+TimeoutStopSec=45
+KillSignal=SIGTERM
+UMask=0077
+
+# One process is intentional: SQLite has one writer and the rate limiter is in-memory.
+MemoryMax=2G
+TasksMax=128
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=adapt-api
+
+[Install]
+WantedBy=multi-user.target

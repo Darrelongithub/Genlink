@@ -12,6 +12,7 @@ test("the frontend parser accepts copyable dotenv values but ignores secrets", (
     HOST=0.0.0.0
     PORT=3010
     ADAPT_DEV_ORIGIN="localhost,127.0.0.1"
+    ADAPT_ALLOWED_HOSTS=learn.example.test
     ADAPT_GEMINI_API_KEY=must-not-enter-node
     NOT_A_FRONTEND_SETTING=yes
   `);
@@ -21,6 +22,7 @@ test("the frontend parser accepts copyable dotenv values but ignores secrets", (
     HOST: "0.0.0.0",
     PORT: "3010",
     ADAPT_DEV_ORIGIN: "localhost,127.0.0.1",
+    ADAPT_ALLOWED_HOSTS: "learn.example.test",
   });
 });
 

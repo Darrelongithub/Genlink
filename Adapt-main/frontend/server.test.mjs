@@ -43,13 +43,13 @@ async function until(fn, { timeoutMs = 45_000, everyMs = 500 } = {}) {
   }
 }
 
-async function startServer({ api, prefix }) {
+async function startServer({ api, prefix, env = {} }) {
   const port = await freePort();
   const out = mkdtempSync(join(tmpdir(), prefix));
   const tsconfigBefore = readFileSync(TSCONFIG_PATH, "utf8");
   const child = spawn(process.execPath, ["server.mjs"], {
     cwd: HERE,
-    env: { ...process.env, PORT: String(port), ADAPT_API: api, ADAPT_NEXT_DIST: out, HOST: "127.0.0.1" },
+    env: { ...process.env, PORT: String(port), ADAPT_API: api, ADAPT_NEXT_DIST: out, HOST: "127.0.0.1", ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let logs = "";
@@ -65,7 +65,7 @@ async function startOffline() {
 /** Stop a launcher, take its build output with it, and restore tsconfig.json. */
 async function stopAndSweep(child, out, tsconfigBefore) {
   child.kill("SIGTERM");
-  await until(async () => (child.exitCode !== null ? true : null), { timeoutMs: 8_000 });
+  const graceful = await until(async () => (child.exitCode !== null ? true : null), { timeoutMs: 8_000 });
   if (child.exitCode === null) child.kill("SIGKILL");
   for (let n = 0; n < 10 && existsSync(out); n += 1) {
     rmSync(out, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
@@ -76,6 +76,7 @@ async function stopAndSweep(child, out, tsconfigBefore) {
   if (typeof tsconfigBefore === "string" && readFileSync(TSCONFIG_PATH, "utf8") !== tsconfigBefore) {
     writeFileSync(TSCONFIG_PATH, tsconfigBefore, "utf8");
   }
+  return Boolean(graceful && child.exitCode === 0);
 }
 
 function sleep(ms) {
@@ -83,13 +84,14 @@ function sleep(ms) {
 }
 
 /** One request with a Host header of our choosing -- what a phone on the wifi sends. */
-function requestWithHost({ port, host, path: requestPath, upgrade = false, headers = {} }) {
+function requestWithHost({ port, host, path: requestPath, upgrade = false, headers = {}, body = null }) {
   return new Promise((resolve, reject) => {
     const extra = upgrade
       ? { Connection: "Upgrade", Upgrade: "websocket", "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==", "Sec-WebSocket-Version": "13" }
       : {};
+    const bodyHeaders = body === null ? {} : { "content-length": Buffer.byteLength(body) };
     const req = httpRequest(
-      { host: "127.0.0.1", port, path: requestPath, headers: { ...headers, ...extra, Host: host } },
+      { host: "127.0.0.1", port, path: requestPath, headers: { ...headers, ...bodyHeaders, ...extra, Host: host } },
       (res) => {
         const chunks = [];
         res.on("data", (c) => chunks.push(c));
@@ -101,7 +103,7 @@ function requestWithHost({ port, host, path: requestPath, upgrade = false, heade
       resolve({ status: res.statusCode, headers: res.headers, body: "" });
     });
     req.on("error", reject);
-    req.end();
+    req.end(body ?? undefined);
   });
 }
 
@@ -128,6 +130,7 @@ test("ADAPT_API=offline answers 503 and stays up, and the UI still serves", asyn
   } finally {
     await stopAndSweep(child, out, tsconfigBefore);
   }
+  assert.equal(child.exitCode, 0, "offline server must shut down gracefully");
   assert.equal(readFileSync(TSCONFIG_PATH, "utf8"), tsconfigBefore, "tsconfig.json must remain byte-identical after offline test");
 });
 
@@ -141,10 +144,12 @@ test("a LAN Host header reaches the API as 127.0.0.1, and the 101 keeps its own 
   // direct-API test, which is exactly why they belong to the launcher's own test file.
   const upstream = createServer((req, res) => {
     seen.push(req.headers.host);
+    forwarded.push({ ip: req.headers["x-forwarded-for"], protocol: req.headers["x-forwarded-proto"] });
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ ok: true, host: req.headers.host }));
   });
   const seen = [];
+  const forwarded = [];
   const sockets = new Set(); // the upgraded socket outlives the request; the test has to end it
   let seenUpgrade;
   upstream.on("upgrade", (req, socket) => {
@@ -161,15 +166,25 @@ test("a LAN Host header reaches the API as 127.0.0.1, and the 101 keeps its own 
   });
   await new Promise((r) => upstream.listen(0, "127.0.0.1", r));
   const apiPort = upstream.address().port;
-  const { port, child, out, tsconfigBefore, logs } = await startServer({ api: `http://127.0.0.1:${apiPort}`, prefix: "adapt-next-proxy-" });
+  const { port, child, out, tsconfigBefore, logs } = await startServer({
+    api: `http://127.0.0.1:${apiPort}`,
+    prefix: "adapt-next-proxy-",
+    env: { ADAPT_ALLOWED_HOSTS: "192.168.1.50" },
+  });
   try {
     const answer = await until(async () => {
-      const res = await requestWithHost({ port, host: "192.168.1.50:3000", path: "/api/v1/health" }).catch(() => null);
+      const res = await requestWithHost({
+        port,
+        host: "192.168.1.50:3000",
+        path: "/api/v1/health",
+        headers: { "x-forwarded-for": "203.0.113.99", "x-forwarded-proto": "https" },
+      }).catch(() => null);
       return res && res.status === 200 ? res : null;
     });
     assert.ok(answer, `the proxied request never answered 200:\n${logs()}`);
     assert.equal(JSON.parse(answer.body).host, `127.0.0.1:${apiPort}`, "the proxy must not forward the browser's Host");
     assert.deepEqual(seen, [`127.0.0.1:${apiPort}`]);
+    assert.deepEqual(forwarded[0], { ip: "127.0.0.1", protocol: "http" }, "an untrusted direct client must not spoof proxy headers");
 
     const upgrade = await requestWithHost({
       port,
@@ -182,6 +197,14 @@ test("a LAN Host header reaches the API as 127.0.0.1, and the 101 keeps its own 
     assert.equal(seenUpgrade, `127.0.0.1:${apiPort}`, "the upgrade must be forwarded with the API's own Host");
     assert.match(String(upgrade.headers["sec-websocket-extensions"]), /permessage-deflate/);
     assert.equal(String(upgrade.headers.connection).toLowerCase(), "upgrade");
+
+    const rejectedUpgrade = await requestWithHost({
+      port,
+      host: "unconfigured.example.test",
+      path: "/ws/voice",
+      upgrade: true,
+    });
+    assert.equal(rejectedUpgrade.status, 400, "an unknown Host must not open an upgraded socket");
   } finally {
     await stopAndSweep(child, out, tsconfigBefore);
     // No awaiting upstream.close(): it only calls back once every connection is gone, and a
@@ -190,5 +213,94 @@ test("a LAN Host header reaches the API as 127.0.0.1, and the 101 keeps its own 
     upstream.closeAllConnections?.();
     upstream.close();
   }
+  assert.equal(child.exitCode, 0, "upgraded sockets must not prevent graceful shutdown");
   assert.equal(readFileSync(TSCONFIG_PATH, "utf8"), tsconfigBefore, "tsconfig.json must remain byte-identical after proxy test");
+});
+
+test("ADAPT_API rejects credentials without echoing them into process logs", async () => {
+  const canary = "not-a-real-password-canary";
+  const { child, out, tsconfigBefore, logs } = await startServer({
+    api: `http://user:${canary}@127.0.0.1:8000`,
+    prefix: "adapt-next-bad-target-",
+  });
+  const exited = await until(async () => (child.exitCode !== null ? true : null), { timeoutMs: 8_000 });
+  assert.ok(exited, "invalid ADAPT_API should fail at startup");
+  assert.notEqual(child.exitCode, 0);
+  assert.ok(!logs().includes(canary), "the rejected credential appeared in logs");
+  rmSync(out, { recursive: true, force: true });
+  if (readFileSync(TSCONFIG_PATH, "utf8") !== tsconfigBefore) {
+    writeFileSync(TSCONFIG_PATH, tsconfigBefore, "utf8");
+  }
+});
+
+test("proxy bounds bodies and timeouts, and trusts forwarding only from configured peers", async () => {
+  const captured = [];
+  const upstream = createServer((req, res) => {
+    if (req.url === "/api/slow") return; // deliberately never answer
+    captured.push({
+      ip: req.headers["x-forwarded-for"],
+      protocol: req.headers["x-forwarded-proto"],
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end('{"ok":true}');
+  });
+  await new Promise((resolve) => upstream.listen(0, "127.0.0.1", resolve));
+  const apiPort = upstream.address().port;
+  const { port, child, out, tsconfigBefore, logs } = await startServer({
+    api: `http://127.0.0.1:${apiPort}`,
+    prefix: "adapt-next-limits-",
+    env: {
+      ADAPT_MAX_BODY_BYTES: "1024",
+      ADAPT_PROXY_TIMEOUT_MS: "1000",
+      ADAPT_TRUSTED_PROXIES: "127.0.0.1",
+      ADAPT_ALLOWED_HOSTS: "learn.example.test",
+    },
+  });
+  try {
+    const page = await until(async () => {
+      const response = await requestWithHost({ port, host: "learn.example.test", path: "/" }).catch(() => null);
+      return response?.status === 200 ? response : null;
+    });
+    assert.ok(page, `proxy test server did not start:\n${logs()}`);
+
+    const badHost = await requestWithHost({
+      port,
+      host: "unconfigured.example.test",
+      path: "/api/capture",
+    });
+    assert.equal(badHost.status, 400);
+    assert.equal(JSON.parse(badHost.body).error, "untrusted_host");
+    assert.equal(captured.length, 0, "a bad public Host bypassed the front door");
+
+    const oversized = await requestWithHost({
+      port,
+      host: "learn.example.test",
+      path: "/api/capture",
+      body: "x".repeat(1025),
+    });
+    assert.equal(oversized.status, 413);
+    assert.equal(captured.length, 0, "an over-limit body reached the backend");
+
+    const trusted = await requestWithHost({
+      port,
+      host: "learn.example.test",
+      path: "/api/capture",
+      headers: { "x-forwarded-for": "203.0.113.99", "x-forwarded-proto": "https" },
+    });
+    assert.equal(trusted.status, 200);
+    assert.deepEqual(captured[0], { ip: "203.0.113.99, 127.0.0.1", protocol: "https" });
+
+    const started = Date.now();
+    const timeout = await requestWithHost({ port, host: "learn.example.test", path: "/api/slow" });
+    const body = timeout.body;
+    assert.equal(timeout.status, 504);
+    assert.ok(Date.now() - started < 8_000, "the upstream timeout did not fire");
+    assert.ok(!body.includes(String(apiPort)) && !body.includes("127.0.0.1"), body);
+    assert.equal(JSON.parse(body).error, "api_timeout");
+  } finally {
+    await stopAndSweep(child, out, tsconfigBefore);
+    upstream.closeAllConnections?.();
+    upstream.close();
+  }
+  assert.equal(child.exitCode, 0, "limited proxy must shut down gracefully");
 });
