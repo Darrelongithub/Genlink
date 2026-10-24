@@ -16,7 +16,23 @@ import time
 import uuid
 from pathlib import Path
 
+import pytest
+
 _FIXTURE = Path(__file__).resolve().parent / "fixtures" / "model" / "e2e_model.py"
+
+
+@pytest.fixture(autouse=True)
+def _isolated_lesson_writer_state() -> None:
+    """Keep the module-global AI3 circuit breaker from leaking across tests.
+
+    ``adapt.ai.lesson_writer.core`` keeps a process-wide breaker. Other tests (or a slow CI
+    machine) can leave it open, which makes the async lesson-upgrade job fall back to
+    ``source=simple`` even though this test injects a working fake model. Reset before each
+    test so the assertion measures the frozen contract, not earlier test ordering. See F-18.
+    """
+    from adapt.ai.lesson_writer import reset_runtime_state
+
+    reset_runtime_state()
 
 
 def _load_e2e_model():
@@ -231,3 +247,15 @@ def test_prepare_without_a_level_still_teaches_the_prepared_pack(client, learner
     assert plan["source"] == "written_for_you", plan["source"]
     assert plan["concept_id"] == concepts[0]["id"]
     assert any(block["type"] == "check" for block in plan["blocks"])
+
+
+def test_lesson_writer_breaker_reset_clears_cross_test_state() -> None:
+    """F-18 regression: a global open breaker must not leak into the next test."""
+    from adapt.ai.lesson_writer import reset_runtime_state
+    from adapt.ai.lesson_writer.core import _DEFAULT_BREAKER
+
+    for _ in range(3):
+        _DEFAULT_BREAKER.failure()
+    assert _DEFAULT_BREAKER.allow() is False, "three failures must open the breaker"
+    reset_runtime_state()
+    assert _DEFAULT_BREAKER.allow() is True, "the per-test fixture must close it again"

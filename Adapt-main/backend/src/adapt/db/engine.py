@@ -161,12 +161,24 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
             mode=mode,
         )
 
+    # Release gate 2026-10-23 (see release/evidence/stress-2026-10-23.json): with the
+    # default QueuePool of 5 connections + 10 overflow, ~15 simultaneous learner
+    # requests exhausted the pool. The requests waiting for a checkout blocked while
+    # the single-worker event loop was waiting on those same requests, so even
+    # /healthz stopped answering. A bounded explicit pool keeps the cap -- it just
+    # fails fast instead of deadlocking. Memory databases use SingletonThreadPool,
+    # which does not accept these arguments, hence the is_file guard.
+    _pool = (
+        {"pool_size": 20, "max_overflow": 20, "pool_timeout": 5, "pool_pre_ping": True}
+        if is_file else {}
+    )
     if sqlcipher is not None and is_file:
         engine = create_engine(
             f"sqlite:///{db_file}",
             module=sqlcipher,
             future=True,
             connect_args={"check_same_thread": False},
+            **_pool,
         )
         key_hex = keyring.subkey("sqlcipher").hex()
         memory_kib = max(128, settings.sqlcipher_memory // 1024)
@@ -204,6 +216,7 @@ def create_db_engine(settings: Settings, *, db_file: Path | None = None) -> tupl
         f"sqlite:///{db_file}",
         future=True,
         connect_args={"check_same_thread": False} if is_file else {},
+        **_pool,
     )
     event.listen(engine, "connect", _sqlite_pragmas(is_file))
 

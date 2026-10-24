@@ -212,6 +212,13 @@ def issue_login(
         ip=(client_ip(request) if request is not None else None),
         user_agent=(request.headers.get("user-agent") if request is not None else None),
     )
+    # The cookie below is sent in *this* response, so the row backing it must already
+    # be durable when the client makes its next request. ``db_session`` commits only
+    # after the endpoint returns, which is later than the response is handed to
+    # uvicorn; a fast client then presents a cookie whose session is still only in
+    # this uncommitted transaction and gets 401 for a sign-in that just returned 200.
+    # Commit here rather than opening a timing window in every caller.
+    s.commit()
     st = get_settings()
     response.set_cookie(
         st.cookie_name,

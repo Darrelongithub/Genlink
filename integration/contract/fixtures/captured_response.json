@@ -1,0 +1,199 @@
+{
+  "ok": true,
+  "engine": {
+    "name": "adapt",
+    "version": "0.1.0",
+    "mode": "deterministic",
+    "local_only": true
+  },
+  "learner_id": "genlink-42",
+  "request_id": "captured-fixture",
+  "elapsed_ms": 0,
+  "derived_profile": {
+    "events": 1,
+    "attempts": 1,
+    "correct": 0,
+    "hints": 0,
+    "accuracy": 0.0,
+    "levers": {},
+    "flags": {},
+    "subject": {
+      "p_know": 0.0,
+      "n": 1
+    },
+    "notes": []
+  },
+  "adapted_content": {
+    "concept": "fractions_add",
+    "title": "Adding fractions",
+    "topic_id": null,
+    "content": {
+      "concept": "fractions_add",
+      "title": "Adding fractions",
+      "topic_id": null,
+      "content_id": null,
+      "source": "pack"
+    },
+    "lead_format": "worked_example",
+    "ladder_rung": 2,
+    "subject": {
+      "p_know": 0.0,
+      "ci": null,
+      "n": 1,
+      "band": null
+    },
+    "blocks": [
+      {
+        "block": 1,
+        "chunk_id": "chk_a82218bf22f3",
+        "kind": "text",
+        "content": {
+          "text": "To add fractions, the parts must be the same size. When the denominators differ, rename one fraction so both use the same denominator. Then add the numerators and keep the denominator.",
+          "part": 1,
+          "of": 1
+        },
+        "why": {
+          "text": "step 1 of 1: sized to at most 50 words before a check",
+          "lever": "step_size",
+          "source": "default",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        }
+      },
+      {
+        "block": 2,
+        "chunk_id": "chk_4fe153b8ca12",
+        "kind": "check",
+        "content": {
+          "question": "Quick check: what does this step say about denominators?",
+          "kind": "recall",
+          "questions": 1,
+          "hint_policy": "on request"
+        },
+        "why": {
+          "text": "a one-question check after every step, so a step that did not land is found here and not three steps later",
+          "lever": "step_size",
+          "source": "default",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        }
+      },
+      {
+        "block": 3,
+        "chunk_id": "chk_60e07f1dd39e",
+        "kind": "check",
+        "content": {
+          "question": "What is 1/4 + 1/8?",
+          "kind": "matched_question",
+          "questions": 1,
+          "format": "numeric"
+        },
+        "why": {
+          "text": "the question this teaching is measured by, in the same format whichever way the concept was taught",
+          "lever": "method_evidence",
+          "source": "measured",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        }
+      },
+      {
+        "block": 4,
+        "chunk_id": "chk_9385b4dfc5c4",
+        "kind": "reflect",
+        "content": {
+          "text": "Look back before you move on.",
+          "kind": "review"
+        },
+        "why": {
+          "text": "the close: what to look back at, and when this comes round again",
+          "lever": "review_halflife_prior",
+          "source": "default",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        }
+      }
+    ],
+    "limits": {
+      "max_words_per_block": 50,
+      "step_size": "medium",
+      "language": "en",
+      "tone": "straight",
+      "reading_level": "standard",
+      "max_blocks": 24,
+      "timers_visible": true,
+      "pace": "steady",
+      "max_explanation_chunks": null,
+      "rules": [
+        "every explanation chunk is followed by exactly one check question",
+        "no sentence is cut in half to fit a block; a long sentence travels whole and is flagged",
+        "a picture that fails validation is shown in words, with the reason"
+      ]
+    },
+    "why_panel": {
+      "title": "Why this lesson looks like this",
+      "rows": [
+        {
+          "decision": "opens with worked example",
+          "text": "no stated or measured lead yet: a worked example is the default first look at a new idea",
+          "lever": "lead_format_prior",
+          "source": "default",
+          "evidence_ids": [],
+          "n": 0
+        },
+        {
+          "decision": "steps of at most 50 words",
+          "text": "no working-memory measurement yet, so the middle step size is used",
+          "lever": "step_size",
+          "source": "default",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        },
+        {
+          "decision": "pitched at ladder rung 2 for this topic",
+          "text": "your current estimate on this topic rests on 1 answers",
+          "lever": "subject_map",
+          "source": "measured",
+          "evidence_ids": [
+            "a1"
+          ],
+          "n": 1
+        }
+      ],
+      "what_would_change_it": [
+        "more answers under a different teaching method, measured against expectation, would change what leads",
+        "a working-memory measure would resize the steps (they are at most 50 words now, from the medium step size)",
+        "approving 'show the structure visually' would put a picture first",
+        "reaching rung 4 would replace some teaching with explaining it back in your own words",
+        "telling us a different language, tone or timer choice would restyle the scaffolding at once — those are stated, not measured"
+      ],
+      "fallbacks": [
+        "a worked example was to lead, but the pack has none, so the explanation leads instead"
+      ],
+      "mode": "deterministic",
+      "mode_note": "built by the template adapter from your measured profile (simple mode: no model was involved)"
+    },
+    "fallbacks": [
+      "a worked example was to lead, but the pack has none, so the explanation leads instead"
+    ],
+    "mode": "deterministic",
+    "provenance": {
+      "model_version": null,
+      "content_id": null,
+      "content_source": "pack",
+      "evidence_ids": [
+        "a1"
+      ],
+      "evidence_n": 1
+    }
+  }
+}

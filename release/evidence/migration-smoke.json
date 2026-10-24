@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-10-24T05:54:37Z",
+  "python": "3.11.2",
+  "ai_credentials_used": false,
+  "checks": [
+    {
+      "name": "legacy_database_starts_at_revision_0002",
+      "ok": true,
+      "detail": "0002"
+    },
+    {
+      "name": "fresh_database_boots_and_accepts_a_learner",
+      "ok": true,
+      "detail": "{\"healthz_status\": 200, \"learner_create_status\": 200, \"me_status\": 200, \"error\": null}"
+    },
+    {
+      "name": "existing_database_is_upgraded_by_startup",
+      "ok": true,
+      "detail": "0002 -> R10 (head R10)"
+    },
+    {
+      "name": "migrated_database_boots_and_accepts_a_learner",
+      "ok": true,
+      "detail": "{\"healthz_status\": 200, \"learner_create_status\": 200, \"me_status\": 200, \"error\": null}"
+    }
+  ],
+  "runs": [
+    {
+      "label": "fresh",
+      "data_dir": "/tmp/adapt-migration-6i35t2li/fresh",
+      "healthz_status": 200,
+      "healthz_ms": 3.86,
+      "learner_create_status": 200,
+      "learner_create_ms": 17.5,
+      "me_status": 200,
+      "learner_id": "stu_99510fd246c74b429191",
+      "server_log_tail": "",
+      "alembic_revision_after_boot": "R10"
+    },
+    {
+      "label": "existing",
+      "data_dir": "/tmp/adapt-migration-6i35t2li/existing",
+      "healthz_status": 200,
+      "healthz_ms": 3.72,
+      "learner_create_status": 200,
+      "learner_create_ms": 16.53,
+      "me_status": 200,
+      "learner_id": "stu_0b5f560e2667454fae61",
+      "server_log_tail": "",
+      "alembic_revision_after_boot": "R10"
+    }
+  ],
+  "notes": [],
+  "legacy_tables_at_0002_count": 32,
+  "legacy_has_alembic_version": true,
+  "alembic_upgrade_0002": {
+    "args": [
+      "upgrade",
+      "0002"
+    ],
+    "exit_code": 0,
+    "stdout_tail": "",
+    "stderr_tail": "INFO  [alembic.runtime.migration] Context impl SQLiteImpl.\nINFO  [alembic.runtime.migration] Will assume non-transactional DDL.\nINFO  [alembic.runtime.migration] Running upgrade  -> 0001, initial schema: the whole database, as `create_all` builds it today\nINFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, interactive learning engine: scenes, runs, narration cache\n"
+  },
+  "legacy_revision_before_boot": "0002",
+  "head_revision": "R10",
+  "outcome": "PASS"
+}

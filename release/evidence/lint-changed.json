@@ -1,0 +1,204 @@
+{
+  "base": "origin/main",
+  "changed_python_files": [
+    "Adapt-main/backend/src/adapt/api/deps.py",
+    "Adapt-main/backend/src/adapt/db/engine.py",
+    "Adapt-main/backend/tests/test_content_engine.py",
+    "Adapt-main/backend/tests/test_hosting.py",
+    "Adapt-main/backend/tests/test_integration_release_contract.py",
+    "Adapt-main/backend/tests/test_release_concurrency_pool.py",
+    "Adapt-main/backend/tests/test_round2_g_integration.py",
+    "Adapt-main/backend/tests/test_session_cookie_commit.py",
+    "Adapt-main/scripts/write_efficiency_doc.py",
+    "adapt/backend/src/adapt/api/deps.py",
+    "integration/__init__.py",
+    "integration/contract/__init__.py",
+    "integration/contract/validate.py",
+    "integration/reference_client.py",
+    "integration/test_reference_client.py",
+    "release/__init__.py",
+    "release/audit_summary.py",
+    "release/check_second_layout.py",
+    "release/e2e_smoke.py",
+    "release/host_scan.py",
+    "release/lint_changed.py",
+    "release/migration_smoke.py",
+    "release/secret_scan.py",
+    "release/stress_check.py"
+  ],
+  "files": [
+    {
+      "path": "Adapt-main/backend/src/adapt/api/deps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 3,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 7
+    },
+    {
+      "path": "Adapt-main/backend/src/adapt/db/engine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 11,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 13
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_content_engine.py",
+      "untracked": false,
+      "ruff_findings_in_file": 32,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 14
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_hosting.py",
+      "untracked": false,
+      "ruff_findings_in_file": 16,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 15
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_integration_release_contract.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 330
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_release_concurrency_pool.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 46
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_round2_g_integration.py",
+      "untracked": false,
+      "ruff_findings_in_file": 1,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 28
+    },
+    {
+      "path": "Adapt-main/backend/tests/test_session_cookie_commit.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 50
+    },
+    {
+      "path": "Adapt-main/scripts/write_efficiency_doc.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 102
+    },
+    {
+      "path": "adapt/backend/src/adapt/api/deps.py",
+      "untracked": false,
+      "ruff_findings_in_file": 6,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 4
+    },
+    {
+      "path": "integration/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 1
+    },
+    {
+      "path": "integration/contract/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 1
+    },
+    {
+      "path": "integration/contract/validate.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 174
+    },
+    {
+      "path": "integration/reference_client.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 210
+    },
+    {
+      "path": "integration/test_reference_client.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 368
+    },
+    {
+      "path": "release/__init__.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 1
+    },
+    {
+      "path": "release/audit_summary.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 131
+    },
+    {
+      "path": "release/check_second_layout.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 84
+    },
+    {
+      "path": "release/e2e_smoke.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 562
+    },
+    {
+      "path": "release/host_scan.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 158
+    },
+    {
+      "path": "release/lint_changed.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 160
+    },
+    {
+      "path": "release/migration_smoke.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 184
+    },
+    {
+      "path": "release/secret_scan.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 185
+    },
+    {
+      "path": "release/stress_check.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 702
+    }
+  ],
+  "compile_errors": [],
+  "diff_findings": [],
+  "baseline_findings": 69,
+  "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
+  "outcome": "PASS"
+}

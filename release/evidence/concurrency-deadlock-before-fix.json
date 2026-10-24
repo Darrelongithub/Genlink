@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-23",
+  "what": "Measured reproduction of the single-worker API deadlock found by the release gate, before and after the bounded SQLite pool fix in Adapt-main/backend/src/adapt/db/engine.py.",
+  "method": "A fresh uvicorn process (ADAPT_DB_ENCRYPTION=field-only, ADAPT_RATE_LIMIT_MULTIPLIER=60, external resource providers disabled) per concurrency level; one guest learner; N simultaneous POST /api/v1/explain requests with an explicit 6 s client timeout; then GET /healthz with a 3 s timeout. Same host, same interpreter, same code except the pool configuration.",
+  "before_fix": {
+    "engine_pool": "SQLAlchemy default QueuePool for file SQLite (size 5, max_overflow 10, pool_timeout 30)",
+    "runs": [
+      {"concurrency": 1, "wall_ms": 44, "statuses": [200], "health_after": 200},
+      {"concurrency": 2, "wall_ms": 57, "statuses": [200, 200], "health_after": 200},
+      {"concurrency": 3, "wall_ms": 76, "statuses": [200, 200, 200], "health_after": 200},
+      {"concurrency": 4, "wall_ms": 79, "statuses": [200, 200, 200, 200], "health_after": 200},
+      {"concurrency": 8, "wall_ms": 141, "statuses_all_200": true, "health_after": 200},
+      {"concurrency": 12, "wall_ms": 206, "statuses_all_200": true, "health_after": 200},
+      {"concurrency": 15, "wall_ms": 6015, "statuses_all_transport_timeout": true, "health_after": "timeout after 3000 ms"},
+      {"concurrency": 16, "wall_ms": 6011, "statuses_all_transport_timeout": true, "health_after": "timeout after 3000 ms"}
+    ],
+    "additional_observation": "With external providers left enabled, 16 concurrent requests produced 3 x 200 in ~110 ms, 13 x timeout at 40 s, and /healthz then timed out at 8 s. The first three requests had already entered the awaited resource lookup; later ones blocked on SQLite connection checkout."
+  },
+  "after_fix": {
+    "engine_pool": "explicit QueuePool (size 20, max_overflow 20, pool_timeout 5, pool_pre_ping true) for file databases; in-memory databases keep SingletonThreadPool",
+    "runs": [
+      {"concurrency": 16, "wall_ms": 269, "statuses_all_200": true, "health_after": 200},
+      {"concurrency": 24, "wall_ms": 393, "statuses_all_200": true, "health_after": 200},
+      {"concurrency": 32, "wall_ms": 543, "statuses_all_200": true, "health_after": 200}
+    ],
+    "release_harness_after_fix": {
+      "command": ".venv/bin/python release/stress_check.py --include-provider-outage --out release/evidence/stress-2026-10-23.json",
+      "outcome": "PASS",
+      "checks": 31,
+      "failures": 0,
+      "ai_route_16_concurrent": {"wall_ms": 226.62, "statuses": {"200": 12, "429": 4}, "health_after": 200}
+    }
+  },
+  "interpretation": "The defect was connection-pool starvation, not an AI credential or provider issue. It is fixed by a bounded, explicit pool and pinned by backend/tests/test_release_concurrency_pool.py plus the live concurrency scenario in release/stress_check.py. These numbers are a single-machine loopback measurement, not a capacity guarantee."
+}

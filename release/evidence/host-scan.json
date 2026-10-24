@@ -1,0 +1,21 @@
+{
+  "adapt_browser_files_scanned": 187,
+  "genlink_browser_files_scanned": 179,
+  "genlink_source": "root src/ (extracted on main)",
+  "violations": [],
+  "informational_loopback_mentions": [
+    {
+      "path": "src/integrations/supabase/previewAuthStorage.ts",
+      "line": 63,
+      "kind": "loopback_string_in_non_call_context"
+    },
+    {
+      "path": "src/integrations/supabase/previewAuthStorage.ts",
+      "line": 69,
+      "kind": "loopback_string_in_non_call_context"
+    }
+  ],
+  "informational_count": 2,
+  "policy": "A browser network call or base URL aimed at loopback is a release blocker: in the hosted preview the learner's own machine is not the server. Origin-allowlist regexes and test/config files are informational.",
+  "outcome": "PASS"
+}

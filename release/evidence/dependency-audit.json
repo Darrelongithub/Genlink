@@ -1,0 +1,331 @@
+{
+  "policy": "report only; no automatic fixes, no --force, no unpinned upgrades",
+  "npm": {
+    "state": "OK",
+    "status": "OK",
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "advisories": []
+  },
+  "npm_genlink_root": {
+    "state": "OK",
+    "status": "OK",
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 9,
+      "high": 18,
+      "critical": 0,
+      "total": 27
+    },
+    "advisories": [
+      {
+        "package": "@remix-run/router",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "React Router vulnerable to XSS via Open Redirects",
+          "React Router's same-origin redirect with path starting // causes open redirect via protocol-relative URL reinterpretation"
+        ]
+      },
+      {
+        "package": "brace-expansion",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+          "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+          "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups"
+        ]
+      },
+      {
+        "package": "browserslist",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+          "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)"
+        ]
+      },
+      {
+        "package": "flatted",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+          "Prototype Pollution via parse() in NodeJS flatted"
+        ]
+      },
+      {
+        "package": "glob",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "glob CLI: Command injection via -c/--cmd executes matches with shell:true"
+        ]
+      },
+      {
+        "package": "js-yaml",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "js-yaml has prototype pollution in merge (<<)",
+          "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+          "js-yaml: YAML merge-key chains can force quadratic CPU consumption"
+        ]
+      },
+      {
+        "package": "lodash",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "lodash vulnerable to Code Injection via `_.template` imports key names",
+          "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+          "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+        ]
+      },
+      {
+        "package": "minimatch",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+          "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+          "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments"
+        ]
+      },
+      {
+        "package": "nanoid",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "nanoid: non-secure generators can loop indefinitely with negative size",
+          "nanoid: custom generators can loop indefinitely when size is zero",
+          "nanoid: Integer Overflow or Wraparound"
+        ]
+      },
+      {
+        "package": "picomatch",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+          "Picomatch has a ReDoS vulnerability via extglob quantifiers"
+        ]
+      },
+      {
+        "package": "postcss",
+        "severity": "high",
+        "is_direct": true,
+        "fix_available": true,
+        "via": [
+          "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+          "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+          "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+        ]
+      },
+      {
+        "package": "react-router",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "@remix-run/router",
+          "React Router has unexpected external redirect via untrusted paths",
+          "React Router: Open redirect via backslash in <Link> and useNavigate (CVE-2025-68470 bypass)"
+        ]
+      },
+      {
+        "package": "react-router-dom",
+        "severity": "high",
+        "is_direct": true,
+        "fix_available": true,
+        "via": [
+          "@remix-run/router",
+          "react-router"
+        ]
+      },
+      {
+        "package": "rollup",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "Rollup 4 has Arbitrary File Write via Path Traversal"
+        ]
+      },
+      {
+        "package": "source-map-js",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "source-map-js allows event-loop denial of service through indexed source-map section offsets"
+        ]
+      },
+      {
+        "package": "vite",
+        "severity": "high",
+        "is_direct": true,
+        "fix_available": true,
+        "via": [
+          "Vite middleware may serve files starting with the same name with the public directory",
+          "Vite's `server.fs` settings were not applied to HTML files",
+          "vite allows server.fs.deny bypass via backslash on Windows"
+        ]
+      },
+      {
+        "package": "ws",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "ws: Uninitialized memory disclosure",
+          "ws: Memory exhaustion DoS from tiny fragments and data chunks"
+        ]
+      },
+      {
+        "package": "zod",
+        "severity": "high",
+        "is_direct": true,
+        "fix_available": {
+          "name": "zod",
+          "version": "4.6.7",
+          "isSemVerMajor": true
+        },
+        "via": [
+          "Zod can exhaust memory while validating oversized constrained collections"
+        ]
+      },
+      {
+        "package": "@esbuild-kit/core-utils",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "esbuild"
+        ]
+      },
+      {
+        "package": "@esbuild-kit/esm-loader",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "@esbuild-kit/core-utils"
+        ]
+      },
+      {
+        "package": "@humanfs/node",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "humanfs: Recursive copy follows symlinked files and copies data from outside the source tree"
+        ]
+      },
+      {
+        "package": "@tailwindcss/typography",
+        "severity": "moderate",
+        "is_direct": true,
+        "fix_available": {
+          "name": "@tailwindcss/typography",
+          "version": "0.5.4",
+          "isSemVerMajor": true
+        },
+        "via": [
+          "postcss-selector-parser"
+        ]
+      },
+      {
+        "package": "ajv",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "ajv has ReDoS when using `$data` option"
+        ]
+      },
+      {
+        "package": "drizzle-kit",
+        "severity": "moderate",
+        "is_direct": true,
+        "fix_available": true,
+        "via": [
+          "@esbuild-kit/esm-loader"
+        ]
+      },
+      {
+        "package": "esbuild",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "esbuild enables any website to send any requests to the development server and read the response"
+        ]
+      }
+    ]
+  },
+  "pip": {
+    "state": "OK",
+    "status": "OK",
+    "scanned_packages": 77,
+    "affected_packages": 1,
+    "advisory_count": 4,
+    "advisories": [
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2025-49",
+        "fix_versions": [
+          "78.1.1"
+        ],
+        "description": "### Summary  A path traversal vulnerability in `PackageIndex` was fixed in setuptools version 78.1.1  ### Details ```     def _download_url(self, url, tmpdir):         # Determine "
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2026-1918",
+        "fix_versions": [
+          "70.0.0"
+        ],
+        "description": "A vulnerability in the `package_index` module of pypa/setuptools versions up to 69.1.1 allows for remote code execution via its download functions. These functions, which are used "
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2026-3447",
+        "fix_versions": [
+          "83.0.0"
+        ],
+        "description": "setuptools is a package that allows users to download, build, install, upgrade, and uninstall Python packages. Prior to 83.0.0, FileList applied MANIFEST.in exclude, global-exclude"
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "GHSA-xmj3-9gf7-h52w",
+        "fix_versions": [
+          "84.1.0"
+        ],
+        "description": "### Summary  On Windows, attacker-controlled content in a wheel's `.dist-info/namespace_packages.txt` can cause setuptools' legacy wheel installation path to create an `__init__.py"
+      }
+    ]
+  },
+  "gate_effect": "informational: vulnerabilities are carried into RELEASE_READINESS.md decisions"
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "POST /api/v1/integration/adapt — request",
+  "description": "Frozen 2026-10-23. The server ignores unknown keys (extra=ignore on every model), so additionalProperties is true here: a caller appending its own field must not be refused. A request with no content/concept/title is refused at runtime with 422 adaptation_refused.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "learner": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {"type": "string", "maxLength": 200, "description": "Opaque to Adapt; echoed, never stored or joined."},
+        "language": {"type": ["string", "null"], "maxLength": 16},
+        "levers": {"type": ["object", "null"]},
+        "preferences": {"type": ["object", "null"]},
+        "teaching_memory": {"type": ["object", "null"]}
+      }
+    },
+    "activity": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {"type": ["string", "null"], "maxLength": 120},
+          "kind": {"type": "string", "maxLength": 32},
+          "topic_id": {"type": ["string", "null"], "maxLength": 120},
+          "correct": {"type": ["boolean", "null"]},
+          "response_ms": {"type": ["integer", "null"], "minimum": 0, "maximum": 86400000},
+          "hint_used": {"type": ["boolean", "null"]},
+          "confidence": {"type": ["string", "null"], "maxLength": 40},
+          "method": {"type": ["string", "null"], "maxLength": 40},
+          "expected_success": {"type": ["number", "null"], "minimum": 0.0, "maximum": 1.0}
+        }
+      }
+    },
+    "content": {"type": ["object", "null"], "description": "Any pack envelope normalise_pack reads."},
+    "concept": {"type": "string", "maxLength": 200},
+    "title": {"type": "string", "maxLength": 200},
+    "topic_id": {"type": ["string", "null"], "maxLength": 120},
+    "constraints": {"type": ["object", "null"]}
+  }
+}

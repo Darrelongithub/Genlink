@@ -24,3 +24,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Release-gate working environment. Adapt-main/ and adapt/ have their own ignore
+# files for nested venvs, node_modules and build output; these are the root-level
+# ones created by the gate. Never commit a virtualenv or a load-test log dir.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+release-artifacts/
+
+# Local key material must never be committed, even accidentally.
+*.key
+.env.local

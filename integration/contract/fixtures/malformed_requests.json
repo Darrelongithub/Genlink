@@ -1,0 +1,61 @@
+[
+  {
+    "name": "nothing_to_adapt",
+    "body": {"learner": {"id": "no-content"}, "activity": []},
+    "expected_status": 422,
+    "expected_error_path": "detail.error",
+    "expected_error": "adaptation_refused"
+  },
+  {
+    "name": "activity_not_a_list",
+    "body": {"concept": "fractions", "activity": {"correct": true}},
+    "expected_status": 422,
+    "expected_error_path": "error",
+    "expected_error": "validation_failed"
+  },
+  {
+    "name": "correct_not_boolean",
+    "body": {"concept": "fractions", "activity": [{"correct": "perhaps"}]},
+    "expected_status": 422,
+    "expected_error_path": "error",
+    "expected_error": "validation_failed"
+  },
+  {
+    "name": "negative_response_time",
+    "body": {"concept": "fractions", "activity": [{"correct": true, "response_ms": -4}]},
+    "expected_status": 422,
+    "expected_error_path": "error",
+    "expected_error": "validation_failed"
+  },
+  {
+    "name": "too_many_events",
+    "body": {"concept": "fractions", "activity": "TOO_MANY"},
+    "expected_status": 422,
+    "expected_error_path": "error",
+    "expected_error": "validation_failed"
+  },
+  {
+    "name": "unreadable_pack",
+    "body": {"concept": "fractions", "title": "Fractions", "content": {"worked_example": {"steps": 42}}},
+    "expected_status": 422,
+    "expected_error_path": "detail.error",
+    "expected_error": "adaptation_refused"
+  },
+  {
+    "name": "wrong_token",
+    "body": {"concept": "fractions"},
+    "headers": {"authorization": "Bearer not-the-configured-token"},
+    "token_env": "release-contract-token",
+    "expected_status": 401,
+    "expected_error_path": "detail.error",
+    "expected_error": "integration_unauthorized"
+  },
+  {
+    "name": "no_token_when_required",
+    "body": {"concept": "fractions"},
+    "token_env": "release-contract-token",
+    "expected_status": 401,
+    "expected_error_path": "detail.error",
+    "expected_error": "integration_unauthorized"
+  }
+]

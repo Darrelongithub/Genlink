@@ -1,0 +1,400 @@
+{
+  "harness": "release/stress_check.py",
+  "generated_at": "2026-10-24T05:54:37.900959+00:00",
+  "python": "3.11.2",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+  "ai_credentials_used": false,
+  "scenarios": [
+    {
+      "name": "backend_startup_and_no_ai_credential",
+      "measured": {
+        "healthz_status": 200,
+        "healthz_ms": 2.55,
+        "status_route_status": 200,
+        "status_route_requires_session": true,
+        "llm_key_redacted_from_public_status": true,
+        "published_lesson_state": "simple mode",
+        "ai_key_in_server_env": false
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "healthz answers",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "the operator status route answers for a signed-in learner",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "the privacy boundary drops model metadata",
+          "detail": "False"
+        },
+        {
+          "ok": true,
+          "label": "no model key is configured or required",
+          "detail": "'simple mode'"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "concurrent_learners",
+      "measured": {
+        "learners": 20,
+        "requests": 100,
+        "wall_ms": 1024.92,
+        "measured_requests_per_second": 97.57,
+        "latency": {
+          "n": 100,
+          "min_ms": 17.31,
+          "p50_ms": 181.13,
+          "p95_ms": 248.74,
+          "max_ms": 272.03,
+          "mean_ms": 179.98
+        },
+        "status_counts": {
+          "200": 100
+        },
+        "distinct_plans": 1,
+        "contract_failures": 0
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "every concurrent learner got a 200",
+          "detail": "[200]"
+        },
+        {
+          "ok": true,
+          "label": "every 200 matched the response schema",
+          "detail": "0"
+        },
+        {
+          "ok": true,
+          "label": "no request hit the client timeout",
+          "detail": "272.03"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "duplicate_submissions",
+      "measured": {
+        "identical_requests": 50,
+        "wall_ms": 389.02,
+        "latency": {
+          "n": 50,
+          "min_ms": 6.33,
+          "p50_ms": 106.06,
+          "p95_ms": 122.61,
+          "max_ms": 125.37,
+          "mean_ms": 87.99
+        },
+        "distinct_plans": 1,
+        "distinct_request_ids": 50,
+        "status_counts": {
+          "200": 50
+        }
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "duplicates are answered, not rejected",
+          "detail": "see status_counts"
+        },
+        {
+          "ok": true,
+          "label": "the same request produces the same lesson",
+          "detail": "1"
+        },
+        {
+          "ok": true,
+          "label": "each duplicate is a separate request (stateless door)",
+          "detail": "50"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "large_but_valid_payloads",
+      "measured": {
+        "valid_body_bytes": 115323,
+        "valid_status": 200,
+        "valid_elapsed_ms": 317.59,
+        "valid_blocks_returned": 414,
+        "valid_matches_schema": true,
+        "oversize_body_bytes": 8388609,
+        "oversize_urllib_status": 0,
+        "oversize_urllib_ms": 1.68,
+        "oversize_urllib_note": "client sees connection reset because the server refuses before reading the announced body",
+        "oversize_raw_socket_status": 413,
+        "oversize_raw_status_line": "HTTP/1.1 413 Request Entity Too Large",
+        "health_after_oversize": 200,
+        "health_after_ms": 2.38
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "a large valid request is adapted within the schema",
+          "detail": "200/True"
+        },
+        {
+          "ok": true,
+          "label": "an announced body over 8 MB is refused with 413",
+          "detail": "413 HTTP/1.1 413 Request Entity Too Large"
+        },
+        {
+          "ok": true,
+          "label": "the server still answers after refusing an oversized body",
+          "detail": "200"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "concurrent_ai_capable_route_no_key",
+      "measured": {
+        "learner_id": "stu_80cbea607f2b40f5b6d6",
+        "requests": 16,
+        "wall_ms": 485.37,
+        "latency": {
+          "n": 16,
+          "min_ms": 50.3,
+          "p50_ms": 387.02,
+          "p95_ms": 410.74,
+          "max_ms": 427.29,
+          "mean_ms": 331.61
+        },
+        "status_counts": {
+          "200": 12,
+          "429": 4
+        },
+        "responses_labelled_local_or_fallback": 12,
+        "health_after_concurrency": 200,
+        "external_resource_providers": "disabled for this deterministic CI scenario",
+        "note": "POST /api/v1/explain is the model-capable route; with no key it must answer on the deterministic local branch or be paced with 429, never 5xx."
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "no unhandled 5xx on the AI route",
+          "detail": "[200, 429]"
+        },
+        {
+          "ok": true,
+          "label": "the no-key fallback still teaches",
+          "detail": "[200, 429]"
+        },
+        {
+          "ok": true,
+          "label": "the session cookie was accepted",
+          "detail": "[200, 429]"
+        },
+        {
+          "ok": true,
+          "label": "the API is not wedged after concurrent AI-capable calls",
+          "detail": "200"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "retry_storm_and_credit_support",
+      "measured": {
+        "reference_caller_attempts": 3,
+        "reference_caller_source": "standard_content",
+        "reference_caller_adapted": false,
+        "openapi_status": 200,
+        "openapi_path_count": 147,
+        "credit_related_paths": [
+          "/api/v1/credits/me",
+          "/api/v1/credits/actions",
+          "/api/v1/admin/institutions/{institution_id}/credits"
+        ],
+        "backend_credit_enforcement": "present (institution wallet, ledger, operator admin plane)",
+        "exhausted_credit_case": "now covered live by release/e2e_smoke.py::run_exhausted_credits and in the backend suite by test_credits_and_tenancy.py::test_an_empty_wallet_stops_generation_and_says_what_still_works"
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "retry storm is bounded and falls back",
+          "detail": "3/standard_content"
+        },
+        {
+          "ok": true,
+          "label": "OpenAPI is readable for the capability check",
+          "detail": "200/147"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "server_restart_and_stale_session",
+      "measured": {
+        "session_created_status": 200,
+        "integration_before_restart": 200,
+        "me_after_restart_status": 200,
+        "me_after_restart_ms": 28.92,
+        "student_id_survived": true,
+        "journey_after_restart_status": 200,
+        "integration_after_restart": 200,
+        "forced_stale_session_me_status": 401,
+        "integration_with_stale_session": 200,
+        "cookie_count": 2
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "a session can be created",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "the same cookie still identifies the same learner after a restart",
+          "detail": "200 {'student_id': 'stu_e43731d6d1214a5aaa95', 'display_name': 'Release Stress', 'role': 'student', 'onboarding_complete': False, 'diagnostic_complete': False, 'baseline_started': "
+        },
+        {
+          "ok": true,
+          "label": "stateful read works after restart",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "the stateless door survives restart",
+          "detail": "200/200"
+        },
+        {
+          "ok": true,
+          "label": "a forced-stale session is refused, not silently trusted",
+          "detail": "401"
+        },
+        {
+          "ok": true,
+          "label": "the stateless door ignores stale sessions entirely",
+          "detail": "200"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "database_locked_or_busy",
+      "measured": {
+        "hold_seconds": 2.0,
+        "stateless_integration_during_lock": 200,
+        "integration_ms": 7.32,
+        "stateful_write_during_lock": 200,
+        "write_ms": 1671.18,
+        "write_body_shape": [
+          "event_types_accepted",
+          "mode",
+          "session_id",
+          "started_at"
+        ],
+        "stateful_write_after_release": 200,
+        "after_release_ms": 19.75
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "the stateless door answers while the database is write-locked",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "a stateful write answers rather than hanging past the client timeout",
+          "detail": "200"
+        },
+        {
+          "ok": true,
+          "label": "the stateful write succeeds once the lock is released",
+          "detail": "200"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "rate_limit_responses",
+      "measured": {
+        "multiplier": 0.05,
+        "requests": 40,
+        "note": "build_limiter clamps multipliers below 0.05; ip capacity is 12 tokens",
+        "status_counts": {
+          "200": 11,
+          "429": 29
+        },
+        "retry_after_values": [
+          "10",
+          "10",
+          "10",
+          "10",
+          "10"
+        ],
+        "latency": {
+          "n": 40,
+          "min_ms": 1.28,
+          "p50_ms": 2.09,
+          "p95_ms": 9.6,
+          "max_ms": 12.44,
+          "mean_ms": 3.8
+        }
+      },
+      "checks": [
+        {
+          "ok": true,
+          "label": "a paced caller receives 429",
+          "detail": "[200, 429]"
+        },
+        {
+          "ok": true,
+          "label": "429 carries Retry-After for backoff",
+          "detail": "['10', '10', '10']"
+        },
+        {
+          "ok": true,
+          "label": "rate limiting is not a 5xx",
+          "detail": "[200, 429]"
+        }
+      ],
+      "outcome": "PASS"
+    },
+    {
+      "name": "diagnostic_concurrent_ai_route_with_providers_enabled",
+      "measured": {
+        "requests": 16,
+        "wall_ms": 289.42,
+        "status_counts": {
+          "200": 12,
+          "429": 4
+        },
+        "latency": {
+          "n": 16,
+          "min_ms": 131.95,
+          "p50_ms": 243.83,
+          "p95_ms": 284.45,
+          "max_ms": 285.1,
+          "mean_ms": 228.69
+        },
+        "health_after_concurrency": 200,
+        "external_resource_providers": "enabled (real network attempts, may be blocked)"
+      },
+      "checks": [],
+      "outcome": "FINDING",
+      "note": "API stayed responsive with providers enabled in this environment"
+    }
+  ],
+  "notes": [
+    "Numbers are measurements from this run, not capacity guarantees. Loopback HTTP on one sandbox machine; no browser, no CDN, no production database encryption."
+  ],
+  "summary": {
+    "scenarios": 10,
+    "checks": 31,
+    "failures": 0,
+    "findings": [
+      "diagnostic_concurrent_ai_route_with_providers_enabled"
+    ],
+    "outcome": "PASS"
+  }
+}

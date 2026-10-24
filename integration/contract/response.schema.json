@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "POST /api/v1/integration/adapt — 200 response",
+  "description": "Frozen 2026-10-23. This route never calls a model and never reads or writes learner state: engine.local_only is a contract, not an observation.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["ok", "engine", "learner_id", "request_id", "elapsed_ms", "derived_profile", "adapted_content"],
+  "properties": {
+    "ok": {"const": true},
+    "engine": {
+      "type": "object",
+      "required": ["name", "version", "mode", "local_only"],
+      "properties": {
+        "name": {"const": "adapt"},
+        "version": {"type": "string", "minLength": 1},
+        "mode": {"type": "string", "minLength": 1},
+        "local_only": {"const": true}
+      }
+    },
+    "learner_id": {"type": ["string", "null"], "maxLength": 200},
+    "request_id": {"type": ["string", "null"]},
+    "elapsed_ms": {"type": "integer", "minimum": 0},
+    "derived_profile": {
+      "type": "object",
+      "required": ["events", "attempts", "correct", "hints", "accuracy", "levers", "flags", "subject", "notes"],
+      "properties": {
+        "events": {"type": "integer", "minimum": 0},
+        "attempts": {"type": "integer", "minimum": 0},
+        "correct": {"type": "integer", "minimum": 0},
+        "hints": {"type": "integer", "minimum": 0},
+        "accuracy": {"type": ["number", "null"], "minimum": 0.0, "maximum": 1.0},
+        "levers": {"type": "object"},
+        "flags": {"type": "object"},
+        "subject": {"type": ["object", "null"]},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "adapted_content": {
+      "type": "object",
+      "required": ["mode", "blocks", "limits", "ladder_rung", "fallbacks"],
+      "properties": {
+        "mode": {"type": "string", "minLength": 1},
+        "concept": {"type": ["string", "null"]},
+        "title": {"type": ["string", "null"]},
+        "ladder_rung": {"type": "integer", "minimum": 0, "maximum": 5},
+        "fallbacks": {"type": "array"},
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["block", "chunk_id", "kind", "content", "why"],
+            "properties": {
+              "block": {"type": "integer", "minimum": 1},
+              "chunk_id": {"type": "string", "minLength": 1},
+              "kind": {"type": "string", "minLength": 1},
+              "content": {"type": "object"},
+              "why": {
+                "type": "object",
+                "required": ["text"],
+                "properties": {"text": {"type": "string", "minLength": 1}}
+              }
+            }
+          }
+        },
+        "limits": {"type": "object"},
+        "subject": {"type": ["object", "null"]},
+        "why_panel": {"type": ["array", "object", "null"]}
+      }
+    }
+  }
+}
