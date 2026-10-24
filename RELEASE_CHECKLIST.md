@@ -37,15 +37,16 @@ lockfile, sets no AI credentials, reports audits without `--force`, and uploads
 `release/evidence/*.json`.
 
 Expected on this branch (after the fourth merge with `main` at `bca7d15`): backend
-**1645 passed / 2 skipped** for `Adapt-main/backend` in 388.38 s (one earlier pre-third-merge
-run had a flaky async-job failure, isolated 5/5 and full reruns green — F-18); the mirrored
+**1646 passed / 2 skipped** for `Adapt-main/backend` in 393.99 s (the F-18 async-job flake is
+now root-caused to a leaked global circuit breaker and fixed with a per-test reset plus a new
+regression test — one extra test); the mirrored
 `adapt/backend` bounded pool passes its isolated property check (main PR #7's `12/24/30`
 values, total capacity 36); frontend lint + unit suites (`lib`/`engine`/`server`/`env`/
 `dev`) + build pass; reference caller 17/17; stress 10 scenarios / 31 checks / 0 failures
 (**97.57 req/s** loopback on this busy sandbox — not a capacity guarantee); migration 4/4
 with head `R10`; E2E 9/9 including the exhausted-credit 402 case; secret scan 1352 tracked
 files / 0 high; host scan 187 Adapt + 179 Genlink browser files / 0 loopback calls;
-diff-aware lint 24 changed files / 79 inherited findings / 0 on added lines; **Adapt-frontend
+diff-aware lint 23 changed files / 68 inherited findings / 0 on added lines; **Adapt-frontend
 npm audit 0, root Genlink npm 18 high + 9 moderate, pip 4 advisories**; browser E2E is
 `BLOCKED` for all four suites in the sandbox. CI run `40068913606` at `f42f1a7` is fully
 green across all three jobs after the fourth merge; the branch is ready to merge.
@@ -112,8 +113,9 @@ A pilot means real learners. Do not start one until every box is ticked.
 - [ ] Close F-17: decide whether the stateless integration route must be institution-scoped
       or debit the wallet. Today it ignores `institution_id`; the credit ledger applies to
       stateful Adapt generation only.
-- [ ] Close F-18: watch the async lesson-upgrade job. If `state=fallback` recurs in a full
-      suite run, capture server logs and add a regression test; do not disable the test.
+- [x] Close F-18: the async lesson-upgrade `state=fallback` recurrence was root-caused to the
+      module-global AI3 circuit breaker leaking across tests. A per-test reset fixture and a
+      dedicated regression test now make the module pass 3/3 even with the breaker pre-opened.
 - [x] Close F-19: the first post-merge CI backend failure was a missing
       `release-artifacts/` directory before the `tee`, not a test failure. Workflow now
       creates the directory; the rerun produced the log artifact.

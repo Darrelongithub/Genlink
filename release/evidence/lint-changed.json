@@ -10,7 +10,6 @@
     "Adapt-main/backend/tests/test_session_cookie_commit.py",
     "Adapt-main/scripts/write_efficiency_doc.py",
     "adapt/backend/src/adapt/api/deps.py",
-    "adapt/backend/src/adapt/db/engine.py",
     "integration/__init__.py",
     "integration/contract/__init__.py",
     "integration/contract/validate.py",
@@ -91,13 +90,6 @@
       "added_lines": 4
     },
     {
-      "path": "adapt/backend/src/adapt/db/engine.py",
-      "untracked": false,
-      "ruff_findings_in_file": 11,
-      "ruff_findings_on_added_lines": 0,
-      "added_lines": 13
-    },
-    {
       "path": "integration/__init__.py",
       "untracked": false,
       "ruff_findings_in_file": 0,
@@ -151,7 +143,7 @@
       "untracked": false,
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
-      "added_lines": 78
+      "added_lines": 84
     },
     {
       "path": "release/e2e_smoke.py",
@@ -198,7 +190,7 @@
   ],
   "compile_errors": [],
   "diff_findings": [],
-  "baseline_findings": 79,
+  "baseline_findings": 68,
   "policy": "fail only for Ruff findings on lines added by this branch; full baseline is reported, not hidden",
   "outcome": "PASS"
 }
