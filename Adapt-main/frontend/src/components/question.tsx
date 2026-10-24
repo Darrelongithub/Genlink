@@ -263,11 +263,31 @@ export function Question({ entry, presentation, onSubmit, onInteract, onChange, 
                 <span className="radio-dot" aria-hidden="true" />
                 <span className="option-letter">{String.fromCharCode(65 + idx)}</span>
                 <span className="flex-1">{c.text}</span>
-                {/* keep hidden radio for probe compatibility */}
-                <input type="radio" name={`choice-${item.id}`} checked={isSelected} onChange={() => {}} className="sr-only" aria-hidden="true" tabIndex={-1} />
               </button>
             );
           })}
+          {/* Keep hidden radios outside button elements (no nested-interactive violation) for UI probe compatibility */}
+          <div className="sr-only" aria-hidden="true">
+            {choices.map((c, idx) => (
+              <input
+                key={c.index}
+                type="radio"
+                name={`choice-${item.id}`}
+                value={String(c.index)}
+                checked={picked === c.index}
+                disabled={!!receipt}
+                tabIndex={-1}
+                onChange={() => {
+                  if (receipt) return;
+                  touch();
+                  onChange(item, picked, c.index);
+                  setPicked(c.index);
+                  keep({ picked: c.index });
+                  roving.setActiveIndex(idx);
+                }}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="max-w-[520px]">

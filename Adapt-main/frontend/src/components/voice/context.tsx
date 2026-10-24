@@ -42,12 +42,24 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const handlers = useRef(new Set<(text: string, intent: VoiceIntent) => void>());
   const recognition = useRef<Recognition | null>(null);
 
-  useEffect(() => { setEnabledState(window.localStorage.getItem(STORAGE) === "1"); }, []);
+  useEffect(() => {
+    try {
+      setEnabledState(window.localStorage.getItem(STORAGE) === "1");
+    } catch {
+      /* storage unavailable in strict privacy mode */
+    }
+  }, []);
   useEffect(() => () => { recognition.current?.abort(); window.speechSynthesis?.cancel(); }, []);
 
   const setEnabled = useCallback((value: boolean) => {
     setEnabledState(value);
-    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE, value ? "1" : "0");
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(STORAGE, value ? "1" : "0");
+      } catch {
+        /* storage unavailable */
+      }
+    }
     if (!value) { recognition.current?.abort(); recognition.current = null; window.speechSynthesis?.cancel(); setListening(false); setSpeaking(false); }
     // Persistence is best-effort: text mode remains usable if a guest session has just expired.
     void post("me/voice", { enabled: value }).catch(() => undefined);

@@ -46,12 +46,16 @@ function markAsked() {
 
 function sittingId(): string {
   if (typeof window === "undefined") return "sitting";
-  let value = window.sessionStorage.getItem(SITTING_KEY);
-  if (!value) {
-    value = `sitting-${Date.now().toString(36)}`;
-    window.sessionStorage.setItem(SITTING_KEY, value);
+  try {
+    let value = window.sessionStorage.getItem(SITTING_KEY);
+    if (!value) {
+      value = `sitting-${Date.now().toString(36)}`;
+      window.sessionStorage.setItem(SITTING_KEY, value);
+    }
+    return value;
+  } catch {
+    return "sitting-ephemeral";
   }
-  return value;
 }
 
 export function CheckInCard({

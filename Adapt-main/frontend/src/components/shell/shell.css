@@ -280,7 +280,7 @@
   height: 100%;
   mask-position: left bottom;
 }
-@media (max-width: 899px) {
+@media (max-width: 1269px) {
   .access-flower {
     position: static;
     width: 180px;

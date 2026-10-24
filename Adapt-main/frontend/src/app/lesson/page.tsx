@@ -158,21 +158,32 @@ export default function LessonPlayer() {
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (sessionRef.current) return sessionRef.current;
     if (typeof window !== "undefined") {
-      const stored = window.sessionStorage.getItem(SESSION_KEY);
-      if (stored) {
-        sessionRef.current = stored;
-        return stored;
+      try {
+        const stored = window.sessionStorage.getItem(SESSION_KEY);
+        if (stored) {
+          sessionRef.current = stored;
+          return stored;
+        }
+      } catch {
+        /* storage unavailable */
       }
     }
     try {
       const out = await post<{ session_id: string }>("/api/v1/sessions", { mode: "lesson" });
       sessionRef.current = out.session_id;
-      if (typeof window !== "undefined") window.sessionStorage.setItem(SESSION_KEY, out.session_id);
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(SESSION_KEY, out.session_id);
+        } catch {
+          /* storage unavailable */
+        }
+      }
       return out.session_id;
     } catch (err) {
       // A lesson without a session still plays; it just measures nothing, and saying so
       // is better than refusing to start.
-      setError(`could not open a session for this lesson (${(err as Error).message}) — it will still play, but nothing will be recorded`);
+      const msg = (err as { shown?: string; message?: string })?.shown ?? (err as Error).message;
+      setError(`could not open a session for this lesson (${msg}) — it will still play, but nothing will be recorded`);
       return null;
     }
   }, []);
