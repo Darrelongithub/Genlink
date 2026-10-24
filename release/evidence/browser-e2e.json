@@ -1,0 +1,6 @@
+{
+  "outcome": "BLOCKED",
+  "reason": "Chromium could not be installed in this environment (playwright install failed)",
+  "policy": "browser download is environmental noise; this is NOT a passing browser gate",
+  "tests": []
+}

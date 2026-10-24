@@ -1,0 +1,20 @@
+{
+  "adapt_browser_files_scanned": 92,
+  "genlink_archive_browser_files_scanned": 174,
+  "violations": [],
+  "informational_loopback_mentions": [
+    {
+      "path": "zip:genink-school-of-the-elites-main (1).zip:genink-school-of-the-elites-main/src/integrations/supabase/previewAuthStorage.ts",
+      "line": 63,
+      "kind": "loopback_string_in_non_call_context"
+    },
+    {
+      "path": "zip:genink-school-of-the-elites-main (1).zip:genink-school-of-the-elites-main/src/integrations/supabase/previewAuthStorage.ts",
+      "line": 69,
+      "kind": "loopback_string_in_non_call_context"
+    }
+  ],
+  "informational_count": 2,
+  "policy": "A browser network call or base URL aimed at loopback is a release blocker: in the hosted preview the learner's own machine is not the server. Origin-allowlist regexes and test/config files are informational.",
+  "outcome": "PASS"
+}

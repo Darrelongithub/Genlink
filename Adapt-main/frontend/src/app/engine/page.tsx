@@ -124,7 +124,7 @@ export default function EngineConsole() {
           <a href="#controls"><SlidersIcon /> Controls</a>
         </nav>
         <div className="engine-rail-bottom">
-          <div className="engine-health"><i /> Engine available</div>
+          <div className="engine-health"><i /> Prototype console · values are samples</div>
           <Link href="/?mock=1" className="engine-learner-link">Open learner experience <span>↗</span></Link>
         </div>
       </aside>
@@ -136,7 +136,7 @@ export default function EngineConsole() {
             <span className="engine-breadcrumb">Genlink / Nairobi Learning Network</span>
           </div>
           <div className="engine-top-actions">
-            <span className="engine-mode"><i /> Presentation environment</span>
+            <span className="engine-mode"><i /> Prototype · not wired to Genlink</span>
             <button className="engine-button ghost" type="button" onClick={() => setEditing((value) => !value)}>{editing ? "Close editor" : "Configure engine"}</button>
           </div>
         </header>
@@ -157,38 +157,41 @@ export default function EngineConsole() {
             </div>
           </section>
 
-          <section className="engine-stats" aria-label="Engine summary">
-            <article><span className="stat-icon violet">◎</span><div><small>Credits remaining</small><strong>18,420</strong><span className="positive">73.7% of Core allocation</span></div></article>
-            <article><span className="stat-icon blue">↯</span><div><small>Adapted actions</small><strong>6,580</strong><span>across this institution</span></div></article>
-            <article><span className="stat-icon mint">◉</span><div><small>Active learners</small><strong>347</strong><span>of 500 configured</span></div></article>
-            <article><span className="stat-icon amber">◇</span><div><small>Without credits</small><strong>Standard mode</strong><span>notes and existing quizzes stay open</span></div></article>
+          <p style={{ margin: "0 0 10px", fontSize: 12, letterSpacing: ".04em", opacity: .78 }}>
+            SAMPLE FIGURES FOR PRESENTATION — not live usage, not pilot data, not learner data.
+          </p>
+          <section className="engine-stats" aria-label="Engine summary (sample values)">
+            <article><span className="stat-icon violet">◎</span><div><small>Sample credits remaining</small><strong>18,420</strong><span className="positive">illustrative only</span></div></article>
+            <article><span className="stat-icon blue">↯</span><div><small>Sample adapted actions</small><strong>6,580</strong><span>no live usage recorded</span></div></article>
+            <article><span className="stat-icon mint">◉</span><div><small>Sample active learners</small><strong>347</strong><span>illustrative only</span></div></article>
+            <article><span className="stat-icon amber">◇</span><div><small>When credits reach zero</small><strong>Proposed fallback</strong><span>not enforced by the backend yet</span></div></article>
           </section>
 
           <section className="engine-panel flow-panel" id="flow">
             <div className="panel-heading">
               <div><p className="engine-kicker">HOW IT CONNECTS</p><h2>Adapt is the engine, not the destination</h2></div>
-              <span className="live-pill"><i /> live route</span>
+              <span className="live-pill"><i /> contract route exists · Genlink not wired</span>
             </div>
             <div className="engine-flow">
               <FlowNode index="01" title="Genlink" copy="Owns courses, identity and the learner experience." tone="dark" />
               <span className="flow-arrow">→<small>request + evidence</small></span>
               <FlowNode index="02" title="Adapt API" copy="Reads evidence and selects the right learning move." tone="violet" />
-              <span className="flow-arrow">→<small>metered action</small></span>
-              <FlowNode index="03" title="Intelligence" copy="Routes local logic or an AI model by task and consent." tone="blue" />
+              <span className="flow-arrow">→<small>adapted action (metering proposed)</small></span>
+              <FlowNode index="03" title="Intelligence" copy="The integration route is deterministic and local; other routes may use an outside service with consent." tone="blue" />
               <span className="flow-arrow">→<small>adapted response</small></span>
-              <FlowNode index="04" title="Learner" copy="Continues inside Genlink at their own pace." tone="mint" />
+              <FlowNode index="04" title="Learner" copy="Would continue inside Genlink — that call is not wired yet." tone="mint" />
             </div>
             <div className="engine-contract">
-              <code>POST /api/v1/integration/adapt</code>
-              <span>One integration route · auditable decisions · graceful fallback</span>
-              <b>200 OK</b>
+              <code>Adapt integration route</code>
+              <span>One real Adapt route · Genlink does not call it yet · caller-side fallback contract</span>
+              <b>contract checked</b>
             </div>
           </section>
 
           <section className="engine-section" id="plans">
             <div className="section-heading">
               <div><p className="engine-kicker">CONFIGURABLE COMMERCIAL LAYER</p><h2>Annual plans with bounded intelligence</h2></div>
-              <p>Access remains available all year. Credits meter only newly generated, adapted actions.</p>
+              <p>Example commercial layer only. No credit balance, debit or limit is enforced by the Adapt backend today.</p>
             </div>
             <div className="plan-grid">
               {plans.map((item) => (
@@ -205,9 +208,9 @@ export default function EngineConsole() {
                   </div>
                   <ul>
                     <li><CheckIcon /> {editing ? <><NumberInput label={`${item.name} learners`} value={item.learners} onChange={(value) => updatePlan(item.id, "learners", value)} /> learners</> : `Up to ${formatNumber(item.learners)} configured learners`}</li>
-                    <li><CheckIcon /> Institution usage dashboard</li>
-                    <li><CheckIcon /> Learner-level limits</li>
-                    <li><CheckIcon /> Standard learning never locks</li>
+                    <li><CheckIcon /> Example usage dashboard (prototype)</li>
+                    <li><CheckIcon /> Proposed learner-level limits (not enforced)</li>
+                    <li><CheckIcon /> Proposed standard-content fallback</li>
                   </ul>
                 </article>
               ))}
@@ -247,7 +250,7 @@ export default function EngineConsole() {
               <div className="usage-labels"><span>{percentage}% allocated</span><span>{formatNumber(plan.credits)} available</span></div>
               <div className={`fit-message ${fit ? "good" : "warn"}`}>
                 <b>{fit ? `${plan.name} covers this estimate` : `${plan.name} is short by ${formatNumber(Math.abs(remaining))}`}</b>
-                <span>{fit ? `${formatNumber(remaining)} credits remain as headroom.` : `Consider ${recommended.name} or an additional credit pack.`}</span>
+                <span>{fit ? `${formatNumber(remaining)} credits remain as headroom.` : `Consider ${recommended.name} or an additional credit bundle.`}</span>
               </div>
               <small className="estimate-note">An estimate, not a promise. Real usage data replaces these assumptions after rollout.</small>
             </aside>
@@ -259,7 +262,7 @@ export default function EngineConsole() {
               <div className="allocation-summary">
                 <div><small>Pool</small><strong>{formatNumber(plan.credits)}</strong><span>{plan.name} plan</span></div>
                 <div><small>Suggested allowance</small><strong>{formatNumber(perLearner)}</strong><span>credits / active learner</span></div>
-                <div><small>Current learner limit</small><strong>{formatNumber(learnerLimit)}</strong><span>adjustable by institution</span></div>
+                <div><small>Example learner limit</small><strong>{formatNumber(learnerLimit)}</strong><span>this browser only</span></div>
               </div>
               <label className="limit-control">
                 <span><b>Default learner limit</b><small>Institutions can override this for an individual learner.</small></span>
@@ -267,8 +270,8 @@ export default function EngineConsole() {
               </label>
               <div className="fallback-rule">
                 <span className="fallback-icon">↳</span>
-                <div><b>When adapted credits reach zero</b><p>New AI adaptation pauses. Existing notes, lessons and quizzes stay available in Standard mode. Learning does not lock.</p></div>
-                <span className="enabled-pill">ENABLED</span>
+                <div><b>Proposed: when adapted credits reach zero</b><p>New adaptation would pause while existing notes, lessons and quizzes stay available in Standard mode. This is a product proposal; the backend does not debit credits.</p></div>
+                <span className="enabled-pill">PROPOSED ONLY</span>
               </div>
             </div>
 
@@ -287,7 +290,7 @@ export default function EngineConsole() {
           </section>
 
           <section className="engine-panel activity-panel">
-            <div className="panel-heading"><div><p className="engine-kicker">EXPLAINABLE METERING</p><h2>Recent engine activity</h2></div><button className="text-button" type="button">Export usage ↗</button></div>
+            <div className="panel-heading"><div><p className="engine-kicker">EXPLAINABLE METERING</p><h2>Example credit ledger (sample data)</h2></div><button className="text-button" type="button" disabled title="CSV export is not implemented">Export usage (prototype)</button></div>
             <div className="activity-table" role="table" aria-label="Recent Adapt credit usage">
               <div className="activity-row header" role="row"><span>Learner</span><span>Engine action</span><span>Mode</span><span>Credits</span><span>When</span></div>
               {activity.map((item) => (
@@ -304,7 +307,7 @@ export default function EngineConsole() {
 
           <footer className="engine-footer">
             <span><b>ADAPT</b> is a learning intelligence engine for Genlink.</span>
-            <span>Example commercial configuration · values remain editable</span>
+            <span>Prototype · sample values stored in this browser only · no billing or credit enforcement backend</span>
           </footer>
         </div>
       </section>

@@ -1,0 +1,237 @@
+name: Release gate
+
+# One reproducible gate for both halves of this repository. No real AI key is
+# configured, read or required anywhere in this workflow. Dependency audits are
+# reported, never fixed with --force. A browser that cannot be downloaded is
+# recorded as BLOCKED, not passed and not failed as a fake regression.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'arena/**']
+  workflow_dispatch:
+
+concurrency:
+  group: release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '22'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+  # Explicitly empty: the gate must prove the no-key path. Never populate these.
+  ADAPT_GEMINI_API_KEY: ''
+  ADAPT_YOUTUBE_API_KEY: ''
+
+jobs:
+  static-contract:
+    name: Lint, types, contracts, secrets, frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Adapt-main/backend/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Adapt-main/frontend/package-lock.json
+
+      - name: Install backend and audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./Adapt-main/backend[dev]"
+          python -m pip install pip-audit
+          mkdir -p release-artifacts
+
+      - name: Install frontend from the lockfile
+        working-directory: Adapt-main/frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Diff-aware Python lint (new findings fail)
+        run: |
+          git fetch origin main --depth=1 || true
+          python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json
+
+      - name: Inherited lint/type debt is reported, not hidden
+        working-directory: Adapt-main/backend
+        run: |
+          python -m ruff check src tests --output-format json > ../../release-artifacts/ruff-baseline.json || true
+          python -m mypy src > ../../release-artifacts/mypy-baseline.txt || true
+          python - <<'PY'
+          import json, pathlib
+          ruff = json.loads(pathlib.Path('../../release-artifacts/ruff-baseline.json').read_text() or '[]')
+          mypy = pathlib.Path('../../release-artifacts/mypy-baseline.txt').read_text()
+          count = sum(1 for line in mypy.splitlines() if line.endswith(' [attr-defined]') or 'error:' in line)
+          print(f'inherited baseline: {len(ruff)} Ruff findings, ~{count} mypy errors')
+          print('these are recorded in RELEASE_READINESS.md; only diff-added findings fail the gate')
+          PY
+
+      - name: Frontend type check and route contract
+        working-directory: Adapt-main/frontend
+        run: npm run lint
+
+      - name: Frontend unit tests
+        working-directory: Adapt-main/frontend
+        run: |
+          npm run test:lib
+          npm run test:engine
+          npm run test:server
+          npm run test:env
+
+      - name: Secret scan (tracked files and both ZIP archives, values never printed)
+        run: python release/secret_scan.py --out release/evidence/secret-scan.json
+
+      - name: Browser host scan (browser code must not call localhost)
+        run: python release/host_scan.py --out release/evidence/host-scan.json
+
+      - name: Integration reference-caller tests
+        run: python -m unittest discover -s integration -p 'test_*.py'
+
+      - name: Frontend production build
+        working-directory: Adapt-main/frontend
+        run: npm run build
+
+      - name: Upload the production build for the HTTP and browser smoke jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: adapt-next-build
+          path: Adapt-main/frontend/.next
+          include-hidden-files: true
+          retention-days: 3
+
+      - name: Upload static-gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-static-evidence
+          path: |
+            release/evidence/*.json
+            release-artifacts/ruff-baseline.json
+            release-artifacts/mypy-baseline.txt
+          if-no-files-found: warn
+
+  backend-tests:
+    name: Backend pytest (1583 pass baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Adapt-main/backend/pyproject.toml
+      - name: Install backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./Adapt-main/backend[dev]"
+      - name: Full backend suite
+        working-directory: Adapt-main/backend
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee ../../release-artifacts/backend-pytest.log
+      - name: Upload backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-backend-log
+          path: release-artifacts/backend-pytest.log
+          if-no-files-found: warn
+
+  release-smoke:
+    name: Stress, migration, E2E, dependency audit, browser smoke
+    needs: [static-contract, backend-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Adapt-main/backend/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Adapt-main/frontend/package-lock.json
+      - name: Install both halves
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./Adapt-main/backend[dev]"
+          python -m pip install pip-audit
+          mkdir -p release-artifacts
+      - name: Install frontend from the lockfile
+        working-directory: Adapt-main/frontend
+        run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: adapt-next-build
+          path: Adapt-main/frontend/.next
+
+      - name: Stress and failure harness (real uvicorn, no AI key)
+        run: python release/stress_check.py --include-provider-outage --out release/evidence/stress-ci.json
+
+      - name: Fresh and migrated database smoke
+        run: python release/migration_smoke.py --out release/evidence/migration-smoke.json
+
+      - name: End-to-end learner journey, demo walker and engine console
+        run: python release/e2e_smoke.py --web --demo-script --out release/evidence/e2e-smoke.json
+
+      - name: Dependency audit (report only; no --force, no unpinned upgrades)
+        run: |
+          (cd Adapt-main/frontend && npm audit --json > ../../release-artifacts/npm-audit.json) || true
+          python -m pip_audit --format json --progress-spinner off > release-artifacts/pip-audit.json || true
+          python release/audit_summary.py \
+            --npm release-artifacts/npm-audit.json \
+            --pip release-artifacts/pip-audit.json \
+            --out release/evidence/dependency-audit.json
+
+      - name: Selected browser E2E (BLOCKED if Chromium cannot be installed)
+        env:
+          ADAPT_PYTHON: python
+        run: bash release/browser_e2e.sh
+
+      - name: Print the measured release summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          for name in ('stress-ci.json','migration-smoke.json','e2e-smoke.json',
+                       'dependency-audit.json','browser-e2e.json','secret-scan.json','host-scan.json'):
+              path = pathlib.Path('release/evidence') / name
+              if not path.exists():
+                  print(f'{name}: NOT RUN')
+                  continue
+              data = json.loads(path.read_text())
+              print(f'{name}: {data.get("outcome", "reported")}')
+          PY
+
+      - name: Upload all release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-evidence
+          path: |
+            release/evidence/*.json
+            release-artifacts/*.json
+            release-artifacts/*.log
+            release-artifacts/*.txt
+          if-no-files-found: warn

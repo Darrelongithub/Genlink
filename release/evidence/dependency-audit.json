@@ -1,0 +1,103 @@
+{
+  "policy": "report only; no automatic fixes, no --force, no unpinned upgrades",
+  "npm": {
+    "state": "OK",
+    "status": "OK",
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 1,
+      "critical": 1,
+      "total": 3
+    },
+    "advisories": [
+      {
+        "package": "next",
+        "severity": "critical",
+        "is_direct": true,
+        "fix_available": {
+          "name": "next",
+          "version": "15.5.28",
+          "isSemVerMajor": false
+        },
+        "via": [
+          "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+          "Next.js: Denial of Service in App Router using Server Actions",
+          "postcss"
+        ]
+      },
+      {
+        "package": "postcss",
+        "severity": "high",
+        "is_direct": false,
+        "fix_available": {
+          "name": "next",
+          "version": "15.5.28",
+          "isSemVerMajor": false
+        },
+        "via": [
+          "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+          "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+          "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q \u2014 attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset"
+        ]
+      },
+      {
+        "package": "undici",
+        "severity": "moderate",
+        "is_direct": false,
+        "fix_available": true,
+        "via": [
+          "undici vulnerable to Denial of Service via unbounded memory in the EventSource parser",
+          "undici vulnerable to Subresource Integrity bypass via non-lowercase algorithm tokens"
+        ]
+      }
+    ]
+  },
+  "pip": {
+    "state": "OK",
+    "status": "OK",
+    "scanned_packages": 76,
+    "affected_packages": 1,
+    "advisory_count": 4,
+    "advisories": [
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2025-49",
+        "fix_versions": [
+          "78.1.1"
+        ],
+        "description": "### Summary  A path traversal vulnerability in `PackageIndex` was fixed in setuptools version 78.1.1  ### Details ```     def _download_url(self, url, tmpdir):         # Determine "
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2026-1918",
+        "fix_versions": [
+          "70.0.0"
+        ],
+        "description": "A vulnerability in the `package_index` module of pypa/setuptools versions up to 69.1.1 allows for remote code execution via its download functions. These functions, which are used "
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "PYSEC-2026-3447",
+        "fix_versions": [
+          "83.0.0"
+        ],
+        "description": "setuptools is a package that allows users to download, build, install, upgrade, and uninstall Python packages. Prior to 83.0.0, FileList applied MANIFEST.in exclude, global-exclude"
+      },
+      {
+        "package": "setuptools",
+        "installed": "66.1.1",
+        "id": "GHSA-xmj3-9gf7-h52w",
+        "fix_versions": [
+          "84.1.0"
+        ],
+        "description": "### Summary  On Windows, attacker-controlled content in a wheel's `.dist-info/namespace_packages.txt` can cause setuptools' legacy wheel installation path to create an `__init__.py"
+      }
+    ]
+  },
+  "gate_effect": "informational: vulnerabilities are carried into RELEASE_READINESS.md decisions"
+}

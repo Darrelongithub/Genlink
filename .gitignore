@@ -1,0 +1,14 @@
+# Repository-root working environment. Adapt-main/ has its own ignore file for
+# its nested venv, node_modules and build output; these are the root-level ones
+# created by the release gate. Never commit a virtualenv or a load-test log dir.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+release-artifacts/
+
+# Local key material must never be committed, even accidentally.
+*.key
+.env.local

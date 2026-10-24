@@ -22,9 +22,31 @@ code: the only HTTP surface that can create a row in `approved_adaptations` is
 learner decision (`backend/src/adapt/services/adaptations.py`). Revocation is immediate and
 also audited.
 
+## Documentation status (release gate, 2026-10-23)
+
+This README still points at several documents that **have not been written**. They are listed
+here so a reader does not mistake a link for evidence. On this date the only file under
+`docs/` is [`EFFICIENCY.md`](docs/EFFICIENCY.md) (generated from the routing and rate-limit
+tables by `scripts/write_efficiency_doc.py`).
+
+| Referenced document | Status | Where the substance actually lives today |
+| --- | --- | --- |
+| `docs/DEMO.md` | not written | `npm run demo` → `scripts/demo.mjs`; the three-minute order is below |
+| `docs/PILOT.md` | not written | no pilot dataset or protocol has been collected; see `RELEASE_READINESS.md` |
+| `docs/AUDIT.md` | not written | `RELEASE_READINESS.md` records the dated release-gate passes |
+| `docs/UNVERIFIED.md` | not written | `RELEASE_READINESS.md` → "Unresolved blockers / not verified" |
+| `docs/BUGS.md` | not written | `RELEASE_READINESS.md` → severity-ranked findings; regression tests in `backend/tests/` |
+| `docs/ENGINE.md` | not written | `frontend/src/lib/engine/` and `npm run test:engine` |
+| `docs/INTEGRATION.md` | not written | `integration/contract/README.md`, schemas/fixtures in `integration/contract/`, proof in `backend/tests/test_integration_release_contract.py` |
+| `docs/EVIDENCE.md`, `docs/VOICE.md`, `docs/ACCESSIBILITY.md` | not written | browser/voice/accessibility verification is **not** claimed; see `RELEASE_READINESS.md` |
+
+Root-level release documents added by the release gate: `SYSTEM_ARCHITECTURE.md`,
+`RELEASE_READINESS.md`, `RELEASE_CHECKLIST.md`. Any statement below that still says "see
+docs/X.md" should be read through this table, not as a promise that the file exists.
+
 ## The demo, in the order to say it
 
-Three minutes, and it is about the loop — nothing else. `docs/DEMO.md` is the script; this is
+Three minutes, and it is about the loop — nothing else. `npm run demo` (`scripts/demo.mjs`) is the executable script; this is
 the shape of it:
 
 1. **Placement** (`/diagnose`): eight unaided questions, adaptive, no hints. Say what it is for:
@@ -62,7 +84,7 @@ node scripts/demo.mjs --as <that learner's email>             # rehearse the sam
 The pilot exists because the honest answer to "did this help?" needs five scored attempts on each
 side of a change, and a live demo does not have them. The bar is not lowered for a demo; real
 rows are written beforehand and *labelled*, so the numbers on screen are numbers, and the label
-travels with them ("14 of 41 scored answers are pilot data"). See `docs/PILOT.md`.
+travels with them ("14 of 41 scored answers are pilot data"). A pilot protocol document is not yet written; no pilot dataset is claimed here.
 
 ## Round 2: the typed-topic journey
 
@@ -73,16 +95,23 @@ practice. A typed topic is turned into a checked knowledge pack in the backgroun
 written for the learner, a wrong answer gets an explanation that starts from the answer they
 actually gave, and "I don't get it" re-teaches the same idea a different way every time. With
 no model key configured, every one of those steps still answers — deterministically, and
-labelled "Simple lesson" rather than pretending otherwise. `docs/DEMO.md` is the
-three-minute demo script (live path, contrast screen, mock fallback); `docs/AUDIT.md` is the
-code audit, and `docs/UNVERIFIED.md` lists what is still unverified. The live model check has
+labelled "Simple lesson" rather than pretending otherwise. `scripts/demo.mjs` is the
+three-minute demo script (live path, contrast screen, mock fallback); `RELEASE_READINESS.md` is the
+dated release audit and lists what is still unverified. The live model check has
 **not** been run — no key has ever been configured on this build; `scripts/live_model_check.py`
 is the harness and `MODEL_QUALITY_REPORT.md` is the template it would replace.
 
-## Engine console
+## Engine console (prototype — sample values, not live usage)
 
 Open `/engine` for the presentation-ready operator view of Adapt as Genlink's adaptive
-intelligence layer rather than a separate learner destination. The console includes:
+intelligence layer rather than a separate learner destination. **The numbers on this screen
+are illustrative sample data, not pilot data and not learner data.** Plan prices, credit
+rules, the `18,420` remaining credits, the `6,580` adapted actions, the `347` active learners
+and the example ledger are editable presentation values held only in that browser. The Adapt
+backend has **no credit balance, debit, limit or institution ledger** today, and the
+"when credits reach zero" fallback is a product proposal, not enforced behaviour. The one
+real part of the flow diagram is the endpoint named on it; **Genlink does not currently call
+it** (see "Plug Adapt into another app" below and `SYSTEM_ARCHITECTURE.md`). The console includes:
 
 - an integration-flow view from Genlink through Adapt to the learner;
 - editable annual Starter, Core and Plus plan examples;
@@ -267,7 +296,7 @@ Two things to say before people open the link:
   `--rate-limit-multiplier` raises it further, and `GET /api/v1/quotas` reports what is in force.
 
 A real second device, a real phone microphone and a real tunnel were **not** available in the
-sandbox this was built in (see `docs/UNVERIFIED.md`). Rehearse once: open the printed address on
+sandbox this was built in (see `RELEASE_READINESS.md`). Rehearse once: open the printed address on
 a phone, create a learner, answer one question. If `--tunnel` cannot produce an https address,
 say so and share the LAN address — the command keeps serving and tells you which one it is.
 
@@ -275,12 +304,15 @@ The interface is built to hold up on a phone (the status readout stays out of th
 content and the buttons, typefaces are served from this machine rather than from Google Fonts,
 fields do not trigger iOS's zoom-into-the-page, tables scroll inside their own box). None of that
 has been seen on real glass from inside the sandbox — at rehearsal, walk one question in portrait
-*and* landscape and tap **Check it** once; `docs/UNVERIFIED.md` lists exactly what to look at.
+*and* landscape and tap **Check it** once; `RELEASE_READINESS.md` lists exactly what to look at.
 
 ## Plug Adapt into another app (integration endpoint)
 
 Any app on the network can use Adapt as its adaptation engine with **one HTTP call** — no
-WebSocket, no account, no SDK:
+WebSocket, no account, no SDK. **Status on 2026-10-23: the Genlink source in this repository
+exists only inside `genink-school-of-the-elites-main (1).zip` and does not call this endpoint.**
+The integration is a proven contract (schemas, fixtures and failure tests under
+`integration/`), not a shipped connection:
 
 ```bash
 curl -X POST "http://<adapt-host>:8000/api/v1/integration/adapt" \
@@ -302,8 +334,9 @@ measured ≈ 10 ms round trip). Different activity for the same content measurab
 different lesson: a struggling learner gets 30-word steps at rung 1, a strong one gets 75-word
 steps, a prediction first and a teach-back at rung 5. Open on the LAN by design; export
 `ADAPT_INTEGRATION_TOKEN` to require a bearer token instead.
-[`docs/INTEGRATION.md`](docs/INTEGRATION.md) is the whole contract, with a captured request and
-response; `backend/tests/test_integration_endpoint.py` is the proof.
+[`integration/contract/README.md`](../integration/contract/README.md) is the whole contract, with frozen schemas,
+a captured request/response and failure fixtures; `backend/tests/test_integration_endpoint.py` and
+`backend/tests/test_integration_release_contract.py` are the proof.
 
 ## What is implemented, and what it refuses to do
 
@@ -335,7 +368,7 @@ response; `backend/tests/test_integration_endpoint.py` is the proof.
   unanswered prompt while letting the slider, `back` and "end & review" go anywhere. A lesson run
   earns no mastery, a learner's copy of a scene is *theirs* (`0003`'s two partial unique indexes),
   and a kind this build cannot draw still plays as narration and state values rather than a blank
-  box. `docs/ENGINE.md` is the contract; `npm run test:engine`, `npm run lint` and the `lesson`
+  box. `frontend/src/lib/engine/` is the contract; `npm run test:engine`, `npm run lint` and the `lesson`
   probe scenario are what keep it from being prose.
 * **Parametric items are rendered per learner, consistently.** One seed function
   (`bank.variant_seed`) drives the stem you are shown, the hint you ask for, the worked
@@ -509,16 +542,16 @@ with the models, stamps a `create_all` file, and downgrades to empty.
 
 ## Limits worth knowing before you trust it
 
-Read [docs/UNVERIFIED.md](docs/UNVERIFIED.md): it lists what could not be checked in the
+Read `RELEASE_READINESS.md` → "Unresolved blockers / not verified": it lists what could not be checked in the
 sandbox this was built in (model calls, the two speech engines' audio, network resource
 providers, Numbas against a live server), what is deliberately *not* implemented (a password
 reset, a teacher dashboard, a spaced-review notification), and what a small-sample result
-does and does not mean. The pilot protocol is in [docs/PILOT.md](docs/PILOT.md).
+does and does not mean. No pilot protocol document has been written yet.
 
-A full code audit (what was run, what it found, what was fixed and how each fix is pinned by a
-test that fails without it) is in [docs/AUDIT.md](docs/AUDIT.md). It is dated and organised as
+A dated release audit (what was run, what it found, what was fixed and how each fix is pinned by a
+test that fails without it) is in `RELEASE_READINESS.md`. It is dated and organised as
 chronological passes, so treat any "not changed" list in it as a proposal rather than a
 decision. The defects themselves — each with the request or command that proved it, the fix, and
 the test that fails without the fix — are listed separately in
-[docs/BUGS.md](docs/BUGS.md), including the findings that were investigated and closed as *not*
+`RELEASE_READINESS.md`, including the findings that were investigated and closed as *not*
 bugs, so a later pass does not re-open them.

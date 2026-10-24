@@ -325,7 +325,10 @@ async function main() {
           return `  ${(m.label ?? m.method).padEnd(24)} expected ${Math.round((m.expected ?? 0) * 100)}% · actual ${Math.round((m.actual ?? 0) * 100)}% · ${(m.residual >= 0 ? "+" : "") + Math.round((m.residual ?? 0) * 100)} points vs expected · n=${m.n} [${label}]${pilot}`;
         })
         .join("\n") +
-        `\n  unit: ${methods.labels.unit}; ${methods.labels.expected}${methods.n_pilot ? `\n  ${methods.n_pilot} of ${methods.n_scored} scored answers are pilot data — labelled, never smoothed` : ""}`,
+        // /methods/report no longer returns a labels object; the report carries a
+        // human note instead. Fall back so a contract drift cannot crash the demo
+        // walker at the very end of an otherwise successful run (release gate 2026-10-23).
+        `\n  unit: ${methods.labels?.unit ?? "share of scored answers that were correct"}; ${methods.labels?.expected ?? (methods.note || "expected success is a prediction, not a grade")}${methods.n_pilot ? `\n  ${methods.n_pilot} of ${methods.n_scored} scored answers are pilot data — labelled, never smoothed` : ""}`,
     );
     if (methods.methods.some((m) => m.evidence === "early_signal")) {
       say("Read it honestly", `  under ${methods.min_n_for_a_finding} observations is not a finding, and the API says so rather than ranking them.\n  Seed a pilot before a demo: adapt pilot --student-id <id> --seed`);

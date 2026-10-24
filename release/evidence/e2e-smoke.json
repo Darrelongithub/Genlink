@@ -1,0 +1,508 @@
+{
+  "generated_at": "2026-10-24T00:12:44Z",
+  "python": "3.11.2",
+  "ai_credentials_used": false,
+  "database": "fresh scratch directory",
+  "steps": [
+    {
+      "name": "sign_up_with_consent_off",
+      "method": "POST",
+      "path": "/api/v1/students",
+      "status": 200,
+      "elapsed_ms": 103.2,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "logout",
+      "method": "POST",
+      "path": "/api/v1/logout",
+      "status": 200,
+      "elapsed_ms": 7.79,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "me_after_logout_is_401",
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 401,
+      "elapsed_ms": 2.75,
+      "expected": [
+        401
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "login",
+      "method": "POST",
+      "path": "/api/v1/login",
+      "status": 200,
+      "elapsed_ms": 92.77,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "me_after_login",
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "elapsed_ms": 4.77,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "choose_consent_on",
+      "method": "POST",
+      "path": "/api/v1/me/onboarding",
+      "status": 200,
+      "elapsed_ms": 5.89,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "consent_is_read_back",
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 200,
+      "elapsed_ms": 4.55,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "learner_baseline_start",
+      "method": "POST",
+      "path": "/api/v1/baseline",
+      "status": 200,
+      "elapsed_ms": 14.95,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "learner_baseline_snapshot",
+      "method": "GET",
+      "path": "/api/v1/baseline/snapshot",
+      "status": 200,
+      "elapsed_ms": 18.63,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "lesson_plan",
+      "method": "POST",
+      "path": "/api/v1/lesson-plan",
+      "status": 200,
+      "elapsed_ms": 24.51,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "practice_session",
+      "method": "POST",
+      "path": "/api/v1/sessions",
+      "status": 200,
+      "elapsed_ms": 20.34,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "practice_items",
+      "method": "GET",
+      "path": "/api/v1/practice?count=2",
+      "status": 200,
+      "elapsed_ms": 56.88,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "wrong_answer_is_marked",
+      "method": "POST",
+      "path": "/api/v1/attempts",
+      "status": 200,
+      "elapsed_ms": 62.99,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": "a wrong answer must be graded, not refused"
+    },
+    {
+      "name": "lesson_concepts_for_the_topic",
+      "method": "GET",
+      "path": "/api/v1/lesson/concepts?topic=top_5afeb84896a04d09a8d4",
+      "status": 200,
+      "elapsed_ms": 24.9,
+      "expected": [
+        200,
+        422,
+        404
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "reteach_after_wrong_answer",
+      "method": "POST",
+      "path": "/api/v1/lesson/reteach",
+      "status": 200,
+      "elapsed_ms": 27.39,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": "deterministic re-teach on a real authored topic"
+    },
+    {
+      "name": "no_key_teaching_answer",
+      "method": "POST",
+      "path": "/api/v1/explain",
+      "status": 200,
+      "elapsed_ms": 22.37,
+      "expected": [
+        200,
+        429
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "proposal_gate_pending",
+      "method": "GET",
+      "path": "/api/v1/adaptations/pending",
+      "status": 200,
+      "elapsed_ms": 6.1,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "proposal_refusal_recorded",
+      "status": null,
+      "ok": true,
+      "note": "no proposal was generated from this short run; the gate was not faked",
+      "expected": [],
+      "elapsed_ms": 0,
+      "method": "POST",
+      "path": "/api/v1/adaptations/{id}/decision"
+    },
+    {
+      "name": "progress_method_report",
+      "method": "GET",
+      "path": "/api/v1/methods/report",
+      "status": 200,
+      "elapsed_ms": 6.74,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "progress_journey",
+      "method": "GET",
+      "path": "/api/v1/journey",
+      "status": 200,
+      "elapsed_ms": 26.34,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "data_export",
+      "method": "GET",
+      "path": "/api/v1/me/export",
+      "status": 200,
+      "elapsed_ms": 49.92,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": "export keys: ['excluded', 'exported_at', 'format', 'format_version', 'record_counts', 'records', 'student']"
+    },
+    {
+      "name": "data_deletion",
+      "method": "DELETE",
+      "path": "/api/v1/me",
+      "status": 200,
+      "elapsed_ms": 6.74,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "me_after_deletion_is_401",
+      "method": "GET",
+      "path": "/api/v1/me",
+      "status": 401,
+      "elapsed_ms": 2.29,
+      "expected": [
+        401
+      ],
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "genlink_integration_request",
+      "method": "POST",
+      "path": "/api/v1/integration/adapt",
+      "status": 200,
+      "elapsed_ms": 7.72,
+      "expected": [
+        200
+      ],
+      "ok": true,
+      "note": "stateless, model-free contract response validated"
+    },
+    {
+      "name": "provider_outage_is_reported",
+      "method": "POST",
+      "path": "/api/v1/resources/search",
+      "status": 401,
+      "elapsed_ms": 4.25,
+      "expected": [
+        200,
+        401,
+        429
+      ],
+      "ok": true,
+      "note": "external providers disabled in this run; a signed-out 401 after deletion is expected"
+    }
+  ],
+  "checks": [
+    {
+      "name": "a_session_cookie_is_usable_on_the_immediately_following_request",
+      "ok": true,
+      "detail": "signup=0 login=0 of 12"
+    },
+    {
+      "name": "every_smoke_step_met_its_expected_status",
+      "ok": true,
+      "failed": []
+    },
+    {
+      "name": "consent_defaults_off_then_opt_in_is_persisted",
+      "ok": true,
+      "detail": "False -> True"
+    },
+    {
+      "name": "wrong_answer_is_graded_false_and_reteach_returns_blocks",
+      "ok": true,
+      "detail": "wrong=200/False reteach=200/3 blocks"
+    },
+    {
+      "name": "lesson_plan_returns_blocks",
+      "ok": true,
+      "detail": "200/4 blocks"
+    },
+    {
+      "name": "logout_and_deletion_revoke_the_session",
+      "ok": true
+    },
+    {
+      "name": "repo_demo_http_walker_exits_zero",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "engine_console_renders_and_labels_its_numbers_as_samples",
+      "ok": true,
+      "detail": "{\"status\": 200, \"elapsed_ms\": 8.46, \"html_bytes\": 23076, \"contains_sample_label\": true, \"contains_no_live_connection_label\": true}"
+    }
+  ],
+  "notes": [],
+  "learner_journey": {
+    "student_id": "stu_46908f06dc6d4757abee",
+    "consent_at_signup": false,
+    "consent_after_opt_in": true,
+    "me_after_logout_status": 401,
+    "me_after_deletion_status": 401,
+    "baseline_run_status": 200,
+    "baseline_snapshot_status": 200,
+    "lesson_status": 200,
+    "lesson_blocks": 4,
+    "wrong_answer_status": 200,
+    "wrong_answer_correct_field": false,
+    "practice_item_id": "itm_integer_ops_00",
+    "topic_id": "top_5afeb84896a04d09a8d4",
+    "concept_status": 200,
+    "reteach_status": 200,
+    "reteach_blocks": 3,
+    "no_key_teaching_status": 200,
+    "pending_proposals": 0,
+    "proposal_decision_status": null,
+    "export_status": 200,
+    "delete_status": 200,
+    "integration_status": 200,
+    "provider_outage_status": 401,
+    "adapt_credits_enforced": false,
+    "exhausted_credit_case": "not testable: no server-side credit ledger or debit route"
+  },
+  "login_cookie_immediate_use": {
+    "attempts": 12,
+    "unexpected_401_after_signup": 0,
+    "unexpected_401_after_login": 0,
+    "rows": [
+      {
+        "iteration": 0,
+        "signup": 200,
+        "signup_ms": 89.84,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 85.59,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 1,
+        "signup": 200,
+        "signup_ms": 87.89,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 89.57,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 2,
+        "signup": 200,
+        "signup_ms": 84.13,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 97.97,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 3,
+        "signup": 200,
+        "signup_ms": 102.94,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 90.48,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 4,
+        "signup": 200,
+        "signup_ms": 97.18,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 86.57,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 5,
+        "signup": 200,
+        "signup_ms": 88.51,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 90.29,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 6,
+        "signup": 200,
+        "signup_ms": 89.28,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 86.08,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 7,
+        "signup": 200,
+        "signup_ms": 88.23,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 102.68,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 8,
+        "signup": 200,
+        "signup_ms": 96.54,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 90.64,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 9,
+        "signup": 200,
+        "signup_ms": 89.75,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 89.42,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 10,
+        "signup": 200,
+        "signup_ms": 87.23,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 89.58,
+        "me_immediately_after_login": 200
+      },
+      {
+        "iteration": 11,
+        "signup": 200,
+        "signup_ms": 88.69,
+        "me_immediately_after_signup": 200,
+        "login": 200,
+        "login_ms": 87.93,
+        "me_immediately_after_login": 200
+      }
+    ]
+  },
+  "demo_script": {
+    "exit_code": 0,
+    "stdout_tail": "move works on the next two.\n\u001b[32mno contract violations found\u001b[0m\n\n{\n \"steps\": [\n  {\n   \"step\": \"health\"\n  },\n  {\n   \"step\": \"register\",\n   \"student_id\": \"stu_7f47a270cec54978b950\",\n   \"csrf_issued\": true\n  },\n  {\n   \"step\": \"onboarding\",\n   \"ignored_keys\": [\n    \"learning_style\"\n   ],\n   \"consent\": {\n    \"analytics\": true,\n    \"share_summary_with_ai\": false\n   }\n  },\n  {\n   \"step\": \"diagnostic\",\n   \"items\": 8,\n   \"correct\": 4,\n   \"topics\": 8\n  },\n  {\n   \"step\": \"analyze\",\n   \"traces\": 8,\n   \"hypotheses\": 1,\n   \"proposals\": 1\n  },\n  {\n   \"step\": \"help\",\n   \"hint_level\": 1,\n   \"example_steps\": 2,\n   \"grounded\": false,\n   \"sources\": 1\n  },\n  {\n   \"step\": \"methods\",\n   \"scored\": 1,\n   \"pilot\": 0,\n   \"rows\": 1\n  },\n  {\n   \"step\": \"prose_concept\",\n   \"code\": \"history_ww1\",\n   \"versions\": [\n    \"text\",\n    \"visual\",\n    \"worked_example\"\n   ],\n   \"text_steps\": 5,\n   \"pair\": 2,\n   \"unverified\": 0\n  },\n  {\n   \"step\": \"journey\",\n   \"nodes\": 15,\n   \"due_reviews\": 8\n  },\n  {\n   \"step\": \"privacy\",\n   \"event_types\": 27,\n   \"forbidden_keys\": 48\n  }\n ],\n \"warnings\": []\n}\n\nOpen the app against this API and sign in as demo+naesy@example.invalid / demo-passphrase-2026 to see the same data in the UI.\n",
+    "stderr_tail": ""
+  },
+  "engine_console": {
+    "status": 200,
+    "elapsed_ms": 8.46,
+    "html_bytes": 23076,
+    "contains_sample_label": true,
+    "contains_no_live_connection_label": true
+  },
+  "outcome": "PASS"
+}

@@ -1,0 +1,14 @@
+{
+  "learner": {"id": "genlink-42", "language": "en"},
+  "activity": [
+    {"id": "a1", "kind": "attempt", "topic_id": "fractions_add", "correct": false, "response_ms": 1800, "confidence": "certain"}
+  ],
+  "content": {
+    "concept": "fractions_add",
+    "title": "Adding fractions",
+    "explanation": "To add fractions, the parts must be the same size. When the denominators differ, rename one fraction so both use the same denominator. Then add the numerators and keep the denominator.",
+    "questions": [
+      {"question": "What is 1/4 + 1/8?", "hint": "Eighths are the shared size.", "format": "numeric"}
+    ]
+  }
+}

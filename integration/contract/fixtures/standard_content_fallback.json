@@ -1,0 +1,12 @@
+{
+  "description": "What a caller serves when Adapt is unreachable, times out, or returns a document that fails the response schema. This is the caller's UNADAPTED material. It must be labelled standard, never presented as an Adapt result and never charged as an adapted action.",
+  "learner_id": "genlink-42",
+  "source": "standard_content",
+  "adapted": false,
+  "title": "Adding fractions",
+  "blocks": [
+    {"kind": "text", "text": "To add fractions, the parts must be the same size. When the denominators differ, rename one fraction so both use the same denominator. Then add the numerators and keep the denominator."},
+    {"kind": "check", "question": "What is 1/4 + 1/8?", "hint": "Eighths are the shared size."}
+  ],
+  "notice": "Adapt was unavailable; this is the caller's standard content, not an adapted lesson."
+}
