@@ -19,7 +19,7 @@
   --accent-strong: #1c47a6;   /* hover on fills */
   --accent-soft: #dfe8fb;     /* pale blue wash */
   --body: #3c4a68;            /* dark slate-blue body text — never pure black */
-  --muted: #66739a;           /* secondary text (still >=14px) */
+  --muted: #4a5678;           /* secondary text — WCAG AA >= 4.5:1 across all tints */
   --white: #ffffff;
 
   /* ---- Tinted card backgrounds (soft, low saturation) ---- */
@@ -29,10 +29,10 @@
   --tint-peach: #fae8dc;
 
   /* ---- Status ---- */
-  --good: #2c7a4d;
-  --warn: #a26810;
-  --bad: #b23a2c;
-  --think: #6558b8;
+  --good: #21663d;
+  --warn: #805008;
+  --bad: #9e2f22;
+  --think: #5042a3;
 
   /* ---- Type scale (min body 16px; 14px floor except legal footer) ---- */
   --t-display: 40px;
@@ -412,7 +412,7 @@ a:hover { color: var(--accent-strong); }
    Inputs
    ========================================================================== */
 
-.input, input[type="text"], input[type="search"], textarea, select {
+.input, input[type="text"], input[type="search"], input[type="email"], input[type="password"], textarea, select {
   width: 100%;
   border: 1.5px solid var(--line);
   border-radius: var(--r-input);

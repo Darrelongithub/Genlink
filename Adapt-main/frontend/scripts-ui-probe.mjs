@@ -443,6 +443,22 @@ async function preparePracticeSubject(cookie, csrfToken) {
   const chosenResponse = await api("/api/v1/subjects/choose", { method: "POST", body: { text: "Fractions" }, headers });
   if (chosenResponse.status !== 200) throw new Error(`subject fixture choose failed: ${chosenResponse.status} ${JSON.stringify(chosenResponse.body)}`);
   const subject = chosenResponse.body.subject ?? chosenResponse.body;
+  const scanResponse = await api("/api/v1/curriculum/scan", {
+    method: "POST",
+    body: { subject: subject.title, subject_id: subject.id, skip_sources: false },
+    headers,
+  });
+  const scannedObjectives = Array.isArray(scanResponse.body?.objectives) && scanResponse.body.objectives.length
+    ? scanResponse.body.objectives.map((row) => ({ id: row.id, title: row.title, strand: row.strand }))
+    : [{ id: "obj_fractions", title: "Equivalent fractions", strand: "Numbers" }];
+  const approveResponse = await api("/api/v1/curriculum/approve", {
+    method: "POST",
+    body: { subject_id: subject.id, objectives: scannedObjectives, curriculum: null, grade: null },
+    headers,
+  });
+  if (approveResponse.status !== 200) {
+    throw new Error(`subject fixture approve failed: ${approveResponse.status} ${JSON.stringify(approveResponse.body)}`);
+  }
   const planResponse = await api("/api/v1/tests/plan", {
     method: "POST",
     body: { subject: subject.title, subject_id: subject.id, level: 2, style: "see", goal: "skills" },
@@ -1853,9 +1869,15 @@ async function main() {
     const cookie = own.getCookieStringSync(BASE);
     const page = await open("/journey?step=subject", "subject", undefined, cookie);
     const input = await waitFor(() => page.find('input[aria-label="What do you want to learn?"]')[0], { timeout: 15_000, label: "the current subject chooser" });
-    check("subject", "the current journey opens with a real subject chooser", !!input && !!page.byText(/See the starting checks/i, "button"), page.text().slice(0, 200));
+    check("subject", "the current journey opens with a real subject chooser", !!input && !!page.byText(/Choose what to cover|See the starting checks/i, "button"), page.text().slice(0, 200));
     page.type(input, "calculus");
-    await page.click(page.byText(/See the starting checks/i, "button"));
+    await page.click(page.byText(/Choose what to cover|See the starting checks/i, "button"));
+    const approveBtn = await waitFor(() => {
+      const b = page.byText(/Use this plan/i, "button");
+      return b && !b.disabled ? b : null;
+    }, { timeout: 15_000, label: "the syllabus approval step" });
+    check("subject", "choosing a subject opens the syllabus checklist before any test runs", /What to cover/i.test(page.text()) && !!approveBtn, page.text().slice(0, 220));
+    await page.click(approveBtn);
     const start = await waitFor(() => page.byText(/Start the checks/i, "button"), { timeout: 15_000, label: "the subject setup" });
     check("subject", "choosing a subject reaches its authored setup", /Calculus/i.test(page.text()) && !!start, page.text().slice(0, 220));
     for (const label of ["Confident", "Try it", "Exam"]) {
@@ -2162,6 +2184,7 @@ async function main() {
     check("baseline", "a scored question task offers the coin wager", saw_coins_on_measured, `coins seen: ${saw_coins_on_measured}`);
     check("baseline", "no practice trial ever offers coins", coins_on_practice === 0, `${coins_on_practice} practice screens with coins`);
 
+    await waitFor(() => page.find('[role="gridcell"]').length > 0, { timeout: 8_000, label: "the vault grid" });
     const tiles = page.find('[role="gridcell"]');
     check("baseline", "the vault arrives as a nine-tile grid", tiles.length === 9, `${tiles.length} tiles`);
     const busyAtStart = page.find('.vault-grid[aria-busy="true"]').length === 1;
@@ -2246,13 +2269,13 @@ async function main() {
       };
     });
     try {
-      await waitFor(() => page.find('[data-testid="format-option"]').length > 0 || /How you work|What we measured|What we noticed/.test(page.text()),
+      await waitFor(() => page.find('[data-testid="format-option"]').length > 0 || /How you work|What we measured|What we noticed|Your last sitting is still here/.test(page.text()),
         { timeout: 15000, label: "baseline data" });
       if (page.find('[data-testid="format-option"]').length) {
         await page.click("a written explanation", '[data-testid="format-option"]');
         await waitFor(() => /How you work/.test(page.text()), { label: "baseline questions saved" });
       }
-      const baselineResume = /What we measured|What we noticed/.test(page.text()) ? /What we measured|What we noticed/ : /How you work/;
+      const baselineResume = /What we measured|What we noticed|Your last sitting is still here/.test(page.text()) ? /What we measured|What we noticed|Your last sitting is still here/ : /How you work/;
       const sidebar = page.doc.querySelector("#adapt-sidebar");
       const document = page.doc;
       const sessionReads = () => page.requests.filter(r => r === "GET /api/v1/me").length;

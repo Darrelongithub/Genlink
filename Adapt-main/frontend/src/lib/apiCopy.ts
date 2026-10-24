@@ -25,8 +25,23 @@ export const PACING_CODES = [
   "model_budget_exhausted",
 ] as const;
 
+export function statusFallbackSentence(status: number): string {
+  if (status === 401) return "Your session has ended — sign in again to continue.";
+  if (status === 403) return "That action needed a fresh session token — reload the page and try again.";
+  if (status === 404) return "That item could not be found.";
+  if (status === 429) return "Too many requests arrived at once — wait a few seconds and try again.";
+  if (status === 502 || status === 503 || status === 504) {
+    return "The learning server is temporarily unavailable — check the connection and try again.";
+  }
+  if (status >= 500) return `The server ran into an unexpected problem (${status}) — try again in a moment.`;
+  return `The request could not be completed (${status}).`;
+}
+
 export function apiErrorSentence(status: number, fallback: string, detail?: unknown): string {
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") {
+    const trimmed = detail.trim();
+    if (trimmed.length > 0 && !trimmed.startsWith("<")) return detail;
+  }
   if (detail && typeof detail === "object") {
     const d = detail as Record<string, unknown>;
     // `message` is in the list because the pacing refusals (the IP bucket and the in-flight

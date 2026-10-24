@@ -19,7 +19,8 @@ try {
   await page.locator("[data-account-gate]").waitFor({ state: "detached", timeout: 15000 });
   await page.goto(`${BASE}/journey?step=subject`, { waitUntil: "networkidle" });
   await page.locator('input[aria-label="What do you want to learn?"]').fill("discrete maths");
-  await page.getByRole("button", { name: /See the starting checks/i }).click();
+  await page.getByRole("button", { name: /Choose what to cover|See the starting checks/i }).click();
+  await page.getByRole("button", { name: /Use this plan/i }).click();
   await page.locator(".tile-btn", { hasText: "Confident" }).first().click();
   await page.locator(".tile-btn", { hasText: "Try it" }).first().click();
   await page.locator(".tile-btn", { hasText: "Exam" }).first().click();

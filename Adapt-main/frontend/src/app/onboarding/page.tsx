@@ -23,7 +23,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Btn, Card, Check, Err, Field, Input, Notice, useSession } from "@/components/ui";
 import { get, post, useApi, type Me } from "@/lib/api";
@@ -52,6 +52,7 @@ export default function Onboarding() {
   const [voiceWant, setVoiceWant] = useState(false);
   const [voiceGender, setVoiceGender] = useState("female");
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +83,8 @@ export default function Onboarding() {
   const set = (k: string) => (v: string | boolean | number) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save() {
+    if (inFlight.current || busy) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -97,6 +100,7 @@ export default function Onboarding() {
     } catch (err) {
       setError((err as { shown?: string }).shown ?? String(err));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }

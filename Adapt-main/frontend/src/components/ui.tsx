@@ -371,7 +371,12 @@ export function Receipt({ tone = "good", children }: { tone?: "good" | "bad" | "
 }
 
 export function Ledger({ children }: { children: ReactNode }) {
-  return <div className="ledger">{children}</div>;
+  return (
+    <div className="ledger">
+      <h2 className="sr-only">Study ledger</h2>
+      {children}
+    </div>
+  );
 }
 
 export function LedgerEntry({
@@ -456,13 +461,23 @@ export function useSessionLedger(key: string) {
   const [entries, setEntries] = useState<string[]>([]);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setEntries(readLedger(window.sessionStorage, key));
+    try {
+      setEntries(readLedger(window.sessionStorage, key));
+    } catch {
+      /* storage unavailable */
+    }
   }, [key]);
   const add = useCallback(
     (entry: string) => {
       setEntries((prev) => {
         const next = pushEntry(prev, entry);
-        if (typeof window !== "undefined") writeLedger(window.sessionStorage, key, next);
+        if (typeof window !== "undefined") {
+          try {
+            writeLedger(window.sessionStorage, key, next);
+          } catch {
+            /* storage unavailable */
+          }
+        }
         return next;
       });
     },
@@ -476,7 +491,7 @@ export function useSessionLedger(key: string) {
 export function SessionLog({ title, entries, empty }: { title: string; entries: readonly string[]; empty: string }) {
   return (
     <div className="ledger-log">
-      <h5>{title}</h5>
+      <h2 className="ledger-log-title">{title}</h2>
       <ul>
         {entries.length ? (
           entries.map((entry, i) => <li key={`${i}-${entry}`}>{entry}</li>)
