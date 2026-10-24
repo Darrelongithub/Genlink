@@ -63,7 +63,10 @@ jobs:
 
       - name: Diff-aware Python lint (new findings fail)
         run: |
-          git fetch origin main --depth=1 || true
+          # A shallow origin/main has no merge-base with this merge-based branch, which makes
+          # `git diff origin/main...HEAD` fail. Deepen (or unshallow) it before the gate.
+          git fetch origin main --unshallow || git fetch origin main --depth=200 || true
+          git merge-base origin/main HEAD
           python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json
 
       - name: Inherited lint/type debt is reported, not hidden
