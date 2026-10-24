@@ -7,7 +7,8 @@ protection). See the Layout note in `SYSTEM_ARCHITECTURE.md`. Everything below w
 on this branch after the second merge. No AI credential was configured or used. All load
 numbers are **single-machine loopback measurements**, not capacity guarantees.
 Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/` (ignored by Git).
-Evidence commit: `FINAL_EVIDENCE_COMMIT`.
+Evidence commit: `d812f79e5c20a84b7c5a3bc1f4a264aaf0a42d4b` (merge of `origin/main` at
+`8851869` into the release branch). Final documentation commit is reported in the task/PR.
 
 ## Decisions
 
@@ -147,6 +148,17 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
     recurrence before pilot.
 12. Real migrated production data, multi-worker deployment, monitoring, backup/restore and
     rollback were not exercised; only a synthetic `0002 → R10` migration was proven.
+
+## Conflict report for the two `main` merges
+
+| Merge | Conflict | Resolution | Verification |
+| --- | --- | --- | --- |
+| `aad6946` (Genlink extracted, top-level `adapt/` added) | `.gitignore` add/add | Combined main's Node/Genlink ignores with the release gate's `.venv/`, cache, `release-artifacts/`, `*.key` and `.env.local` ignores. | `git diff --check` clean; secret scan then covered the extracted trees. |
+| `8851869` (backend credits/operator/security, PR #4) | `Adapt-main/docs/EFFICIENCY.md` add/add | Regenerated from `Adapt-main/scripts/write_efficiency_doc.py` (93 lines, 0 conflict markers), keeping the branch's generator as the source of truth. All other main changes — R10 migration, credit service/routes, operator boundary, cross-site guard — were accepted as staged. | `pytest -q tests/test_ai_efficiency.py` 27/27; full suite 1617 passed / 2 skipped; merge commit `d812f79`. |
+
+No other file conflicted. The only deliberate release-owned edits on top of the merge are the
+`s.commit()` in `issue_login` (both layouts), the new regression test, the credit E2E/stress
+harness, the two-lockfile audit and the refreshed docs/evidence.
 
 ## Likely conflicts with the other three parallel branches
 

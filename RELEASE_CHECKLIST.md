@@ -157,7 +157,7 @@ Production go/no-go: **NO-GO**.
 
 | Role | Name | Date | Decision | Evidence commit |
 | --- | --- | --- | --- | --- |
-| Release engineering | (this gate) | 2026-10-24 | Demo YES (conditional), Pilot NO, Production NO | `FINAL_EVIDENCE_COMMIT` |
+| Release engineering | (this gate) | 2026-10-24 | Demo YES (conditional), Pilot NO, Production NO | `d812f79e5c20a84b7c5a3bc1f4a264aaf0a42d4b` + final docs commit in PR |
 | Backend owner | ________ | ____ | ____ | ____ |
 | Frontend owner | ________ | ____ | ____ | ____ |
 | Product / privacy owner | ________ | ____ | ____ | ____ |
