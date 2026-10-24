@@ -12,7 +12,7 @@ or used. All load numbers are **single-machine loopback measurements**, not capa
 guarantees. Raw evidence: `release/evidence/*.json`; full logs: `release-artifacts/`
 (ignored by Git). Evidence commit: `c63d101...` (fourth merge of `origin/main` at `bca7d15`
 into the release branch, including the refreshed post-merge evidence). F-18 fix commit:
-`652460a...`; final merge commit is reported in the task/PR.
+`652460a...`; F-22 fix commit: `596497e...`; final merge commit is reported in the task/PR.
 
 ## Decisions
 
@@ -181,7 +181,7 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
     are all fully green (static-contract, backend pytest, release-smoke). The last one also
     covers the F-18 breaker-isolation fix.
 17. F-22 was an order-dependent assertion, not a product regression. It is fixed in the test;
-    the next CI run must be green before the branch is merged.
+    CI runs `40072437817`/`40072433961` at `596497e` are fully green across all three jobs.
 
 ## Conflict report for the four `main` merges
 
