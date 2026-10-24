@@ -1,13 +1,17 @@
 # Adapt production hosting audit
 
-**Audit date:** 2026-10-23  
-**Remediated source/runbook commit:** `4452080c94366e50fd8207e97ca4f4089f7e0686`  
-**Branch:** `arena/cff9ff26-genlink`  
-**Scope:** deployment, hosting, configuration, operations, dependency/build assurance and relevant
-regression tests/documentation. Learner UI and adaptive algorithms were not redesigned.
+- **Audit date:** 2026-10-23; integrated revalidation on 2026-10-24
+- **Remediated source/runbook commit:** `4452080c94366e50fd8207e97ca4f4089f7e0686`
+- **Integrated `main`:** `717289258dfbe3e3f362eb85801ce3387c68c5f6`
+- **Post-merge integration commit:** `58d0df83085080e60598a7852fabe29d80730dd9`
+- **Branch:** `arena/cff9ff26-genlink`
 
-This report file is committed separately so it can name the exact remediation commit above. The
-final report commit/hash is supplied with the delivery.
+**Scope:** deployment, hosting, configuration, operations, dependency/build assurance and relevant
+regression tests/documentation. The remediation did not redesign learner UI or adaptive algorithms;
+the integration preserved incoming `main` changes.
+
+This report file is committed separately so it can name the exact remediation and integration
+commits above. The final report commit/hash is supplied with the delivery.
 
 ## Conclusion
 
@@ -18,8 +22,9 @@ available, or horizontally scalable.**
 The evidence supporting that conclusion is a clean locked install, a complete frontend production
 build, packaged-wheel migration tests, strict SQLCipher startup, fresh/existing database checks,
 an actual TLS → Node → FastAPI smoke with CORS/CSRF/host/failure behavior, session preservation
-across restart, graceful lifecycle checks, backup/restore round trips and 181 focused passing
-backend tests. No PostgreSQL, Kubernetes, container image or high-availability claim is made.
+across restart, graceful lifecycle checks, backup/restore round trips, **214 focused passing
+backend tests** and a full backend result of **1,621 passed, 2 skipped**. No PostgreSQL, Kubernetes,
+container image or high-availability claim is made.
 
 Public deployment still requires target-system Nginx/systemd/public-CA validation, capacity/load
 validation, normal operational review, and resolution of the owner actions below. The legacy
@@ -47,6 +52,7 @@ an Adapt service-role key or of an Adapt database breach.
 | H-05 | Upgraded WebSocket connections could keep the Node process alive past graceful shutdown. | Tracks ordinary/upgraded sockets and upstream requests, bounds the grace period, then destroys remaining sockets. The upgraded-socket SIGTERM regression passes; the test runner exits instead of hanging. |
 | H-06 | Backend Host validation could not reject a bad public Host through Node because the proxy intentionally rewrites Host to its API target. | Added optional exact `ADAPT_ALLOWED_HOSTS` enforcement at the actual Node front door, including WebSocket upgrades, and enabled it in the production template. Unknown HTTP Host and upgrade Host tests pass. Local behavior is unchanged when unset. |
 | H-07 | Baseline npm audit also reported a high PostCSS advisory. | Added a global PostCSS `8.5.29` override after a nested override proved incompatible. Both Next and Tailwind resolve to the patched version; clean install/build/audit pass. |
+| H-08 | Integration added `R10` and credit-plan defaults whose source-tree locations were not sufficient for the remediated non-editable deployment. The new package-coverage test also caught the packaged Alembic directory lacking an `__init__.py`. | Preserved `R10` in `adapt/migrations/versions`, moved the unpriced plan example into package data, added the migrations package marker and extended the extracted-wheel regression. Clean installed startup, migration and SQLCipher smoke pass. |
 
 ### Medium
 
@@ -67,11 +73,14 @@ an Adapt service-role key or of an Adapt database breach.
 |---|---|---|
 | L-01 | `/api` advertised `/api/openapi.json` even when production disabled that endpoint. | The index now reports the configured `app.openapi_url` (`null` in production), with a regression test. |
 | L-02 | Package metadata lacked a backend README and the offline wheel regression lacked a declared build tool. | Added the package README and declared `wheel` for build/test environments; extracted-wheel tests pass without global build dependencies. |
+| L-03 | Newly integrated repository-level lockfiles made Next infer the wrong output-tracing root for the Adapt frontend. | Set `outputFileTracingRoot` explicitly to the frontend directory and rebuilt all 22 pages without the incorrect-root warning. |
 
 ## Validation evidence
 
-All results below were observed in the supplied Linux environment on 2026-10-23. Python was
-3.11.2 and Node was 22.22.3. No real provider credential was used.
+Results were observed in the supplied Linux environment during the original audit on 2026-10-23
+and revalidated after integration on 2026-10-24. Unless explicitly described as pre-merge history,
+the results below are from integrated commit `58d0df83085080e60598a7852fabe29d80730dd9`.
+Python was 3.11.2 and Node was 22.22.3. No real provider credential was used.
 
 ### Clean production install and package checks
 
@@ -115,11 +124,14 @@ npm run test:dev
 - clean install succeeded; npm audit: **0 vulnerabilities**;
 - resolved Next `15.5.28`, PostCSS `8.5.29`, undici `8.12.2`;
 - optimized production build succeeded; **22/22 pages** generated;
-- contract checked **146 backend routes against 138 frontend calls**, plus four scene kinds;
+- contract checked **148 backend routes against 138 frontend calls**, plus four scene kinds;
   TypeScript passed;
-- environment tests **2/2**, proxy/server tests **4/4**, engine **15/15**, library **61/61**,
+- environment tests **2/2**, proxy/server tests **4/4**, engine **20/20**, library **62/62**,
   development launcher **5/5** passed;
 - upgraded-socket and ordinary proxy SIGTERM tests completed without a hung runner.
+
+Next reports that ESLint is not installed. The lint evidence above is the repository contract
+checker plus `tsc --noEmit`; an ESLint-clean result is not claimed.
 
 A separate minimal-runtime check used:
 
@@ -130,9 +142,8 @@ npm audit --omit=dev
 npm run test:env
 ```
 
-**Result:** 29 production packages installed, zero vulnerabilities, environment tests 2/2. npm
-listed two optional sharp/wasm packages as extraneous; this did not produce an audit error or affect
-the smoke. It is noted rather than hidden.
+**Result:** 29 production packages installed, zero vulnerabilities, environment tests 2/2. The
+final production-only frontend then passed the complete proxy/TLS/database-restart smoke below.
 
 ### Focused hosting/security/migration/failure tests
 
@@ -151,10 +162,11 @@ cd /home/user/Genlink/Adapt-main/backend
   tests/test_config_secrecy.py \
   tests/test_realtime_guards.py \
   tests/test_failure_loop.py \
-  tests/test_llm_consent.py
+  tests/test_llm_consent.py \
+  tests/test_credits_and_tenancy.py
 ```
 
-**Result:** `181 passed, 1 warning in 58.81s`. The warning is Starlette's TestClient/httpx
+**Result:** `214 passed, 1 warning in 62.67s`. The warning is Starlette's TestClient/httpx
 deprecation notice, not a hosting failure.
 
 ### Full backend suite
@@ -164,17 +176,10 @@ cd /home/user/Genlink/Adapt-main/backend
 /tmp/adapt-dev-venv/bin/python -m pytest -q
 ```
 
-**Result:** `1 failed, 1587 passed, 2 skipped, 1 warning in 266.91s`.
+**Result:** `1621 passed, 2 skipped, 1 warning in 283.79s`.
 
-The sole failure is:
-
-```text
-tests/test_ai_efficiency.py::test_the_docs_carry_the_same_table_the_code_does
-AssertionError: docs/EFFICIENCY.md does not exist
-```
-
-That pre-existing AI-efficiency documentation asset is outside this deployment-only scope. No
-learning code was changed to hide it, and a fully green backend suite is **not** claimed.
+The incoming `main` supplied `docs/EFFICIENCY.md`, removing the pre-merge run's sole missing-document
+failure. No test was removed or weakened to obtain this green result.
 
 ### Actual production proxy/TLS/restart/lifecycle smoke
 
@@ -219,9 +224,10 @@ CA test, load test or live-AI-provider test.
 ```
 
 **Results:** backup test passed (both storage modes inside the test); deployment asset tests
-passed; selected import/unused-name lint passed. The project has pre-existing line-length/style
-findings outside this work, so a repository-wide Ruff-clean claim is not made. `git diff --check`
-passed.
+passed; selected import/unused-name lint passed, including the integrated credit/migration files.
+The project has pre-existing line-length/style findings outside this work, so a repository-wide
+Ruff-clean claim is not made. The integrated `git diff HEAD --check -- Adapt-main` check passed
+before the integration commit; unrelated incoming content was not reformatted.
 
 The systemd unit text was checked with `systemd-analyze verify` after replacing only unavailable
 `/opt/adapt` executable paths with the validated temporary paths. It produced no errors. This does
@@ -229,17 +235,17 @@ not assert that systemd ran the services.
 
 ### Secret and archive review
 
-The redacted scan read tracked text files, the complete `.next` build and ZIP members in memory;
-it did not print matched values. A final worktree/build/deliverable pass covered **997 files**.
-High-confidence patterns included private-key headers, JWTs and several provider token formats.
+The redacted scan read tracked text files, text assets throughout the `.next` tree and, in the
+pre-merge review, ZIP members in memory; it did not print matched values. The final merged worktree/build pass covered
+**1,598 text files** and skipped 78 binary/large files. High-confidence patterns included private-key
+headers, JWTs and several provider token formats.
 
-- Current Adapt worktree and built assets: only two pattern matches, both explicitly named test
-  fixtures in `test_resource_providers.py` and `test_round2_a_public_privacy_and_logs.py`.
-- Complete `.next`: no high-confidence credential pattern. Broader keywords were code terms
-  (`password`, `passphrase`, `authorization`), with no long quoted credential assignment found.
-- `Adapt-main (3).zip`: same two test fixtures; archived `.env.example` values inspected were
-  placeholders. This original source archive is not the release path; use the runbook's exact-
-  commit `git archive` procedure.
+- Current merged worktree and built assets: two pattern matches, both the explicitly named test
+  fixture in `test_resource_providers.py` duplicated under `Adapt-main/backend/tests/` and the
+  incoming `adapt/backend/tests/` tree. No match was reported in `.next`.
+- Pre-merge `Adapt-main (3).zip` review found the same kind of test fixtures; archived
+  `.env.example` values inspected were placeholders. Use the runbook's exact-commit `git archive`
+  procedure rather than a source ZIP.
 - Legacy ZIP in prior Git history: one unexpired Supabase `anon` JWT in `.env`; removed from the
   remediation commit, but still subject to the owner actions in H-01.
 - No tracked live `.env`, database, private key or generated build directory was staged.
@@ -256,8 +262,10 @@ was revealed in chat, test output, reports or new files.
    public CA/DNS was available. Run `nginx -t`, start the actual units, test public HTTPS and
    WebSockets on the target before exposure. The supplied Nginx file is reviewed/tested statically,
    not executed here.
-3. **Full-suite pre-existing failure:** restore or author the unrelated `docs/EFFICIENCY.md` in a
-   separate documentation/AI-efficiency task if a completely green suite is required.
+3. **Tenancy/payment scope:** integrated `R10` supplies an institution-scoped credit and admin
+   plane, not institution-wide isolation/reporting for every learning table, and not payment
+   processing. Do not describe the deployment as fully multi-tenant or as a payment system; see
+   `BACKEND_READINESS.md` for the exact boundary.
 4. **No capacity certification:** no production load test, soak test, multi-worker test or HA
    failover was performed. Resource limits are conservative starting points. Keep one API worker;
    process-local rate limits and SQLite writer behavior require a redesign before horizontal scale.
