@@ -45,7 +45,8 @@ prototype is shippable today; a pilot that touches real learners is not.
 | F-16 | S1 | Root Genlink `package-lock.json` audit reports **27 vulnerabilities**: 18 high, 9 moderate, 0 critical (transitive `react-router`, `postcss`, `rollup`, `js-yaml`, `lodash`, `minimatch`, etc.). This lockfile was only added on `main` and was not covered by the earlier single-frontend audit. | `release/evidence/dependency-audit.json::npm_genlink_root` | **OPEN — report only.** No `--force`/unpinned upgrade was applied. Must be triaged before distributing the extracted Genlink app. |
 | F-17 | S2 | Integration route still ignores `institution_id` and does not debit the new wallets; credit enforcement applies to stateful Adapt generation, not to the stateless Genlink contract. | `SYSTEM_ARCHITECTURE.md` §3–4, backend contract tests | **OPEN — new contract needed** if institution-scoped integration traffic is a pilot requirement. |
 | F-18 | S2 | One full-suite run failed `test_typed_topic_flows_from_prepare_through_all_three_lesson_moments`: an async lesson-upgrade job reported `state=fallback` instead of `ready`. The same test passed 5/5 in isolation and the next full-suite rerun passed 1617/1617. Cause not proven; credit enforcement and the new session commit both touch the shared test services. | `release-artifacts/backend-pytest-final.log` vs `backend-pytest-final-rerun.log` | **FLAKY — observed once, not hidden.** Full gate rerun is green; keep the test and watch for recurrence under load. |
-| F-19 | S2 | First CI run after the third merge failed the `Backend pytest` job with exit 1, but the log upload reported `No files were found with the provided path: release-artifacts/backend-pytest.log`. Cause: the backend job piped pytest through `tee` into a directory it had not created, so `set -o pipefail` turned the missing parent directory into a job failure — **not a backend test failure**. | GH Actions run `40060477554`, job `120772677039` annotations | **FIXED in workflow.** `mkdir -p ../../release-artifacts` added before the suite; a fresh run will confirm. |
+| F-19 | S2 | First CI run after the third merge failed the `Backend pytest` job with exit 1, but the log upload reported `No files were found with the provided path: release-artifacts/backend-pytest.log`. Cause: the backend job piped pytest through `tee` into a directory it had not created, so `set -o pipefail` turned the missing parent directory into a job failure — **not a backend test failure**. | GH Actions run `40060477554`, job `120772677039` annotations | **FIXED in workflow.** `mkdir -p ../../release-artifacts` added before the suite; the rerun produced the log artifact. |
+| F-20 | S2 | A clean-venv CI-like run exposed a genuinely flaky assertion in `tests/test_content_engine.py::TestContentRoute::test_two_learners_do_not_share_an_answer_key_by_position`: it demanded two independent 4-option shuffles differ, which fails ~1/24 of the time. This is why the second CI backend job still failed after F-19 was fixed. | `/tmp/ci-clean-pytest.log` (clean venv, 1 failed / 1644 passed); 5 isolated reruns after fix green | **FIXED in test.** Sample 8 learners and assert >1 distinct order (collision probability (1/24)^7) while the option set stays identical. |
 
 ### Fixed during this gate (with regression tests)
 
@@ -60,6 +61,7 @@ prototype is shippable today; a pilot that touches real learners is not.
 | Engine console implied live billing/metering | earlier branch copy/labels were superseded by `main` PR #5's rebuilt console, which ships its own "example / not live billing / no live institution connected" labels; this branch took main's version on merge | `release/e2e_smoke.py --web` asserts sample + no-live-connection labels; new `npm run test:e2e:engine` exists but is BLOCKED until Chromium is available |
 | Critical/high Adapt-frontend npm advisories (F-01) | `main` PR #5 upgraded `next` to 15.5.28 and pinned `postcss`/`undici` overrides; this branch re-audited after merging | `release/evidence/dependency-audit.json` now reports 0 Adapt-frontend vulnerabilities |
 | CI backend job failed on a missing log directory (F-19) | `.github/workflows/release-gate.yml`: `mkdir -p ../../release-artifacts` before `pytest \| tee` | fresh CI run after the fix; the suite itself already passes 1645/2 locally |
+| Flaky two-learner shuffle assertion (F-20) | `tests/test_content_engine.py`: sample 8 learners, assert >1 distinct permutation instead of requiring 2 to differ | 5 isolated reruns green; clean-venv full-suite rerun recorded below |
 
 ## Test matrix — exact commands and outcomes
 
@@ -72,7 +74,7 @@ All commands run from `/home/user/Genlink` unless stated. Python is the reposito
 | Frontend lint/type/route contract | `cd Adapt-main/frontend && npm run lint` | exit 0; 146 backend routes vs 138 frontend calls, tsc clean |
 | Frontend unit tests | `npm run test:lib && npm run test:engine && npm run test:server && npm run test:env && npm run test:dev` | 61/15/2/2 + dev suite pass, exit 0 |
 | Frontend production build | `npm run build` | exit 0; 22 static pages generated, `.next/BUILD_ID` present |
-| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 238.78 s, exit 0 after the third merge. One earlier pre-third-merge run had 1 flaky async-job failure (F-18); isolated test passed 5/5 and the rerun was fully green. |
+| Full backend suite | `cd Adapt-main/backend && /home/user/Genlink/.venv/bin/python -m pytest -q` | **1645 passed, 2 skipped** in 238.78 s, exit 0 after the third merge. A separate clean-venv CI-like run (`/tmp/ci-venv`, no `ADAPT_*` env) exposed F-20 (1 failed / 1644 passed); after the fix the clean-venv rerun was **1645 passed, 2 skipped** in 231.30 s. One earlier pre-third-merge run had 1 flaky async-job failure (F-18); isolated test passed 5/5 and the rerun was fully green. |
 | Credit + contract + concurrency targeted | `pytest -q tests/test_session_cookie_commit.py tests/test_credits_and_tenancy.py tests/test_integration_release_contract.py` | 55 passed in 3.86 s |
 | Reference caller | `python3 -m unittest discover -s integration -p 'test_*.py'` | **17/17**; measured 64 concurrent caller adaptations in 591 ms (fake server, in-process) |
 | Diff-aware lint | `.venv/bin/python release/lint_changed.py --base origin/main --out release/evidence/lint-changed.json` | PASS; 22 changed Python files, 31 inherited Ruff findings, 0 on added lines |
@@ -166,6 +168,8 @@ generation **402 `credits_exhausted`** with `mode=standard`, 5 unmetered fallbac
 14. F-19 was a CI harness defect (missing `release-artifacts` directory), not a backend
     regression. The fresh workflow run after the fix must be green before treating CI as
     verified.
+15. F-20 was a flaky test, not a product regression. It is fixed, but the final CI run must be
+    green before the gate is called reliable.
 
 ## Conflict report for the three `main` merges
 

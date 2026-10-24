@@ -158,6 +158,22 @@ jobs:
           path: release-artifacts/backend-pytest.log
           if-no-files-found: warn
 
+      - name: Publish backend failure tail to the job summary
+        if: always()
+        shell: bash
+        run: |
+          log=release-artifacts/backend-pytest.log
+          if [ -f "$log" ]; then
+            {
+              echo '### Backend suite tail'
+              echo '```'
+              tail -80 "$log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '### Backend suite log was not produced' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   release-smoke:
     name: Stress, migration, E2E, dependency audit, browser smoke
     needs: [static-contract, backend-tests]

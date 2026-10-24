@@ -114,7 +114,10 @@ A pilot means real learners. Do not start one until every box is ticked.
       suite run, capture server logs and add a regression test; do not disable the test.
 - [x] Close F-19: the first post-merge CI backend failure was a missing
       `release-artifacts/` directory before the `tee`, not a test failure. Workflow now
-      creates the directory; confirm the fresh run is green before relying on CI evidence.
+      creates the directory; the rerun produced the log artifact.
+- [x] Close F-20: a clean-venv run exposed a ~1/24-flaky two-learner shuffle assertion. It now
+      samples 8 learners and asserts >1 distinct order; 5 isolated reruns pass. Confirm the
+      final CI run is green before relying on CI evidence.
 - [ ] Write the pilot protocol that `docs/PILOT.md` currently points to: who the learners
       are, consent text, what data leaves which system, retention/delete process, and the
       exact "pilot data" label used in the UI.

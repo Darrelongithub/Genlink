@@ -554,13 +554,18 @@ class TestContentRoute:
         assert body["stored"] is False, "a GET must never write"
 
     def test_two_learners_do_not_share_an_answer_key_by_position(self, client):
-        # Two learners, created one after the other so each request runs under its own cookie and
-        # its own CSRF header — the shuffle seed is (learner, concept), so the orders must differ
-        # while the option *set* stays the same question.
+        # The shuffle seed is (learner, concept), so the option *set* is the same question for
+        # every learner while the order is learner-specific. A two-learner sample used to assert
+        # `orders[0] != orders[1]`; with four options the two independent shuffles coincide about
+        # 1 time in 24, which made CI fail intermittently for a property that actually holds.
+        # Sample eight independent learners instead: all eight sharing one permutation has
+        # probability (1/24)^7, so the assertion below tests the real invariant without being a
+        # coin flip.
         orders = []
-        for name in ("Rowan One", "Rowan Two"):
+        for index in range(8):
             created = client.post(
-                "/api/v1/students", json={"display_name": name, "age_band": "16-18", "as_guest": True}
+                "/api/v1/students",
+                json={"display_name": f"Rowan {index}", "age_band": "16-18", "as_guest": True},
             )
             assert created.status_code == 200, created.text
             headers = {"x-csrf-token": created.json()["csrf_token"]}
@@ -569,8 +574,10 @@ class TestContentRoute:
                     "/api/v1/content/pack?topic=calculus&concept=calc_rate", headers=headers
                 ).json()["pair"]["A"]["options"]
             )
-        assert sorted(orders[0]) == sorted(orders[1]), "the same question, so the same options"
-        assert orders[0] != orders[1], "an 'always pick the second one' habit must not score"
+        assert all(sorted(order) == sorted(orders[0]) for order in orders), \
+            "the same question, so the same options"
+        assert len({tuple(order) for order in orders}) > 1, \
+            "an 'always pick the second one' habit must not score across learners"
 
     def test_an_unknown_concept_names_the_ones_that_exist(self, client, learner):
         response = client.get(
