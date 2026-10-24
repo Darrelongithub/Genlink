@@ -48,8 +48,9 @@ with head `R10`; E2E 9/9 including the exhausted-credit 402 case; secret scan 13
 files / 0 high; host scan 187 Adapt + 179 Genlink browser files / 0 loopback calls;
 diff-aware lint 23 changed files / 68 inherited findings / 0 on added lines; **Adapt-frontend
 npm audit 0, root Genlink npm 18 high + 9 moderate, pip 4 advisories**; browser E2E is
-`BLOCKED` for all four suites in the sandbox. CI run `40068913606` at `f42f1a7` is fully
-green across all three jobs after the fourth merge; the branch is ready to merge.
+`BLOCKED` for all four suites in the sandbox. CI run `40070443621` at `652460a` is fully
+green across all three jobs after the fourth merge and the F-18 fix; the branch is ready to
+merge.
 
 ## 1. Demo Ready — conditional YES
 
@@ -123,7 +124,7 @@ A pilot means real learners. Do not start one until every box is ticked.
       samples 8 learners and asserts >1 distinct order; 5 isolated reruns pass.
 - [x] Close F-21: CI forces ANSI colour into `adapt host --help`; the hosting tests now strip CSI
       sequences before asserting flags. 25/25 hosting tests pass with and without
-      `FORCE_COLOR=1`. Confirm the final CI run is green before relying on CI evidence.
+      `FORCE_COLOR=1`. Final CI run `40070443621` is green, so the CI evidence is reliable.
 - [ ] Write the pilot protocol that `docs/PILOT.md` currently points to: who the learners
       are, consent text, what data leaves which system, retention/delete process, and the
       exact "pilot data" label used in the UI.
