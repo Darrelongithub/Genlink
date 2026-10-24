@@ -16,6 +16,7 @@ import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..deps import db_session, require_csrf, shared_bank_write, student_from_request
@@ -93,7 +94,9 @@ def lessons_state() -> dict[str, Any]:
 
 
 @router.get("/status")
-def status(s: Session = Depends(db_session), student: Student = Depends(student_from_request)) -> dict[str, Any]:
+def status(
+    s: Session = Depends(db_session), student: Student = Depends(student_from_request)
+) -> dict[str, Any]:
     """What a learner may know about the running system (brief §3).
 
     The operator's view -- mode, paths, driver, provider state, budgets, limiter buckets -- is
@@ -204,7 +207,9 @@ _PACING_NAMES = {
 
 
 @router.get("/quotas")
-def quotas(s: Session = Depends(db_session), student: Student = Depends(student_from_request)) -> dict[str, Any]:
+def quotas(
+    s: Session = Depends(db_session), student: Student = Depends(student_from_request)
+) -> dict[str, Any]:
     from ...security.ratelimit import effective_limits
 
     st = get_settings()
@@ -259,7 +264,9 @@ def privacy() -> dict[str, Any]:
 
 
 @router.get("/voice/capabilities")
-def voice_capabilities(s: Session = Depends(db_session), student: Student = Depends(student_from_request)) -> dict[str, Any]:
+def voice_capabilities(
+    s: Session = Depends(db_session), student: Student = Depends(student_from_request)
+) -> dict[str, Any]:
     st = get_settings()
     return {
         "stt": STT.capabilities(st),
@@ -298,7 +305,12 @@ async def _read_capped(file: UploadFile, cap: int) -> bytes:
 
 
 @router.post("/voice/transcribe")
-async def transcribe(file: UploadFile = File(...), sample_rate: int = Form(16000, ge=8_000, le=96_000), s: Session = Depends(db_session), student: Student = Depends(require_csrf)) -> dict[str, Any]:
+async def transcribe(
+    file: UploadFile = File(...),
+    sample_rate: int = Form(16000, ge=8_000, le=96_000),
+    s: Session = Depends(db_session),
+    student: Student = Depends(require_csrf),
+) -> dict[str, Any]:
     """REST fallback for the websocket: upload a WAV/PCM clip, get a transcript.
 
     Decoding and inference go to a worker thread, exactly as the websocket pipeline does
@@ -338,8 +350,25 @@ async def transcribe(file: UploadFile = File(...), sample_rate: int = Form(16000
     return res.as_dict()
 
 
+class SpeakBody(BaseModel):
+    """A bounded speech request.
+
+    This route used to accept ``dict[str, Any]``: any JSON object at all, of any shape,
+    with the text silently truncated at 2000 characters *after* it had been parsed and
+    held in memory. A schema is the difference between "the client sent something odd"
+    (a 422 naming the field) and "the server allocated whatever the client felt like".
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    text: str = Field(min_length=1, max_length=2000)
+    gender: str = Field(default="female", max_length=16)
+
+
 @router.post("/voice/speak")
-async def speak(body: dict[str, Any], s: Session = Depends(db_session), student: Student = Depends(require_csrf)) -> dict[str, Any]:
+async def speak(
+    body: SpeakBody, s: Session = Depends(db_session), student: Student = Depends(require_csrf)
+) -> dict[str, Any]:
     """Return WAV audio if Kokoro is installed, otherwise tell the client to use its own voice."""
     from fastapi.responses import Response
 
@@ -352,21 +381,33 @@ async def speak(body: dict[str, Any], s: Session = Depends(db_session), student:
 
     from ...voice.tts import synthesize_or_none
 
-    text = str(body.get("text") or "")[:2000]
-    gender = "male" if str(body.get("gender", "female")).lower().startswith("m") else "female"
+    text = body.text
+    gender = "male" if body.gender.lower().startswith("m") else "female"
     # Same reason as /voice/transcribe: Kokoro is CPU work, not I/O.
     out = await asyncio.to_thread(synthesize_or_none, get_settings(), text, gender=gender)
     if out is None:
-        return {"available": False, "reason": "local TTS engine not installed", "fallback": "browser speechSynthesis"}
+        return {
+            "available": False,
+            "reason": "local TTS engine not installed",
+            "fallback": "browser speechSynthesis",
+        }
     audio, rate = out
     from ...voice.audio import encode_wav
 
-    wav = bytes(audio) if isinstance(audio, (bytes, bytearray)) else encode_wav(audio, sample_rate=rate)
+    wav = (
+        bytes(audio)
+        if isinstance(audio, (bytes, bytearray))
+        else encode_wav(audio, sample_rate=rate)
+    )
     return Response(content=wav, media_type="audio/wav", headers={"x-tts-sample-rate": str(rate)})
 
 
 @router.get("/audit")
-def audit(limit: int = 50, s: Session = Depends(db_session), student: Student = Depends(student_from_request)) -> dict[str, Any]:
+def audit(
+    limit: int = 50,
+    s: Session = Depends(db_session),
+    student: Student = Depends(student_from_request),
+) -> dict[str, Any]:
     from ...security.audit import recent
 
     return {"entries": recent(s, actor_id=student.id, limit=max(1, min(200, limit)))}
@@ -392,7 +433,9 @@ def train(
 
 
 @router.get("/events/allowlist")
-def allowlist(s: Session = Depends(db_session), student: Student = Depends(student_from_request)) -> dict[str, Any]:
+def allowlist(
+    s: Session = Depends(db_session), student: Student = Depends(student_from_request)
+) -> dict[str, Any]:
     from ...learning.telemetry import ALLOWED_EVENTS, FORBIDDEN_PAYLOAD_KEYS
 
     return {

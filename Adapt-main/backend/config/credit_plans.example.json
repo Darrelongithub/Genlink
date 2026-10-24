@@ -1,0 +1,74 @@
+{
+  "_comment": [
+    "Example Adapt Credit plans. This file is CONFIGURATION, not a price list: it ships",
+    "with no currency and no price, because those are the operator's commercial terms",
+    "and typing them for them is how a codebase starts asserting a price it cannot back.",
+    "Copy it, edit the copy, and point ADAPT_CREDIT_PLANS_PATH at it. Every quantity is",
+    "an integer; floats are rejected. 'learner_limit' is credits per learner per period,",
+    "0 meaning no per-learner cap. 'allow_negative' is false everywhere: a wallet stops",
+    "at zero unless an operator deliberately says otherwise.",
+    "",
+    "Action names must exist in adapt.credits.plans.ACTIONS. Anything unmetered --",
+    "standard notes, existing material, exports, attempts, review -- is not a plan row",
+    "and is never charged."
+  ],
+  "version": 1,
+  "plans": [
+    {
+      "slug": "unmetered",
+      "name": "Standard (no credit pool)",
+      "period": "annual",
+      "included_credits": 0,
+      "learner_limit": 0,
+      "allow_negative": false,
+      "action_costs": {
+        "explain": 0,
+        "generate_check": 0,
+        "personalised_lesson": 0,
+        "full_assessment": 0
+      }
+    },
+    {
+      "slug": "starter",
+      "name": "Starter",
+      "period": "annual",
+      "included_credits": 5000,
+      "learner_limit": 150,
+      "allow_negative": false,
+      "action_costs": {
+        "explain": 1,
+        "generate_check": 2,
+        "personalised_lesson": 5,
+        "full_assessment": 10
+      }
+    },
+    {
+      "slug": "core",
+      "name": "Core",
+      "period": "annual",
+      "included_credits": 25000,
+      "learner_limit": 300,
+      "allow_negative": false,
+      "action_costs": {
+        "explain": 1,
+        "generate_check": 2,
+        "personalised_lesson": 5,
+        "full_assessment": 10
+      }
+    },
+    {
+      "slug": "plus",
+      "name": "Plus",
+      "period": "annual",
+      "included_credits": 75000,
+      "learner_limit": 600,
+      "allow_negative": false,
+      "action_costs": {
+        "explain": 1,
+        "generate_check": 2,
+        "personalised_lesson": 5,
+        "full_assessment": 10
+      }
+    }
+  ]
+}

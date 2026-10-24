@@ -417,12 +417,26 @@ def _authorized(request: Request) -> tuple[bool, str]:
     if token:
         provided = _provided_token(request)
         return (bool(provided) and hmac.compare_digest(token, provided or ""), "integration_token")
-    if auth.demo_passphrase_required():
-        return (
-            auth.check_demo_passphrase(request.headers.get("x-adapt-demo-passphrase")),
-            "demo_passphrase",
-        )
+    if _public_tunnel():
+        # A world-reachable door is never open by default. Before this check, a tunnel
+        # with no ``ADAPT_DEMO_PASSPHRASE`` set fell through to ``return True, "open"``:
+        # the LAN default leaking onto the public internet, where the endpoint is a free
+        # compute oracle for anyone who finds the hostname. The passphrase still works
+        # where an operator set one; otherwise the door needs its token.
+        if auth.demo_passphrase_required():
+            return (
+                auth.check_demo_passphrase(request.headers.get("x-adapt-demo-passphrase")),
+                "demo_passphrase",
+            )
+        return False, "integration_token"
     return True, "open"
+
+
+def _public_tunnel() -> bool:
+    """Is this process reachable from the internet? Read per call, never captured."""
+    from ...config import get_settings
+
+    return get_settings().mode == "tunnel"
 
 
 # --------------------------------------------------------------------------- #
