@@ -108,9 +108,11 @@ def _scenario(name: str, measured: dict[str, Any], checks: list[tuple[bool, str,
 # --------------------------------------------------------------------------- #
 class Server:
     def __init__(self, data_dir: pathlib.Path, *, rate_multiplier: float = 1.0,
-                 log_path: pathlib.Path | None = None, providers_enabled: bool = False):
+                 log_path: pathlib.Path | None = None, providers_enabled: bool = False,
+                 operator_token: str | None = None):
         self.data_dir = data_dir
         self.rate_multiplier = rate_multiplier
+        self.operator_token = operator_token
         # Default OFF for a reproducible, credential-free gate: four public resource
         # providers would otherwise add real network latency/flakiness to a test that
         # is about Adapt's own concurrency. The outage diagnostic opts back in.
@@ -136,6 +138,8 @@ class Server:
             "ADAPT_FRONTEND_ORIGIN": self.base,
             "PYTHONPATH": str(ADAPT / "backend" / "src"),
         })
+        if self.operator_token:
+            env["ADAPT_OPERATOR_TOKEN"] = self.operator_token
         if not self.providers_enabled:
             env.update({
                 "ADAPT_OPENALEX_ENABLED": "false",
@@ -562,8 +566,13 @@ def scenario_retry_storm_and_credits(base: str) -> None:
         "reference_caller_adapted": result.adapted,
         "openapi_status": status, "openapi_path_count": len(paths),
         "credit_related_paths": credit_paths,
-        "backend_credit_enforcement": "present" if credit_paths else "absent (presentation-only engine console)",
-        "exhausted_credit_case": "not testable: no server-side credit ledger, balance or debit route exists",
+        "backend_credit_enforcement": "present (institution wallet, ledger, operator admin plane)"
+        if credit_paths else "absent (presentation-only engine console)",
+        "exhausted_credit_case": (
+            "now covered live by release/e2e_smoke.py::run_exhausted_credits and in the backend "
+            "suite by test_credits_and_tenancy.py::test_an_empty_wallet_stops_generation_and_says_what_still_works"
+            if credit_paths else "not testable: no server-side credit ledger, balance or debit route exists"
+        ),
     }, [
         (result.attempts == 3 and not result.adapted, "retry storm is bounded and falls back", f"{result.attempts}/{result.source}"),
         (status == 200 and len(paths) > 20, "OpenAPI is readable for the capability check", f"{status}/{len(paths)}"),

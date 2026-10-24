@@ -13,6 +13,7 @@
     "integration/test_reference_client.py",
     "release/__init__.py",
     "release/audit_summary.py",
+    "release/check_second_layout.py",
     "release/e2e_smoke.py",
     "release/host_scan.py",
     "release/lint_changed.py",
@@ -104,6 +105,13 @@
       "ruff_findings_in_file": 0,
       "ruff_findings_on_added_lines": 0,
       "added_lines": 127
+    },
+    {
+      "path": "release/check_second_layout.py",
+      "untracked": false,
+      "ruff_findings_in_file": 0,
+      "ruff_findings_on_added_lines": 0,
+      "added_lines": 78
     },
     {
       "path": "release/e2e_smoke.py",

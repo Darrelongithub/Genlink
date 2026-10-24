@@ -41,8 +41,8 @@ def main() -> int:
     os.environ["ADAPT_DB_ENCRYPTION"] = "field-only"
     os.environ["ADAPT_MODE"] = "local"
 
-    from adapt.config import get_settings  # noqa: E402
-    from adapt.db.engine import create_db_engine  # noqa: E402
+    from adapt.config import get_settings
+    from adapt.db.engine import create_db_engine
 
     get_settings.cache_clear()
     engine, _info = create_db_engine(get_settings())

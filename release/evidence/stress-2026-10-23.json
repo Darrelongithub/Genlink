@@ -1,6 +1,6 @@
 {
   "harness": "release/stress_check.py",
-  "generated_at": "2026-10-23T23:47:33.270533+00:00",
+  "generated_at": "2026-10-24T03:30:01.547802+00:00",
   "python": "3.11.2",
   "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
   "ai_credentials_used": false,
@@ -9,7 +9,7 @@
       "name": "backend_startup_and_no_ai_credential",
       "measured": {
         "healthz_status": 200,
-        "healthz_ms": 2.58,
+        "healthz_ms": 1.93,
         "status_route_status": 200,
         "status_route_requires_session": true,
         "llm_key_redacted_from_public_status": true,
@@ -45,15 +45,15 @@
       "measured": {
         "learners": 20,
         "requests": 100,
-        "wall_ms": 523.46,
-        "measured_requests_per_second": 191.04,
+        "wall_ms": 501.75,
+        "measured_requests_per_second": 199.3,
         "latency": {
           "n": 100,
-          "min_ms": 36.61,
-          "p50_ms": 99.42,
-          "p95_ms": 116.31,
-          "max_ms": 128.88,
-          "mean_ms": 96.6
+          "min_ms": 5.11,
+          "p50_ms": 96.16,
+          "p95_ms": 109.37,
+          "max_ms": 112.87,
+          "mean_ms": 89.63
         },
         "status_counts": {
           "200": 100
@@ -75,7 +75,7 @@
         {
           "ok": true,
           "label": "no request hit the client timeout",
-          "detail": "128.88"
+          "detail": "112.87"
         }
       ],
       "outcome": "PASS"
@@ -84,14 +84,14 @@
       "name": "duplicate_submissions",
       "measured": {
         "identical_requests": 50,
-        "wall_ms": 250.14,
+        "wall_ms": 228.08,
         "latency": {
           "n": 50,
-          "min_ms": 29.4,
-          "p50_ms": 74.66,
-          "p95_ms": 88.94,
-          "max_ms": 91.74,
-          "mean_ms": 71.13
+          "min_ms": 32.33,
+          "p50_ms": 69.16,
+          "p95_ms": 80.6,
+          "max_ms": 84.24,
+          "mean_ms": 64.61
         },
         "distinct_plans": 1,
         "distinct_request_ids": 50,
@@ -123,17 +123,17 @@
       "measured": {
         "valid_body_bytes": 115323,
         "valid_status": 200,
-        "valid_elapsed_ms": 149.14,
+        "valid_elapsed_ms": 127.19,
         "valid_blocks_returned": 414,
         "valid_matches_schema": true,
         "oversize_body_bytes": 8388609,
         "oversize_urllib_status": 0,
-        "oversize_urllib_ms": 1.61,
+        "oversize_urllib_ms": 1.11,
         "oversize_urllib_note": "client sees connection reset because the server refuses before reading the announced body",
         "oversize_raw_socket_status": 413,
         "oversize_raw_status_line": "HTTP/1.1 413 Request Entity Too Large",
         "health_after_oversize": 200,
-        "health_after_ms": 2.06
+        "health_after_ms": 1.8
       },
       "checks": [
         {
@@ -157,16 +157,16 @@
     {
       "name": "concurrent_ai_capable_route_no_key",
       "measured": {
-        "learner_id": "stu_529c6c6cbd0c44428821",
+        "learner_id": "stu_2f5e0228ea184bac957b",
         "requests": 16,
-        "wall_ms": 226.62,
+        "wall_ms": 210.78,
         "latency": {
           "n": 16,
-          "min_ms": 118.88,
-          "p50_ms": 214.23,
-          "p95_ms": 220.04,
-          "max_ms": 221.67,
-          "mean_ms": 189.25
+          "min_ms": 39.8,
+          "p50_ms": 180.52,
+          "p95_ms": 186.38,
+          "max_ms": 198.49,
+          "mean_ms": 170.4
         },
         "status_counts": {
           "200": 12,
@@ -208,10 +208,14 @@
         "reference_caller_source": "standard_content",
         "reference_caller_adapted": false,
         "openapi_status": 200,
-        "openapi_path_count": 138,
-        "credit_related_paths": [],
-        "backend_credit_enforcement": "absent (presentation-only engine console)",
-        "exhausted_credit_case": "not testable: no server-side credit ledger, balance or debit route exists"
+        "openapi_path_count": 148,
+        "credit_related_paths": [
+          "/api/v1/credits/me",
+          "/api/v1/credits/actions",
+          "/api/v1/admin/institutions/{institution_id}/credits"
+        ],
+        "backend_credit_enforcement": "present (institution wallet, ledger, operator admin plane)",
+        "exhausted_credit_case": "now covered live by release/e2e_smoke.py::run_exhausted_credits and in the backend suite by test_credits_and_tenancy.py::test_an_empty_wallet_stops_generation_and_says_what_still_works"
       },
       "checks": [
         {
@@ -222,7 +226,7 @@
         {
           "ok": true,
           "label": "OpenAPI is readable for the capability check",
-          "detail": "200/138"
+          "detail": "200/148"
         }
       ],
       "outcome": "PASS"
@@ -233,7 +237,7 @@
         "session_created_status": 200,
         "integration_before_restart": 200,
         "me_after_restart_status": 200,
-        "me_after_restart_ms": 11.75,
+        "me_after_restart_ms": 9.83,
         "student_id_survived": true,
         "journey_after_restart_status": 200,
         "integration_after_restart": 200,
@@ -250,7 +254,7 @@
         {
           "ok": true,
           "label": "the same cookie still identifies the same learner after a restart",
-          "detail": "200 {'student_id': 'stu_a0e145ac68234dd1891c', 'display_name': 'Release Stress', 'role': 'student', 'onboarding_complete': False, 'diagnostic_complete': False, 'baseline_started': "
+          "detail": "200 {'student_id': 'stu_b3aa8ac28c0243949396', 'display_name': 'Release Stress', 'role': 'student', 'onboarding_complete': False, 'diagnostic_complete': False, 'baseline_started': "
         },
         {
           "ok": true,
@@ -280,9 +284,9 @@
       "measured": {
         "hold_seconds": 2.0,
         "stateless_integration_during_lock": 200,
-        "integration_ms": 7.83,
+        "integration_ms": 5.39,
         "stateful_write_during_lock": 200,
-        "write_ms": 1675.51,
+        "write_ms": 1671.78,
         "write_body_shape": [
           "event_types_accepted",
           "mode",
@@ -290,7 +294,7 @@
           "started_at"
         ],
         "stateful_write_after_release": 200,
-        "after_release_ms": 13.07
+        "after_release_ms": 10.77
       },
       "checks": [
         {
@@ -330,11 +334,11 @@
         ],
         "latency": {
           "n": 40,
-          "min_ms": 0.96,
-          "p50_ms": 1.19,
-          "p95_ms": 5.81,
-          "max_ms": 8.24,
-          "mean_ms": 2.4
+          "min_ms": 0.75,
+          "p50_ms": 0.92,
+          "p95_ms": 5.03,
+          "max_ms": 7.28,
+          "mean_ms": 2.01
         }
       },
       "checks": [
@@ -360,18 +364,18 @@
       "name": "diagnostic_concurrent_ai_route_with_providers_enabled",
       "measured": {
         "requests": 16,
-        "wall_ms": 228.99,
+        "wall_ms": 187.68,
         "status_counts": {
           "200": 12,
           "429": 4
         },
         "latency": {
           "n": 16,
-          "min_ms": 136.77,
-          "p50_ms": 221.57,
-          "p95_ms": 224.71,
-          "max_ms": 225.17,
-          "mean_ms": 200.83
+          "min_ms": 103.07,
+          "p50_ms": 164.22,
+          "p95_ms": 183.42,
+          "max_ms": 183.97,
+          "mean_ms": 152.39
         },
         "health_after_concurrency": 200,
         "external_resource_providers": "enabled (real network attempts, may be blocked)"

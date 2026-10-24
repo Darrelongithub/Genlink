@@ -1,6 +1,6 @@
 # Release checklist — Genlink + Adapt
 
-Owner: release engineering. Date: 2026-10-23. Branch `arena/3315ff42-genlink`.
+Owner: release engineering. Date: 2026-10-24. Branch `arena/3315ff42-genlink`.
 Read `RELEASE_READINESS.md` for the decisions and `SYSTEM_ARCHITECTURE.md` for the map.
 **Never tick a box by assuming. Every tick needs a command and an artifact.**
 
@@ -24,8 +24,10 @@ python3 -m unittest discover -s integration -p 'test_*.py'
 .venv/bin/python release/migration_smoke.py
 .venv/bin/python release/e2e_smoke.py --web --demo-script
 (cd Adapt-main/frontend && npm audit --json > ../../release-artifacts/npm-audit.json || true)
+(npm audit --json --package-lock-only > release-artifacts/npm-audit-root.json || true)
 .venv/bin/python -m pip_audit --format json --progress-spinner off > release-artifacts/pip-audit.json || true
-.venv/bin/python release/audit_summary.py --npm release-artifacts/npm-audit.json --pip release-artifacts/pip-audit.json
+.venv/bin/python release/audit_summary.py --npm release-artifacts/npm-audit.json \
+  --npm-root release-artifacts/npm-audit-root.json --pip release-artifacts/pip-audit.json
 bash release/browser_e2e.sh
 ```
 
@@ -34,12 +36,14 @@ CI equivalent: `.github/workflows/release-gate.yml` (jobs `static-contract`,
 lockfile, sets no AI credentials, reports audits without `--force`, and uploads
 `release/evidence/*.json`.
 
-Expected on this branch (after merging main): backend 1583 passed / 2 skipped for
-`Adapt-main/backend`; the mirrored `adapt/backend` pool bound passes its isolated check;
+Expected on this branch (after merging main at `8851869`): backend 1617 passed / 2 skipped
+for `Adapt-main/backend` (one earlier run had a flaky async-job failure, isolated 5/5 and
+full rerun green — F-18); the mirrored `adapt/backend` pool bound passes its isolated check;
 frontend lint + 80 unit tests + build pass; reference caller 17/17; stress 10 scenarios /
-31 checks / 0 failures; migration 4/4; E2E 8/8; secret scan 1313 tracked files / 0 high;
-host scan 183 Adapt + 177 Genlink browser files / 0 loopback calls; diff-aware lint 0
-findings on added lines; **dependency audit reports findings**; browser E2E is `BLOCKED`
+31 checks / 0 failures; migration 4/4 with head `R10`; E2E 9/9 including the exhausted-credit
+402 case; secret scan 1329 tracked files / 0 high; host scan 183 Adapt + 177 Genlink browser
+files / 0 loopback calls; diff-aware lint 0 findings on added lines; **dependency audit
+reports findings in both lockfiles**; browser E2E is `BLOCKED`
 in the sandbox.
 
 ## 1. Demo Ready — conditional YES
@@ -59,35 +63,48 @@ Scope: local/offline presentation, scratch learner data, no public tunnel, no bi
 - [ ] **Before the room:** rehearse on the actual laptop/network once; open the printed
       address on a phone and answer one question in portrait and landscape.
 - [ ] **Do not** use `adapt host --tunnel` or any public URL until F-01 is patched.
-- [ ] Say out loud: "the credit numbers are presentation samples; the backend does not
-      debit credits, and Genlink is not connected yet."
+- [ ] Say out loud: "the `/engine` credit numbers are presentation samples stored in this
+      browser; Adapt now enforces institutional credits server-side, but this console is not
+      connected to that ledger, and Genlink is not connected yet."
+- [x] The real backend exhausted-credit case was measured: 402 `credits_exhausted` with
+      `mode=standard`, unmetered reads still 200. Evidence: `release/evidence/e2e-smoke.json`.
 - [ ] Use only scratch/guest learner ids; delete them afterwards.
 
 Demo go/no-go: **GO** for the scope above. **NO-GO** for a public tunnel, real learner
-data, or any claim that credits/Genlink integration are live.
+data, or any claim that the console wallet/Genlink integration are live.
 
 ## 2. Pilot Ready — currently NO
 
 A pilot means real learners. Do not start one until every box is ticked.
 
-- [ ] Close F-01: patch the critical/high npm advisories in **both** lockfiles
-      (`Adapt-main/frontend/package-lock.json` and the root Genlink `package-lock.json`);
-      re-run `npm audit`, both builds and the gate. Record the new JSON.
+- [ ] Close F-01: patch the critical/high Adapt-frontend npm advisories; re-run `npm audit`,
+      the frontend build and the gate. Record the new JSON.
 - [ ] Close F-02: ship the Genlink caller against `POST /api/v1/integration/adapt`, using
       `integration/reference_client.py` as the behaviour spec. Add its own tests; keep the
       loopback guard for deployed browser code.
-- [ ] Close F-03: decide credits. Either implement a server-side ledger + debit +
-      institution limits + exhausted-credit test, or remove billing language from pilot
-      material and keep `/engine` as a labelled prototype.
+- [ ] Close F-03: wire `/engine` to the real credit endpoints, or keep it explicitly labelled
+      as a prototype and remove billing language from pilot material. Define who holds
+      `ADAPT_OPERATOR_TOKEN`, how institutions/wallets are created, and what a learner sees
+      when the wallet is empty (backend already returns 402 + standard mode).
 - [ ] Close F-04: pinned, tested `setuptools` upgrade; re-run `pip-audit`.
 - [ ] Close F-05: run `npm run test:e2e:banned` and `npm run test:e2e:demo` in a browser-
       capable environment; replace `BLOCKED` with a PASS artifact.
-- [ ] Close F-06: repeat the 12× immediate post-login check under realistic latency; if a
-      401 reappears, capture server logs and fix the auth/session path with a regression test.
+- [x] Close F-06: the post-login 401 was reproduced 12/12 after the `main` merge, fixed by
+      committing the session row in `issue_login`, and pinned by
+      `Adapt-main/backend/tests/test_session_cookie_commit.py`. Final 12× immediate-use loop:
+      0 failures. Still repeat under realistic network latency before pilot.
 - [ ] Close F-07: document/enforce client-side request caps for integration callers.
 - [ ] Close F-08: main deleted the Genlink archive; confirm no distributable ZIP re-adds a
       real `.env`, rotate the publishable key if the old archive circulated, and re-run the
       secret scan.
+- [ ] Close F-16: triage the 18 high / 9 moderate vulnerabilities in the root Genlink
+      `package-lock.json`; patch with reviewed, pinned upgrades only (never `--force`), then
+      re-run `npm audit --package-lock-only` and record the JSON.
+- [ ] Close F-17: decide whether the stateless integration route must be institution-scoped
+      or debit the wallet. Today it ignores `institution_id`; the credit ledger applies to
+      stateful Adapt generation only.
+- [ ] Close F-18: watch the async lesson-upgrade job. If `state=fallback` recurs in a full
+      suite run, capture server logs and add a regression test; do not disable the test.
 - [ ] Write the pilot protocol that `docs/PILOT.md` currently points to: who the learners
       are, consent text, what data leaves which system, retention/delete process, and the
       exact "pilot data" label used in the UI.
@@ -106,8 +123,8 @@ All Pilot items, plus:
 - [ ] Remediate or formally risk-accept every S0/S1 finding in `RELEASE_READINESS.md`.
 - [ ] Load test on the production topology (worker count, reverse proxy, TLS, real DB
       encryption mode); the current 191 req/s is a single sandbox loopback number.
-- [ ] Add institution/tenant scoping and prove one institution cannot read another's data
-      (the integration route currently ignores `institution_id`).
+- [ ] Prove one institution cannot read another's wallet/ledger data, and decide whether the
+      stateless integration route also needs scoping (it still ignores `institution_id`).
 - [ ] Add monitoring, structured log alerts, backup verification and a written rollback
       (including Alembic downgrade behaviour on a copy of production data).
 - [ ] Complete the missing documentation the README lists, or keep the status table and
@@ -133,12 +150,14 @@ Production go/no-go: **NO-GO**.
 | DB locked/busy | 2 s exclusive SQLite hold | stateless route unaffected, stateful write eventually 200 |
 | Retry storm | 12 logical requests × 2 attempts | no request exceeds its attempt bound |
 | Rate limit | multiplier 0.05, 40 requests | 429 with `retry-after`, no 5xx |
+| Exhausted Adapt Credits | `release/e2e_smoke.py::run_exhausted_credits` | 402 `credits_exhausted`, `mode=standard`, unmetered reads 200, learner sees `exhausted=true` |
+| Immediate post-login cookie use | 12× loop in the E2E harness | 0 failures; `issue_login` commits before returning the cookie |
 
 ## 5. Sign-off record
 
 | Role | Name | Date | Decision | Evidence commit |
 | --- | --- | --- | --- | --- |
-| Release engineering | (this gate) | 2026-10-23 | Demo YES (conditional), Pilot NO, Production NO | see final commit hash in the task report |
+| Release engineering | (this gate) | 2026-10-24 | Demo YES (conditional), Pilot NO, Production NO | `FINAL_EVIDENCE_COMMIT` |
 | Backend owner | ________ | ____ | ____ | ____ |
 | Frontend owner | ________ | ____ | ____ | ____ |
 | Product / privacy owner | ________ | ____ | ____ | ____ |

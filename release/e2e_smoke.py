@@ -28,6 +28,7 @@ import json
 import os
 import pathlib
 import platform
+import secrets
 import shutil
 import signal
 import socket
@@ -36,6 +37,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import uuid
 from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -138,6 +140,10 @@ def run_learner_journey(base: str) -> tuple[Journey, dict[str, Any]]:
     consent_at_signup = created.get("consent_analytics") if isinstance(created, dict) else None
 
     j.step("logout", "POST", "/api/v1/logout")
+    # The sign-up CSRF token was revoked with its session. Do not replay it on the
+    # next credential request: a browser would not, and the stale header obscures
+    # the real session-durability check below.
+    j.csrf = ""
     after_logout = j.step("me_after_logout_is_401", "GET", "/api/v1/me", expect=(401,))[0]
     _status, _logged_in = j.step("login", "POST", "/api/v1/login", {"email": email, "password": password})
     _me_status, _me = j.step("me_after_login", "GET", "/api/v1/me")
@@ -267,8 +273,8 @@ def run_learner_journey(base: str) -> tuple[Journey, dict[str, Any]]:
         "delete_status": delete_status,
         "integration_status": integration_status,
         "provider_outage_status": resource_status,
-        "adapt_credits_enforced": False,
-        "exhausted_credit_case": "not testable: no server-side credit ledger or debit route",
+        "adapt_credits_enforced": True,
+        "exhausted_credit_case": "measured separately by run_exhausted_credits(): 402 credits_exhausted, standard mode stays open",
     }
     return j, summary
 
@@ -322,6 +328,108 @@ def run_login_cookie_immediate_use(base: str, attempts: int = 12) -> dict[str, A
     return summary
 
 
+def run_exhausted_credits(base: str, operator_token: str) -> dict[str, Any]:
+    """Live proof of the promise the engine console used to only simulate.
+
+    main added an institution wallet, an operator admin plane and a real 402 on an
+    empty balance. This drives that path over HTTP with a generated operator token:
+    create a plan with a priced ``explain`` action, an institution with a zero
+    balance, join a scratch learner, then ask for generation. The answer must be
+    402 ``credits_exhausted`` naming standard mode, while unmetered reads stay 200.
+    """
+    operator = {"x-adapt-operator-token": operator_token}
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    created_status, created, _h, _ms = _request(
+        "POST", base + "/api/v1/students",
+        body={"display_name": "Credit Exhaustion", "as_guest": True,
+              "consent_analytics": False}, opener=opener, timeout=30,
+    )
+    csrf = created.get("csrf_token", "") if isinstance(created, dict) else ""
+    student_id = created.get("student_id") if isinstance(created, dict) else None
+    learner = {"x-csrf-token": csrf}
+    cookie_header = "; ".join(f"{c.name}={c.value}" for c in jar)
+    learner_with_cookie = {**learner, "Cookie": cookie_header}
+
+    actions_status, actions_doc, _ah, _ams = _request(
+        "GET", base + "/api/v1/credits/actions", headers=learner, opener=opener, timeout=20,
+    )
+    names = [a.get("action") if isinstance(a, dict) else str(a)
+             for a in (actions_doc.get("actions") or [])] if isinstance(actions_doc, dict) else []
+    names = [n for n in names if n]
+    costs = {name: (5 if name == "explain" else 0) for name in names}
+    stamp = f"{int(time.time())}-{secrets.token_hex(3)}"
+    plan_slug = f"release-exhaust-{stamp}"
+    plan_status, _plan, _ph, _pms = _request(
+        "POST", base + "/api/v1/admin/plans",
+        body={"slug": plan_slug, "name": "Release exhaustion plan", "period": "annual",
+              "included_credits": 0, "learner_limit": 0, "allow_negative": False,
+              "action_costs": costs},
+        headers=operator, timeout=30,
+    )
+    inst_status, inst, _ih, _ims = _request(
+        "POST", base + "/api/v1/admin/institutions",
+        body={"name": "Release gate institution", "slug": f"release-{stamp}",
+              "external_ref": "release-gate"},
+        headers=operator, timeout=30,
+    )
+    institution_id = (inst or {}).get("institution", {}).get("id") if isinstance(inst, dict) else None
+    wallet_status = None
+    join_status = None
+    if institution_id:
+        wallet_status = _request(
+            "POST", base + f"/api/v1/admin/institutions/{institution_id}/plan",
+            body={"plan_slug": plan_slug, "reset_balance": False},
+            headers=operator, timeout=30,
+        )[0]
+        join_status = _request(
+            "POST", base + f"/api/v1/admin/institutions/{institution_id}/members",
+            body={"student_id": student_id, "role": "learner", "learner_limit": None},
+            headers=operator, timeout=30,
+        )[0]
+
+    explain_status, explain_doc, _eh, explain_ms = _request(
+        "POST", base + "/api/v1/explain",
+        body={"question": "What is a common denominator?"},
+        headers={**learner_with_cookie, "idempotency-key": uuid.uuid4().hex}, timeout=40,
+    )
+    detail = explain_doc.get("detail") if isinstance(explain_doc, dict) and "detail" in explain_doc else explain_doc
+    detail = detail if isinstance(detail, dict) else {}
+    lessons_status = _request("GET", base + "/api/v1/lessons", headers=learner,
+                              opener=opener, timeout=20)[0]
+    study_status = _request("GET", base + "/api/v1/study/items", headers=learner,
+                            opener=opener, timeout=20)[0]
+    me_status, me_doc, _mh, _mms = _request("GET", base + "/api/v1/credits/me",
+                                            headers=learner, opener=opener, timeout=20)
+    exhausted_flag = me_doc.get("exhausted") if isinstance(me_doc, dict) else None
+
+    measured = {
+        "learner_created": created_status, "actions_endpoint": actions_status,
+        "priced_actions": len(costs), "plan_created": plan_status,
+        "institution_created": inst_status, "wallet_initialised": wallet_status,
+        "membership_created": join_status, "institution_id": institution_id,
+        "generation_status": explain_status, "generation_ms": explain_ms,
+        "error": detail.get("error"), "mode": detail.get("mode"),
+        "fallback_mode": (detail.get("fallback") or {}).get("mode"),
+        "fallback_available": (detail.get("fallback") or {}).get("available"),
+        "unmetered_lessons": lessons_status, "unmetered_study_items": study_status,
+        "credits_me": me_status, "exhausted": exhausted_flag,
+    }
+    checks = {
+        "setup": created_status == 200 and actions_status == 200 and plan_status == 201
+                 and inst_status == 201 and wallet_status == 200 and join_status == 201,
+        "generation_refused_with_402": explain_status == 402 and detail.get("error") == "credits_exhausted",
+        "standard_mode_named": detail.get("mode") == "standard"
+                                and (detail.get("fallback") or {}).get("mode") == "standard",
+        "learning_stays_open": lessons_status == 200 and study_status == 200,
+        "learner_sees_exhaustion": me_status == 200 and exhausted_flag is True,
+    }
+    print(f"  {'ok  ' if all(checks.values()) else 'FAIL'}  exhausted_adapt_credits"
+          f"{' ' * 16} {explain_status} in {explain_ms:.1f} ms")
+    return {"measured": measured, "checks": checks,
+            "outcome": "PASS" if all(checks.values()) else "FAIL"}
+
+
 def run_demo_script(base: str) -> dict[str, Any]:
     """The repo's own HTTP demo walker: the loop over the real public surface."""
     proc = subprocess.run(
@@ -348,7 +456,8 @@ def main() -> int:
     data = tmp / "fresh"
     data.mkdir(parents=True, exist_ok=True)
     # Guest creation is 6/min at multiplier 1; the immediate-use loop needs 12 accounts.
-    server = Server(data, rate_multiplier=10)
+    operator_token = secrets.token_hex(16)
+    server = Server(data, rate_multiplier=10, operator_token=operator_token)
     web: WebServer | None = None
     report: dict[str, Any] = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -362,6 +471,12 @@ def main() -> int:
         journey, summary = run_learner_journey(server.base)
         report["steps"] = journey.steps
         report["learner_journey"] = summary
+        report["exhausted_credits"] = run_exhausted_credits(server.base, operator_token)
+        report["checks"].append({
+            "name": "exhausted_adapt_credits_returns_402_and_standard_stays_open",
+            "ok": report["exhausted_credits"]["outcome"] == "PASS",
+            "detail": json.dumps(report["exhausted_credits"]["measured"])[:300],
+        })
         report["login_cookie_immediate_use"] = run_login_cookie_immediate_use(
             server.base, attempts=args.race_attempts)
         race = report["login_cookie_immediate_use"]
@@ -439,7 +554,7 @@ def main() -> int:
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"\nwrote {out.relative_to(ROOT)} — {report['outcome']} ({len(report['checks'])} checks, {len(failed)} failed)")
+    print(f"\nwrote {args.out} — {report['outcome']} ({len(report['checks'])} checks, {len(failed)} failed)")
     return 1 if failed else 0
 
 

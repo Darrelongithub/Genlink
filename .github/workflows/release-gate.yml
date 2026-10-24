@@ -201,9 +201,11 @@ jobs:
       - name: Dependency audit (report only; no --force, no unpinned upgrades)
         run: |
           (cd Adapt-main/frontend && npm audit --json > ../../release-artifacts/npm-audit.json) || true
+          (npm audit --json --package-lock-only > release-artifacts/npm-audit-root.json) || true
           python -m pip_audit --format json --progress-spinner off > release-artifacts/pip-audit.json || true
           python release/audit_summary.py \
             --npm release-artifacts/npm-audit.json \
+            --npm-root release-artifacts/npm-audit-root.json \
             --pip release-artifacts/pip-audit.json \
             --out release/evidence/dependency-audit.json
 
@@ -218,7 +220,8 @@ jobs:
           python - <<'PY'
           import json, pathlib
           for name in ('stress-ci.json','migration-smoke.json','e2e-smoke.json',
-                       'dependency-audit.json','browser-e2e.json','secret-scan.json','host-scan.json'):
+                       'dependency-audit.json','browser-e2e.json','secret-scan.json',
+                       'host-scan.json','lint-changed.json'):
               path = pathlib.Path('release/evidence') / name
               if not path.exists():
                   print(f'{name}: NOT RUN')

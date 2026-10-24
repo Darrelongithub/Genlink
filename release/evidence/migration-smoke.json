@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T00:12:09Z",
+  "generated_at": "2026-10-24T03:23:59Z",
   "python": "3.11.2",
   "ai_credentials_used": false,
   "checks": [
@@ -16,7 +16,7 @@
     {
       "name": "existing_database_is_upgraded_by_startup",
       "ok": true,
-      "detail": "0002 -> R9 (head R9)"
+      "detail": "0002 -> R10 (head R10)"
     },
     {
       "name": "migrated_database_boots_and_accepts_a_learner",
@@ -27,27 +27,27 @@
   "runs": [
     {
       "label": "fresh",
-      "data_dir": "/tmp/adapt-migration-juhou6n2/fresh",
+      "data_dir": "/tmp/adapt-migration-k_tee_o5/fresh",
       "healthz_status": 200,
-      "healthz_ms": 2.27,
+      "healthz_ms": 5.61,
       "learner_create_status": 200,
-      "learner_create_ms": 14.43,
+      "learner_create_ms": 22.84,
       "me_status": 200,
-      "learner_id": "stu_80d4948a7efc40bebb8b",
+      "learner_id": "stu_c9b849bbef394123827a",
       "server_log_tail": "",
-      "alembic_revision_after_boot": "R9"
+      "alembic_revision_after_boot": "R10"
     },
     {
       "label": "existing",
-      "data_dir": "/tmp/adapt-migration-juhou6n2/existing",
+      "data_dir": "/tmp/adapt-migration-k_tee_o5/existing",
       "healthz_status": 200,
-      "healthz_ms": 2.3,
+      "healthz_ms": 2.95,
       "learner_create_status": 200,
-      "learner_create_ms": 13.47,
+      "learner_create_ms": 36.71,
       "me_status": 200,
-      "learner_id": "stu_ef8c846136734a5884de",
+      "learner_id": "stu_e9139c9fb2db426fafc6",
       "server_log_tail": "",
-      "alembic_revision_after_boot": "R9"
+      "alembic_revision_after_boot": "R10"
     }
   ],
   "notes": [],
@@ -63,6 +63,6 @@
     "stderr_tail": "INFO  [alembic.runtime.migration] Context impl SQLiteImpl.\nINFO  [alembic.runtime.migration] Will assume non-transactional DDL.\nINFO  [alembic.runtime.migration] Running upgrade  -> 0001, initial schema: the whole database, as `create_all` builds it today\nINFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, interactive learning engine: scenes, runs, narration cache\n"
   },
   "legacy_revision_before_boot": "0002",
-  "head_revision": "R9",
+  "head_revision": "R10",
   "outcome": "PASS"
 }

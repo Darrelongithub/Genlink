@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T00:12:44Z",
+  "generated_at": "2026-10-24T03:32:15Z",
   "python": "3.11.2",
   "ai_credentials_used": false,
   "database": "fresh scratch directory",
@@ -9,7 +9,7 @@
       "method": "POST",
       "path": "/api/v1/students",
       "status": 200,
-      "elapsed_ms": 103.2,
+      "elapsed_ms": 79.69,
       "expected": [
         200
       ],
@@ -21,7 +21,7 @@
       "method": "POST",
       "path": "/api/v1/logout",
       "status": 200,
-      "elapsed_ms": 7.79,
+      "elapsed_ms": 6.36,
       "expected": [
         200
       ],
@@ -33,7 +33,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 401,
-      "elapsed_ms": 2.75,
+      "elapsed_ms": 2.19,
       "expected": [
         401
       ],
@@ -45,7 +45,7 @@
       "method": "POST",
       "path": "/api/v1/login",
       "status": 200,
-      "elapsed_ms": 92.77,
+      "elapsed_ms": 68.15,
       "expected": [
         200
       ],
@@ -57,7 +57,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 4.77,
+      "elapsed_ms": 3.59,
       "expected": [
         200
       ],
@@ -69,7 +69,7 @@
       "method": "POST",
       "path": "/api/v1/me/onboarding",
       "status": 200,
-      "elapsed_ms": 5.89,
+      "elapsed_ms": 4.73,
       "expected": [
         200
       ],
@@ -81,7 +81,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 4.55,
+      "elapsed_ms": 3.78,
       "expected": [
         200
       ],
@@ -93,7 +93,7 @@
       "method": "POST",
       "path": "/api/v1/baseline",
       "status": 200,
-      "elapsed_ms": 14.95,
+      "elapsed_ms": 11.21,
       "expected": [
         200
       ],
@@ -105,7 +105,7 @@
       "method": "GET",
       "path": "/api/v1/baseline/snapshot",
       "status": 200,
-      "elapsed_ms": 18.63,
+      "elapsed_ms": 17.0,
       "expected": [
         200
       ],
@@ -117,7 +117,7 @@
       "method": "POST",
       "path": "/api/v1/lesson-plan",
       "status": 200,
-      "elapsed_ms": 24.51,
+      "elapsed_ms": 20.14,
       "expected": [
         200
       ],
@@ -129,7 +129,7 @@
       "method": "POST",
       "path": "/api/v1/sessions",
       "status": 200,
-      "elapsed_ms": 20.34,
+      "elapsed_ms": 15.22,
       "expected": [
         200
       ],
@@ -141,7 +141,7 @@
       "method": "GET",
       "path": "/api/v1/practice?count=2",
       "status": 200,
-      "elapsed_ms": 56.88,
+      "elapsed_ms": 40.87,
       "expected": [
         200
       ],
@@ -153,7 +153,7 @@
       "method": "POST",
       "path": "/api/v1/attempts",
       "status": 200,
-      "elapsed_ms": 62.99,
+      "elapsed_ms": 52.3,
       "expected": [
         200
       ],
@@ -163,9 +163,9 @@
     {
       "name": "lesson_concepts_for_the_topic",
       "method": "GET",
-      "path": "/api/v1/lesson/concepts?topic=top_5afeb84896a04d09a8d4",
+      "path": "/api/v1/lesson/concepts?topic=top_b72fab9de89a4f388fee",
       "status": 200,
-      "elapsed_ms": 24.9,
+      "elapsed_ms": 19.33,
       "expected": [
         200,
         422,
@@ -179,7 +179,7 @@
       "method": "POST",
       "path": "/api/v1/lesson/reteach",
       "status": 200,
-      "elapsed_ms": 27.39,
+      "elapsed_ms": 21.32,
       "expected": [
         200
       ],
@@ -191,7 +191,7 @@
       "method": "POST",
       "path": "/api/v1/explain",
       "status": 200,
-      "elapsed_ms": 22.37,
+      "elapsed_ms": 17.04,
       "expected": [
         200,
         429
@@ -204,7 +204,7 @@
       "method": "GET",
       "path": "/api/v1/adaptations/pending",
       "status": 200,
-      "elapsed_ms": 6.1,
+      "elapsed_ms": 4.09,
       "expected": [
         200
       ],
@@ -226,7 +226,7 @@
       "method": "GET",
       "path": "/api/v1/methods/report",
       "status": 200,
-      "elapsed_ms": 6.74,
+      "elapsed_ms": 4.63,
       "expected": [
         200
       ],
@@ -238,7 +238,7 @@
       "method": "GET",
       "path": "/api/v1/journey",
       "status": 200,
-      "elapsed_ms": 26.34,
+      "elapsed_ms": 19.6,
       "expected": [
         200
       ],
@@ -250,7 +250,7 @@
       "method": "GET",
       "path": "/api/v1/me/export",
       "status": 200,
-      "elapsed_ms": 49.92,
+      "elapsed_ms": 54.5,
       "expected": [
         200
       ],
@@ -262,7 +262,7 @@
       "method": "DELETE",
       "path": "/api/v1/me",
       "status": 200,
-      "elapsed_ms": 6.74,
+      "elapsed_ms": 5.91,
       "expected": [
         200
       ],
@@ -274,7 +274,7 @@
       "method": "GET",
       "path": "/api/v1/me",
       "status": 401,
-      "elapsed_ms": 2.29,
+      "elapsed_ms": 2.2,
       "expected": [
         401
       ],
@@ -286,7 +286,7 @@
       "method": "POST",
       "path": "/api/v1/integration/adapt",
       "status": 200,
-      "elapsed_ms": 7.72,
+      "elapsed_ms": 5.89,
       "expected": [
         200
       ],
@@ -298,7 +298,7 @@
       "method": "POST",
       "path": "/api/v1/resources/search",
       "status": 401,
-      "elapsed_ms": 4.25,
+      "elapsed_ms": 3.05,
       "expected": [
         200,
         401,
@@ -309,6 +309,11 @@
     }
   ],
   "checks": [
+    {
+      "name": "exhausted_adapt_credits_returns_402_and_standard_stays_open",
+      "ok": true,
+      "detail": "{\"learner_created\": 200, \"actions_endpoint\": 200, \"priced_actions\": 4, \"plan_created\": 201, \"institution_created\": 201, \"wallet_initialised\": 200, \"membership_created\": 201, \"institution_id\": \"ins_50f4da9978f7401caf53\", \"generation_status\": 402, \"generation_ms\": 7.86, \"error\": \"credits_exhausted\", \""
+    },
     {
       "name": "a_session_cookie_is_usable_on_the_immediately_following_request",
       "ok": true,
@@ -346,12 +351,12 @@
     {
       "name": "engine_console_renders_and_labels_its_numbers_as_samples",
       "ok": true,
-      "detail": "{\"status\": 200, \"elapsed_ms\": 8.46, \"html_bytes\": 23076, \"contains_sample_label\": true, \"contains_no_live_connection_label\": true}"
+      "detail": "{\"status\": 200, \"elapsed_ms\": 5.79, \"html_bytes\": 23076, \"contains_sample_label\": true, \"contains_no_live_connection_label\": true}"
     }
   ],
   "notes": [],
   "learner_journey": {
-    "student_id": "stu_46908f06dc6d4757abee",
+    "student_id": "stu_bd2a41a4c97c419c8ab9",
     "consent_at_signup": false,
     "consent_after_opt_in": true,
     "me_after_logout_status": 401,
@@ -363,7 +368,7 @@
     "wrong_answer_status": 200,
     "wrong_answer_correct_field": false,
     "practice_item_id": "itm_integer_ops_00",
-    "topic_id": "top_5afeb84896a04d09a8d4",
+    "topic_id": "top_b72fab9de89a4f388fee",
     "concept_status": 200,
     "reteach_status": 200,
     "reteach_blocks": 3,
@@ -374,8 +379,44 @@
     "delete_status": 200,
     "integration_status": 200,
     "provider_outage_status": 401,
-    "adapt_credits_enforced": false,
-    "exhausted_credit_case": "not testable: no server-side credit ledger or debit route"
+    "adapt_credits_enforced": true,
+    "exhausted_credit_case": "measured separately by run_exhausted_credits(): 402 credits_exhausted, standard mode stays open"
+  },
+  "exhausted_credits": {
+    "measured": {
+      "learner_created": 200,
+      "actions_endpoint": 200,
+      "priced_actions": 4,
+      "plan_created": 201,
+      "institution_created": 201,
+      "wallet_initialised": 200,
+      "membership_created": 201,
+      "institution_id": "ins_50f4da9978f7401caf53",
+      "generation_status": 402,
+      "generation_ms": 7.86,
+      "error": "credits_exhausted",
+      "mode": "standard",
+      "fallback_mode": "standard",
+      "fallback_available": [
+        "GET /api/v1/content/pack",
+        "GET /api/v1/lessons",
+        "GET /api/v1/practice",
+        "GET /api/v1/review/due",
+        "GET /api/v1/study/items"
+      ],
+      "unmetered_lessons": 200,
+      "unmetered_study_items": 200,
+      "credits_me": 200,
+      "exhausted": true
+    },
+    "checks": {
+      "setup": true,
+      "generation_refused_with_402": true,
+      "standard_mode_named": true,
+      "learning_stays_open": true,
+      "learner_sees_exhaustion": true
+    },
+    "outcome": "PASS"
   },
   "login_cookie_immediate_use": {
     "attempts": 12,
@@ -385,121 +426,121 @@
       {
         "iteration": 0,
         "signup": 200,
-        "signup_ms": 89.84,
+        "signup_ms": 71.71,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 85.59,
+        "login_ms": 67.72,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 1,
         "signup": 200,
-        "signup_ms": 87.89,
+        "signup_ms": 64.53,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 89.57,
+        "login_ms": 67.12,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 2,
         "signup": 200,
-        "signup_ms": 84.13,
+        "signup_ms": 63.61,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 97.97,
+        "login_ms": 61.17,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 3,
         "signup": 200,
-        "signup_ms": 102.94,
+        "signup_ms": 66.16,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 90.48,
+        "login_ms": 61.8,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 4,
         "signup": 200,
-        "signup_ms": 97.18,
+        "signup_ms": 61.76,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 86.57,
+        "login_ms": 59.39,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 5,
         "signup": 200,
-        "signup_ms": 88.51,
+        "signup_ms": 60.34,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 90.29,
+        "login_ms": 64.45,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 6,
         "signup": 200,
-        "signup_ms": 89.28,
+        "signup_ms": 60.68,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 86.08,
+        "login_ms": 59.25,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 7,
         "signup": 200,
-        "signup_ms": 88.23,
+        "signup_ms": 73.48,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 102.68,
+        "login_ms": 62.65,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 8,
         "signup": 200,
-        "signup_ms": 96.54,
+        "signup_ms": 65.11,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 90.64,
+        "login_ms": 69.9,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 9,
         "signup": 200,
-        "signup_ms": 89.75,
+        "signup_ms": 67.63,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 89.42,
+        "login_ms": 68.22,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 10,
         "signup": 200,
-        "signup_ms": 87.23,
+        "signup_ms": 83.35,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 89.58,
+        "login_ms": 66.82,
         "me_immediately_after_login": 200
       },
       {
         "iteration": 11,
         "signup": 200,
-        "signup_ms": 88.69,
+        "signup_ms": 69.65,
         "me_immediately_after_signup": 200,
         "login": 200,
-        "login_ms": 87.93,
+        "login_ms": 70.61,
         "me_immediately_after_login": 200
       }
     ]
   },
   "demo_script": {
     "exit_code": 0,
-    "stdout_tail": "move works on the next two.\n\u001b[32mno contract violations found\u001b[0m\n\n{\n \"steps\": [\n  {\n   \"step\": \"health\"\n  },\n  {\n   \"step\": \"register\",\n   \"student_id\": \"stu_7f47a270cec54978b950\",\n   \"csrf_issued\": true\n  },\n  {\n   \"step\": \"onboarding\",\n   \"ignored_keys\": [\n    \"learning_style\"\n   ],\n   \"consent\": {\n    \"analytics\": true,\n    \"share_summary_with_ai\": false\n   }\n  },\n  {\n   \"step\": \"diagnostic\",\n   \"items\": 8,\n   \"correct\": 4,\n   \"topics\": 8\n  },\n  {\n   \"step\": \"analyze\",\n   \"traces\": 8,\n   \"hypotheses\": 1,\n   \"proposals\": 1\n  },\n  {\n   \"step\": \"help\",\n   \"hint_level\": 1,\n   \"example_steps\": 2,\n   \"grounded\": false,\n   \"sources\": 1\n  },\n  {\n   \"step\": \"methods\",\n   \"scored\": 1,\n   \"pilot\": 0,\n   \"rows\": 1\n  },\n  {\n   \"step\": \"prose_concept\",\n   \"code\": \"history_ww1\",\n   \"versions\": [\n    \"text\",\n    \"visual\",\n    \"worked_example\"\n   ],\n   \"text_steps\": 5,\n   \"pair\": 2,\n   \"unverified\": 0\n  },\n  {\n   \"step\": \"journey\",\n   \"nodes\": 15,\n   \"due_reviews\": 8\n  },\n  {\n   \"step\": \"privacy\",\n   \"event_types\": 27,\n   \"forbidden_keys\": 48\n  }\n ],\n \"warnings\": []\n}\n\nOpen the app against this API and sign in as demo+naesy@example.invalid / demo-passphrase-2026 to see the same data in the UI.\n",
+    "stdout_tail": "move works on the next two.\n\u001b[32mno contract violations found\u001b[0m\n\n{\n \"steps\": [\n  {\n   \"step\": \"health\"\n  },\n  {\n   \"step\": \"register\",\n   \"student_id\": \"stu_3f0b84cd54cb4952a8b3\",\n   \"csrf_issued\": true\n  },\n  {\n   \"step\": \"onboarding\",\n   \"ignored_keys\": [\n    \"learning_style\"\n   ],\n   \"consent\": {\n    \"analytics\": true,\n    \"share_summary_with_ai\": false\n   }\n  },\n  {\n   \"step\": \"diagnostic\",\n   \"items\": 8,\n   \"correct\": 4,\n   \"topics\": 8\n  },\n  {\n   \"step\": \"analyze\",\n   \"traces\": 8,\n   \"hypotheses\": 1,\n   \"proposals\": 1\n  },\n  {\n   \"step\": \"help\",\n   \"hint_level\": 1,\n   \"example_steps\": 2,\n   \"grounded\": false,\n   \"sources\": 1\n  },\n  {\n   \"step\": \"methods\",\n   \"scored\": 1,\n   \"pilot\": 0,\n   \"rows\": 1\n  },\n  {\n   \"step\": \"prose_concept\",\n   \"code\": \"history_ww1\",\n   \"versions\": [\n    \"text\",\n    \"visual\",\n    \"worked_example\"\n   ],\n   \"text_steps\": 5,\n   \"pair\": 2,\n   \"unverified\": 0\n  },\n  {\n   \"step\": \"journey\",\n   \"nodes\": 15,\n   \"due_reviews\": 8\n  },\n  {\n   \"step\": \"privacy\",\n   \"event_types\": 27,\n   \"forbidden_keys\": 48\n  }\n ],\n \"warnings\": []\n}\n\nOpen the app against this API and sign in as demo+uezix@example.invalid / demo-passphrase-2026 to see the same data in the UI.\n",
     "stderr_tail": ""
   },
   "engine_console": {
     "status": 200,
-    "elapsed_ms": 8.46,
+    "elapsed_ms": 5.79,
     "html_bytes": 23076,
     "contains_sample_label": true,
     "contains_no_live_connection_label": true

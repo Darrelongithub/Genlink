@@ -134,6 +134,10 @@ def rate(scope: str):
 
 def issue_login(response: Response, s: Session, student: Student, *, request: Request | None = None) -> dict[str, Any]:
     issued = auth.create_session(s, student.id, ip=(client_ip(request) if request is not None else None), user_agent=(request.headers.get("user-agent") if request is not None else None))
+    # The cookie is returned in this response, so its session row must be committed
+    # before the response is sent; an immediate next request must not race the
+    # request-end commit and see a 401 for a login that just answered 200.
+    s.commit()
     st = get_settings()
     response.set_cookie(
         st.cookie_name,

@@ -15,13 +15,20 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..deps import clear_login, db_session, issue_login, require_csrf, student_from_request
 from ...config import get_settings
 from ...db.models import Student
 from ...security import auth
 from ...security.middleware import audit_event, client_ip
 from ...services import current
 from ...services import sessions as S
+from ..deps import (
+    clear_login,
+    db_session,
+    issue_login,
+    require_csrf,
+    same_origin,
+    student_from_request,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
 
@@ -103,7 +110,13 @@ class VoiceBody(BaseModel):
 
 
 @router.post("/students")
-def create_student(body: RegisterBody, request: Request, response: Response, s: Session = Depends(db_session)) -> dict[str, Any]:
+def create_student(
+    body: RegisterBody,
+    request: Request,
+    response: Response,
+    s: Session = Depends(db_session),
+    _origin: None = Depends(same_origin),
+) -> dict[str, Any]:
     if body.as_guest and auth.demo_passphrase_required() and not auth.check_demo_passphrase(
         request.headers.get("x-adapt-demo-passphrase")
     ):
@@ -198,6 +211,7 @@ class DemoSessionBody(BaseModel):
 def demo_session(
     body: DemoSessionBody, request: Request, response: Response,
     s: Session = Depends(db_session),
+    _origin: None = Depends(same_origin),
 ) -> dict[str, Any]:
     """Trusted-LAN demo entry: explicit consent, no credentials or password hashing."""
     if not get_settings().demo_mode or get_settings().mode == "tunnel":
@@ -216,7 +230,13 @@ def demo_session(
 
 
 @router.post("/login")
-def login(body: LoginBody, request: Request, response: Response, s: Session = Depends(db_session)) -> dict[str, Any]:
+def login(
+    body: LoginBody,
+    request: Request,
+    response: Response,
+    s: Session = Depends(db_session),
+    _origin: None = Depends(same_origin),
+) -> dict[str, Any]:
     # Two budgets: the address being guessed and the connection doing the guessing. A
     # successful sign-in spends nothing, so a learner is never locked out by their own
     # activity; only failures drain the bucket, and while it is empty the password is

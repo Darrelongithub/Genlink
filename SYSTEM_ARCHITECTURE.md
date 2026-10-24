@@ -5,16 +5,21 @@ The single most important fact: **Genlink is not connected to Adapt.** The contr
 proven; the caller is a test-only reference implementation. Any diagram that shows a
 live arrow between the two products is a proposal, not the current system.
 
-**Layout note (merge with main, 2026-10-23):** while this gate was running, `main` advanced
-from `d998955` to `aad6946`. It deleted both ZIP archives, extracted Genlink into the
-repository root (`src/`, `supabase/`, `drizzle/`, `index.html`, `package.json`) and added a
-refactored top-level `adapt/` tree, while leaving `Adapt-main/` **unchanged**. This branch
-merged that main, resolved the `.gitignore` add/add conflict, applied the same measured pool
-fix to `adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift in
-`adapt/scripts/demo.mjs`, and extended the host scan to the extracted trees. The HTTP/stress
-evidence below was measured against `Adapt-main/backend` + `Adapt-main/frontend`, which main
-did not modify; `release/check_second_layout.py` separately proves the second backend carries
-the same pool bound.
+**Layout note (merges with main, 2026-10-23/24):** while this gate was running, `main`
+advanced from `d998955` to `aad6946`, then to `8851869` (PR #4). The first advance deleted
+both ZIP archives, extracted Genlink into the repository root (`src/`, `supabase/`,
+`drizzle/`, `index.html`, `package.json`) and added a refactored top-level `adapt/` tree,
+while leaving `Adapt-main/` **unchanged**. The second advance added real backend institution
+credits, a wallet/ledger, operator authority and cross-site session/mutation protection to
+`Adapt-main/backend`. This branch merged both advances: it resolved the `.gitignore` and
+generated `docs/EFFICIENCY.md` add/add conflicts, applied the same measured pool fix to
+`adapt/backend/src/adapt/db/engine.py`, fixed the same demo-script drift in
+`adapt/scripts/demo.mjs`, extended the host scan to the extracted trees, and added the
+measured exhausted-credit scenario plus the post-login session-commit fix to both backend
+layouts. The HTTP/stress evidence below was re-measured against
+`Adapt-main/backend` + `Adapt-main/frontend` after the second merge;
+`release/check_second_layout.py` separately proves the second backend carries the same pool
+bound.
 
 ## 1. Ownership and physical layout
 
@@ -120,12 +125,17 @@ Properties proven by `backend/tests/test_integration_release_contract.py` and
 | System | Identity | Session | Tenant/institution |
 | --- | --- | --- | --- |
 | Genlink (archive) | Supabase Auth (`src/contexts/AuthContext.tsx`, `src/integrations/supabase/client.ts`) | Supabase session in the browser | course/pathway/ops roles in Drizzle migrations; no Adapt tenant concept |
-| Adapt app | `students` row; username/email + Argon2id or guest | httpOnly `adapt_session` cookie + `adapt_csrf`, 12 h TTL, revoke on logout/delete | **none** in the integration route; any `institution_id` sent is ignored |
-| Integration route | opaque `learner.id` string supplied by the caller | none | none |
+| Adapt app | `students` row; username/email + Argon2id or guest | httpOnly `adapt_session` cookie + `adapt_csrf`, 12 h TTL, revoke on logout/delete | **stateful app now has institutions, memberships and wallets** (R10); a learner's priced generation is debited against their institution wallet |
+| Adapt operator plane | `ADAPT_OPERATOR_TOKEN` in the environment, or a `students.role` of `operator`/`admin` | header credential (`x-adapt-operator-token` or bearer) or a signed-in operator account; cookie-authenticated operator mutations still need CSRF | creates institutions, plans, wallets, memberships and priced actions |
+| Integration route | opaque `learner.id` string supplied by the caller | none | **none**; any `institution_id` sent is still ignored and no wallet is touched |
 
 There is **no identity federation**. A Supabase user id is not validated as an Adapt
-student id. The endpoint is a pure function of the request body. If a real deployment needs
-institution scoping, that is a new contract — not something the current UI implies.
+student id. The integration endpoint is a pure function of the request body: it does not
+read the new institution/credit tables and does not debit a wallet. A cross-site guard added
+on `main` refuses `/students`, `/demo-session` and `/login` when a browser sends a
+disallowed `Origin`; non-browser callers that send no `Origin` are unaffected. If a real
+deployment needs institution-scoped integration traffic, that is a new contract — not
+something the current UI implies.
 
 ## 5. Data exchanged and consent
 
@@ -144,13 +154,33 @@ published sentence `lessons.state = "simple mode"` instead.
 
 ## 6. Credits, billing and the engine console
 
-**Credits are not enforced outside the UI.** `GET /api/openapi.json` on the running app
-exposes 138 paths and **0** credit/balance/debit/ledger paths. The engine console
-(`frontend/src/app/engine/page.tsx`) stores sample plans, prices, `18,420 credits
-remaining`, `6,580 adapted actions`, `347 active learners` and an example ledger in
-browser `localStorage`. It is a **presentation prototype**.
+**Credits are now enforced by the backend, but the engine console is still a labelled
+presentation prototype and is not wired to that ledger.** This changed while the gate was
+running: `main` at `8851869` (PR #4) added migration `R10_institutions_and_credits.py`,
+`Adapt-main/backend/src/adapt/credits/`, `Adapt-main/backend/src/adapt/api/routes/credits.py`
+and a separate operator authority boundary (`require_operator` reads
+`ADAPT_OPERATOR_TOKEN` from `x-adapt-operator-token` or a bearer header). The running app's
+OpenAPI now exposes credit, plan, wallet, institution and membership paths; the engine
+console does **not** call them.
 
-Release-gate corrections now on this branch:
+What the release gate measured against a real uvicorn + SQLite instance
+(`release/evidence/e2e-smoke.json`, scenario `exhausted_adapt_credits`):
+
+* operator token created a priced action catalogue (`GET /api/v1/credits/actions` → 4
+  priced actions), a plan, an institution, its wallet and a learner membership;
+* a generation attempt against an empty wallet returned **402** with
+  `error=credits_exhausted`, `mode=standard`, and an explicit list of unmetered fallback
+  routes (`/api/v1/content/pack`, `/lessons`, `/practice`, `/review/due`, `/study/items`);
+* those unmetered reads and the learner's own `GET /api/v1/credits/me` still returned 200;
+* the learner could see `exhausted=true` on their own credit state.
+
+So the exhausted-credit case is **testable and passes**; it is no longer simulated. The
+remaining gap is presentation: `frontend/src/app/engine/page.tsx` still stores sample plans,
+prices, `18,420 credits remaining`, `6,580 adapted actions`, `347 active learners` and an
+example ledger in browser `localStorage`. Those numbers are **not** read from the backend
+wallet and must not be presented as live usage.
+
+Release-gate corrections on this branch:
 
 * top bar: `Prototype · not wired to Genlink`;
 * health rail: `Prototype console · values are samples`;
@@ -158,16 +188,15 @@ Release-gate corrections now on this branch:
 * a visible `SAMPLE FIGURES FOR PRESENTATION — not live usage, not pilot data, not
   learner data` line above the stats;
 * `Sample credits remaining`, `Sample adapted actions`, `Sample active learners`;
-* fallback rule pill changed from `ENABLED` to `PROPOSED ONLY`, with text saying the
-  backend does not debit credits;
+* fallback rule pill changed from `ENABLED` to `PROPOSED ONLY`;
 * `Export usage` is disabled and labelled `(prototype)`;
-* footer: sample values stored in this browser only, no billing or credit enforcement
-  backend.
+* footer: sample values stored in this browser only; **the console is not connected to the
+  backend credit ledger**.
 
 `release/e2e_smoke.py --web` fetches the built `/engine` page and asserts the sample and
-no-live-connection labels are present. An "exhausted Adapt Credits" case is therefore
-**not testable**: there is no ledger to exhaust. It remains a product blocker, not a
-simulated test.
+no-live-connection labels are present. Wiring the console to the real ledger, defining the
+operator/institution onboarding process, and keeping the sample values clearly separated
+from measured wallet state are product tasks before any pilot billing claim.
 
 ## 7. Failure and recovery behaviour measured
 
@@ -197,6 +226,22 @@ same probe served 16/24/32 concurrent calls in 269/393/543 ms with `/healthz` 20
 Pinned by `backend/tests/test_release_concurrency_pool.py` and the live stress scenario.
 Full before/after numbers: `release/evidence/concurrency-deadlock-before-fix.json`.
 
+### The post-login 401 that was fixed
+
+After merging `main`'s security/credits work, the E2E gate reproduced the earlier flake
+deterministically: 12/12 immediate requests after a 200 login returned 401. Cause:
+`db_session` commits only *after* the endpoint returns, but `issue_login` puts the new
+`Set-Cookie` on that response. A fast next request presented a cookie whose
+`auth_sessions` row was still inside the uncommitted transaction. Minimal fix in both
+backend layouts: `issue_login` commits the session row before returning. Regression test
+`Adapt-main/backend/tests/test_session_cookie_commit.py` reads the row from a **separate**
+connection before the issuing session closes. The 12-check immediate-use loop now reports
+0 failures.
+
+One full-suite run also produced a single async lesson-upgrade `fallback` instead of
+`ready` (F-18). The test passed 5/5 in isolation and the next full-suite rerun was green;
+the observation is recorded rather than hidden or disabled.
+
 ## 8. What is explicitly not claimed
 
 * No live Genlink→Adapt traffic. No shipped caller.
@@ -204,6 +249,8 @@ Full before/after numbers: `release/evidence/concurrency-deadlock-before-fix.jso
 * No browser E2E run in this sandbox: Chromium download from `cdn.playwright.dev` is
   blocked. CI attempts it and records `BLOCKED`, never a fake pass.
 * No pilot or production learner data. All learner ids in evidence are scratch guests.
-* No credit enforcement, no institution dashboard, no password reset, no teacher
-  dashboard, no spaced-review notification.
+* No live engine-console-to-backend-credit wiring: the backend enforces wallets, but the
+  `/engine` page still shows labelled `localStorage` samples and is not an institution
+  dashboard.
+* No password reset, no teacher dashboard, no spaced-review notification.
 * Loopback measurements on one sandbox machine are **not** capacity guarantees.

@@ -99,14 +99,17 @@ def _pip(data: Any) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--npm")
+    parser.add_argument("--npm-root", help="optional audit JSON for the root Genlink lockfile")
     parser.add_argument("--pip")
     parser.add_argument("--out", default="release/evidence/dependency-audit.json")
     args = parser.parse_args()
     npm_state, npm_data = _read(args.npm)
+    npm_root_state, npm_root_data = _read(args.npm_root)
     pip_state, pip_data = _read(args.pip)
     report = {
         "policy": "report only; no automatic fixes, no --force, no unpinned upgrades",
         "npm": {"state": npm_state, **_npm(npm_data)},
+        "npm_genlink_root": {"state": npm_root_state, **_npm(npm_root_data)},
         "pip": {"state": pip_state, **_pip(pip_data)},
         "gate_effect": "informational: vulnerabilities are carried into RELEASE_READINESS.md decisions",
     }
@@ -117,9 +120,10 @@ def main() -> int:
     except OSError as exc:
         print(f"could not write report: {exc}", file=sys.stderr)
         return 1
-    print(f"npm audit: {npm_state} {report['npm'].get('counts', {})}")
+    print(f"npm audit (Adapt frontend): {npm_state} {report['npm'].get('counts', {})}")
+    print(f"npm audit (root Genlink): {npm_root_state} {report['npm_genlink_root'].get('counts', {})}")
     print(f"pip audit: {pip_state} affected={report['pip'].get('affected_packages')} advisories={report['pip'].get('advisory_count')}")
-    print(f"wrote {out.relative_to(ROOT)} (no dependency was changed)")
+    print(f"wrote {args.out} (no dependency was changed)")
     return 0
 
 
